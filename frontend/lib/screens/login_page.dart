@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import 'home_shell.dart';
+import '../services/api.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -27,9 +28,22 @@ class _LoginPageState extends State<LoginPage> {
       );
       return;
     }
+    
     setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 700)); // TODO: Supabase auth
+    
+    final ok = await ApiService.login(email: _email.text, password: _password.text);
+    
     if (!mounted) return;
+
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid credentials')),
+      );
+
+      setState(() => _loading = false);
+      return;
+    }
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const HomeShell()),
