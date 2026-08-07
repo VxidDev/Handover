@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.void.handover"
+    namespace = "dev.vxiddev.handover"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "dev.void.handover"
+        applicationId = "dev.vxiddev.handover"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

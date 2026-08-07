@@ -1,4 +1,4 @@
-package dev.void.handover
+package dev.vxiddev.handover
 
 import io.flutter.embedding.android.FlutterActivity
 
