@@ -7,3 +7,6 @@ backend/.env
 # Editor
 .vscode/
 *.iml
+.dart_tool/
+.idea/
+.metadata
