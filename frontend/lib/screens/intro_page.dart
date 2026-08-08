@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api.dart';
 import '../theme/colors.dart';
 import '../widgets/feature_row.dart';
 import 'home_shell.dart';
@@ -78,17 +79,25 @@ class IntroPage extends StatelessWidget {
                 child: FilledButton(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    MaterialPageRoute(builder: (_) => const LoginPage(initialMode: AuthMode.signUp)),
                   ),
                   child: const Text('Get started'),
                 ),
               ),
               const SizedBox(height: 4),
               TextButton(
-                onPressed: () => Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const HomeShell()),
-                ),
+                onPressed: () {
+                  if (Api.hasToken) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const HomeShell()),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                    );
+                  }
+                },
                 child: const Text('I already have an account'),
               ),
             ],

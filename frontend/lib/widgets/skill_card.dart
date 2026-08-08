@@ -43,7 +43,7 @@ class SkillCard extends StatelessWidget {
                     Text(neighbor.skill, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 2),
                     Text(
-                      '${neighbor.name} · ≈${neighbor.km.toStringAsFixed(1)} km · ${neighbor.grid}',
+                      '${neighbor.name} · ≈${neighbor.km?.toStringAsFixed(1) ?? '?'} km · ${neighbor.grid ?? 'nearby'}',
                       style: const TextStyle(fontSize: 12, color: AppColors.inkFaint),
                     ),
                   ],

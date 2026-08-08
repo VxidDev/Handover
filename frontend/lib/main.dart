@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'screens/intro_page.dart';
+import 'services/api.dart';
 import 'theme/app_theme.dart';
 
-void main() => runApp(const HandoverApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Api.bootstrap();
+  runApp(const HandoverApp());
+}
 
 class HandoverApp extends StatelessWidget {
   const HandoverApp({super.key});
