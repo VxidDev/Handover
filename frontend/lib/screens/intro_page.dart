@@ -62,7 +62,7 @@ class IntroPage extends StatelessWidget {
                       icon: Icons.volunteer_activism_outlined,
                       title: 'Mutual aid',
                       subtitle: 'Offer what you know, get help when you need it.',
-                      tint: AppColors.sageLight,
+                      tint: AppColors.terracottaLight,
                     ),
                     FeatureRow(
                       icon: Icons.favorite_outline_rounded,
