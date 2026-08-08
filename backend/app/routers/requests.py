@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -60,10 +61,14 @@ def list_requests(
     user: User = Depends(get_current_user),
 ):
     query = db.query(Request)
-    if role in ("sent", "all"):
+    if role == "sent":
         query = query.filter(Request.requester_id == user.id)
-    if role == "received":
+    elif role == "received":
         query = query.filter(Request.provider_id == user.id)
+    else:
+        query = query.filter(
+            or_(Request.requester_id == user.id, Request.provider_id == user.id)
+        )
     if status_filter != "all":
         query = query.filter(Request.status == status_filter)
     requests = query.order_by(Request.created_at.desc()).all()

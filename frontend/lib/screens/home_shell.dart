@@ -17,7 +17,11 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: const [SearchTab(), RequestsTab(), ProfileTab()],
+        children: [
+          const SearchTab(),
+          RequestsTab(isActive: _index == 1),
+          const ProfileTab(),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
