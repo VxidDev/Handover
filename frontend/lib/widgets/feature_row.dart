@@ -17,44 +17,66 @@ class FeatureRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: tint,
-              borderRadius: BorderRadius.circular(13),
+    // Removed hardcoded bottom padding; let the parent (IntroPage) handle layout spacing
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Softer, more organic icon container that interacts with the frosted glass behind it
+        Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            // Translucent base so the liquid glass effect shows through slightly
+            color: tint.withOpacity(0.85),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.9),
+              width: 1.2,
             ),
-            child: Icon(icon, color: AppColors.terracottaDeep, size: 21),
+            boxShadow: [
+              BoxShadow(
+                color: tint.withOpacity(0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
+          child: Icon(icon, color: AppColors.terracottaDeep, size: 22),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Padding(
+            // Optical alignment: text baseline sits slightly lower than the visual center of a square
+            padding: const EdgeInsets.only(top: 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.ink,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600, // Slightly softer, more human weight than 700
+                    fontSize: 15.5,
+                    letterSpacing: -0.2, // Tighter tracking for an editorial feel
+                    height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(color: AppColors.inkSoft, fontSize: 12.5, height: 1.35),
+                  style: TextStyle(
+                    color: AppColors.inkSoft.withOpacity(0.8),
+                    fontSize: 13.5,
+                    height: 1.45, // Relaxed line height for comfortable, warm reading
+                    letterSpacing: 0.1,
+                  ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
