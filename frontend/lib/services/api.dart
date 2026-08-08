@@ -14,7 +14,38 @@ class ApiException implements Exception {
 }
 
 String describeError(Object error) {
-  if (error is ApiException) return error.message;
+  if (error is ApiException) {
+    try {
+      final decoded = jsonDecode(error.message);
+
+      final List<dynamic>? errorList = decoded is List
+          ? decoded
+          : (decoded is Map && decoded['detail'] is List ? decoded['detail'] : null);
+
+      if (errorList != null && errorList.isNotEmpty) {
+        final messages = errorList.map((err) {
+          String msg = err['msg']?.toString() ?? 'Invalid value';
+          // Clean up standard Pydantic prefix if present
+          if (msg.startsWith('Value error, ')) {
+            msg = msg.replaceFirst('Value error, ', '');
+          }
+          return '• $msg';
+        }).toSet(); // Using Set removes duplicates if email & password fail the same rule
+
+        return messages.join('\n');
+      } 
+      
+      // If the backend returned a simple error detail string like {"detail": "Unauthorized"}
+      if (decoded is Map && decoded['detail'] is String) {
+        return decoded['detail'];
+      }
+    } catch (_) {
+      // Message wasn't JSON, return raw message as fallback
+    }
+
+    return error.message;
+  }
+
   return 'Can\'t reach the server at ${Api.baseUrl}. Is the backend running?';
 }
 
@@ -93,9 +124,13 @@ class Api {
       body = null;
     }
     if (res.statusCode >= 200 && res.statusCode < 300) return body;
-    final detail = body is Map && body['detail'] != null
-        ? body['detail'].toString()
-        : 'Request failed (${res.statusCode})';
+    String detail;
+    if (body is Map && body['detail'] != null) {
+      final d = body['detail'];
+      detail = d is String ? d : jsonEncode(d);
+    } else {
+      detail = 'Request failed (${res.statusCode})';
+    }
     throw ApiException(detail, statusCode: res.statusCode);
   }
 

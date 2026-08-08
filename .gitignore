@@ -13,3 +13,5 @@ backend/data/
 .dart_tool/
 .idea/
 .metadata
+
+.env
