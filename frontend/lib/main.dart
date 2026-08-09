@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:handover/screens/home_shell.dart';
 import 'screens/intro_page.dart';
 import 'services/api.dart';
 import 'theme/app_theme.dart';
@@ -18,7 +19,7 @@ class HandoverApp extends StatelessWidget {
       title: 'Handover',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const IntroPage(),
+      home: Api.hasToken ? const HomeShell() : const IntroPage(),
     );
   }
 }

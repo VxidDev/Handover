@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+
 import '../models/neighbor_skill.dart';
-import '../theme/app_theme.dart';
 import '../theme/colors.dart';
 import 'availability_badge.dart';
 
 class SkillCard extends StatelessWidget {
-  const SkillCard({super.key, required this.neighbor, this.onRequest});
+  const SkillCard({
+    super.key,
+    required this.neighbor,
+    this.onRequest,
+  });
 
   final NeighborSkill neighbor;
   final VoidCallback? onRequest;
@@ -13,13 +17,35 @@ class SkillCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avatarColor = AppColors.avatarFor(neighbor.name);
+    final isAvailable = neighbor.available;
+
+    final metaParts = <String>[
+      if (neighbor.km != null) '≈${neighbor.km!.toStringAsFixed(1)} km',
+      if (neighbor.grid != null && neighbor.grid!.trim().isNotEmpty)
+        neighbor.grid!,
+    ];
+
+    final metaSuffix =
+        metaParts.isEmpty ? '' : '  ·  ${metaParts.join(' · ')}';
+
+    final hasBlurb = neighbor.blurb.trim().isNotEmpty;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.paper,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppTheme.cardShadow,
+        color: AppColors.paper.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.8),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.inkSoft.withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -27,12 +53,25 @@ class SkillCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 21,
-                backgroundColor: avatarColor.withValues(alpha: 0.18),
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: avatarColor.withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    width: 1,
+                  ),
+                ),
                 child: Text(
                   neighbor.initial,
-                  style: TextStyle(color: avatarColor, fontWeight: FontWeight.w700, fontSize: 16),
+                  style: TextStyle(
+                    color: avatarColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -40,11 +79,37 @@ class SkillCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(neighbor.skill, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 2),
                     Text(
-                      '${neighbor.name} · ≈${neighbor.km?.toStringAsFixed(1) ?? '?'} km · ${neighbor.grid ?? 'nearby'}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.inkFaint),
+                      neighbor.skill,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                          ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text.rich(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      TextSpan(
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.inkFaint,
+                          height: 1.35,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: neighbor.name,
+                            style: TextStyle(
+                              color: AppColors.inkSoft.withValues(alpha: 0.9),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          TextSpan(text: metaSuffix),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -53,24 +118,52 @@ class SkillCard extends StatelessWidget {
               AvailabilityBadge(available: neighbor.available),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            neighbor.blurb,
-            style: const TextStyle(color: AppColors.inkSoft, fontSize: 13.5, height: 1.4),
-          ),
+          if (hasBlurb) ...[
+            const SizedBox(height: 12),
+            Text(
+              neighbor.blurb,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.inkSoft.withValues(alpha: 0.95),
+                fontSize: 13.5,
+                height: 1.45,
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: neighbor.available ? (onRequest ?? () {}) : null,
+              onPressed: isAvailable ? onRequest : null,
               style: FilledButton.styleFrom(
-                backgroundColor: neighbor.available ? AppColors.terracotta : AppColors.sand,
-                foregroundColor: neighbor.available ? Colors.white : AppColors.inkFaint,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                backgroundColor:
+                    isAvailable ? AppColors.terracotta : AppColors.sand,
+                foregroundColor:
+                    isAvailable ? Colors.white : AppColors.inkFaint,
+                disabledBackgroundColor:
+                    AppColors.sand.withValues(alpha: 0.7),
+                disabledForegroundColor: AppColors.inkFaint,
                 elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.1,
+                ),
               ),
-              icon: const Icon(Icons.handshake_outlined, size: 18),
-              label: Text(neighbor.available ? 'Ask for help' : 'Currently busy'),
+              icon: Icon(
+                isAvailable
+                    ? Icons.handshake_outlined
+                    : Icons.schedule_rounded,
+                size: 18,
+              ),
+              label: Text(
+                isAvailable ? 'Ask for help' : 'Currently busy',
+              ),
             ),
           ),
         ],
