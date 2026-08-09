@@ -9,7 +9,7 @@ from ..schemas import RequestCreateIn, RequestOut, RequestUpdateIn
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
-VALID_STATUSES = {"pending", "accepted", "declined"}
+VALID_STATUSES = {"pending", "accepted", "declined", "cancelled"}
 
 
 def _to_out(req: Request) -> RequestOut:
@@ -73,6 +73,25 @@ def list_requests(
         query = query.filter(Request.status == status_filter)
     requests = query.order_by(Request.created_at.desc()).all()
     return [_to_out(r) for r in requests]
+
+
+@router.delete("/{request_id}", response_model=RequestOut)
+def cancel_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    req = db.get(Request, request_id)
+    if req is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+    if req.requester_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the requester can cancel this request")
+    if req.status != "pending":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Request already answered")
+    req.status = "cancelled"
+    db.commit()
+    db.refresh(req)
+    return _to_out(req)
 
 
 @router.patch("/{request_id}", response_model=RequestOut)

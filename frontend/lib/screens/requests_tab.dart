@@ -72,6 +72,21 @@ class _RequestsTabState extends State<RequestsTab> {
     }
   }
 
+  Future<void> _cancel(HelpRequest request) async {
+    setState(() => _busyRequestId = request.id);
+    try {
+      await Api.delete('/api/requests/${request.id}');
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(describeError(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _busyRequestId = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final received = _requests.where((r) => r.providerId == Api.currentUserId).toList();
@@ -239,6 +254,7 @@ class _RequestsTabState extends State<RequestsTab> {
               isReceived: false,
               busy: _busyRequestId == r.id,
               onRespond: (s) => _respond(r, s),
+              onCancel: () => _cancel(r),
             )),
       ],
     ];
@@ -281,12 +297,14 @@ class _RequestCard extends StatelessWidget {
     required this.isReceived,
     required this.busy,
     required this.onRespond,
+    this.onCancel,
   });
 
   final HelpRequest request;
   final bool isReceived;
   final bool busy;
   final void Function(String status) onRespond;
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -437,6 +455,25 @@ class _RequestCard extends StatelessWidget {
               ],
             ),
           ],
+          if (!isReceived && pending) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: busy ? null : onCancel,
+                icon: const Icon(Icons.close_rounded, size: 18),
+                label: const Text('Cancel'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                  side: BorderSide(color: AppColors.error.withValues(alpha: 0.2)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -453,6 +490,7 @@ class StatusBadge extends StatelessWidget {
     final (label, color, bg) = switch (status) {
       'accepted' => ('Accepted', AppColors.success, AppColors.sageLight),
       'declined' => ('Declined', AppColors.error, AppColors.terracottaTint),
+      'cancelled' => ('Cancelled', AppColors.inkSoft, AppColors.sand),
       _ => ('Pending', AppColors.inkSoft, AppColors.sand),
     };
     return Container(
