@@ -4,7 +4,12 @@ import '../services/api.dart';
 import '../theme/colors.dart';
 
 class RequestsTab extends StatefulWidget {
-  const RequestsTab({super.key});
+  const RequestsTab({super.key, this.isActive = true});
+
+  /// Whether this tab is currently selected in [HomeShell]. When it becomes
+  /// active the list reloads so newly sent/received requests show up.
+  final bool isActive;
+
   @override
   State<RequestsTab> createState() => _RequestsTabState();
 }
@@ -19,6 +24,14 @@ class _RequestsTabState extends State<RequestsTab> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant RequestsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isActive && widget.isActive) {
+      _load();
+    }
   }
 
   Future<void> _load() async {
