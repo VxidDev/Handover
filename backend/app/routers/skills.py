@@ -1,9 +1,10 @@
 import math
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
 
+from ..cache import SKILLS_CATALOG_KEY, cache
 from ..database import get_db
 from ..deps import get_current_user_optional
 from ..models import Skill, User
@@ -12,6 +13,39 @@ from ..schemas import SkillSearchOut
 router = APIRouter(prefix="/skills", tags=["skills"])
 
 EARTH_RADIUS_KM = 6371.0
+
+
+def _load_catalog(db: Session) -> list[dict[str, Any]]:
+    rows = (
+        db.query(Skill)
+        .options(joinedload(Skill.owner))
+        .join(User)
+        .order_by(Skill.name.asc())
+        .all()
+    )
+    return [
+        {
+            "skill_id": skill.id,
+            "skill_name": skill.name,
+            "blurb": skill.blurb,
+            "user_id": skill.user_id,
+            "owner_name": skill.owner.name,
+            "grid": skill.owner.grid,
+            "lat": skill.owner.lat,
+            "lng": skill.owner.lng,
+            "available": skill.owner.is_available,
+            "karma": skill.owner.karma,
+        }
+        for skill in rows
+    ]
+
+
+def get_catalog(db: Session) -> list[dict[str, Any]]:
+    return cache.get_or_set(SKILLS_CATALOG_KEY, lambda: _load_catalog(db))
+
+
+def invalidate_catalog() -> None:
+    cache.delete(SKILLS_CATALOG_KEY)
 
 
 def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -35,35 +69,38 @@ def search_skills(
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):
-    query = db.query(Skill).options(joinedload(Skill.owner)).join(User)
     keyword = q.strip().lower()
-    if keyword:
-        like = f"%{keyword}%"
-        query = query.filter(
-            (Skill.name.ilike(like)) | (Skill.blurb.ilike(like)) | (User.name.ilike(like))
-        )
-    if current_user is not None:
-        query = query.filter(Skill.user_id != current_user.id)
-
     results: list[SkillSearchOut] = []
-    for skill in query.order_by(Skill.name.asc()).all():
-        owner = skill.owner
+    for entry in get_catalog(db):
+        if current_user is not None and entry["user_id"] == current_user.id:
+            continue
+        if keyword:
+            haystack = (
+                entry["skill_name"] + entry["blurb"] + entry["owner_name"]
+            ).lower()
+            if keyword not in haystack:
+                continue
         distance = None
-        if lat is not None and lng is not None and owner.lat is not None and owner.lng is not None:
-            distance = round(haversine_km(lat, lng, owner.lat, owner.lng), 1)
+        if (
+            lat is not None
+            and lng is not None
+            and entry["lat"] is not None
+            and entry["lng"] is not None
+        ):
+            distance = round(haversine_km(lat, lng, entry["lat"], entry["lng"]), 1)
             if radius_km is not None and distance > radius_km:
                 continue
         results.append(
             SkillSearchOut(
-                skill_id=skill.id,
-                skill_name=skill.name,
-                blurb=skill.blurb,
-                owner_id=owner.id,
-                owner_name=owner.name,
-                grid=owner.grid,
+                skill_id=entry["skill_id"],
+                skill_name=entry["skill_name"],
+                blurb=entry["blurb"],
+                owner_id=entry["user_id"],
+                owner_name=entry["owner_name"],
+                grid=entry["grid"],
                 distance_km=distance,
-                available=owner.is_available,
-                karma=owner.karma,
+                available=entry["available"],
+                karma=entry["karma"],
             )
         )
     return results

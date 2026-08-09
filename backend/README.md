@@ -18,7 +18,13 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-uvicorn app.main:app --reload --port 8099
+granian app.main:app --interface asgi --host 127.0.0.1 --port 9000
+```
+
+For development with auto-reload:
+
+```bash
+granian --reload app.main:app --interface asgi --host 127.0.0.1 --port 9000
 ```
 
 - Interactive API docs: http://127.0.0.1:8099/docs
@@ -41,7 +47,7 @@ All seeded users share the password `demo1234`:
 
 ## Connecting the Flutter app
 
-The frontend points at `http://127.0.0.1:8099` by default. For other targets
+The frontend points at `http://127.0.0.1:9000` by default. For other targets
 override at build time:
 
 ```

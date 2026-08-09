@@ -5,6 +5,7 @@ from ..database import get_db
 from ..deps import get_current_user
 from ..models import Skill, User
 from ..schemas import SkillCreateIn, SkillOut, UserMeOut, UserUpdateIn
+from .skills import invalidate_catalog
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -20,6 +21,7 @@ def update_me(payload: UserUpdateIn, db: Session = Depends(get_db), user: User =
         setattr(user, field, value)
     db.commit()
     db.refresh(user)
+    invalidate_catalog()
     return UserMeOut.model_validate(user)
 
 
@@ -29,6 +31,7 @@ def add_skill(payload: SkillCreateIn, db: Session = Depends(get_db), user: User 
     db.add(skill)
     db.commit()
     db.refresh(skill)
+    invalidate_catalog()
     return SkillOut.model_validate(skill)
 
 
@@ -39,3 +42,4 @@ def delete_skill(skill_id: int, db: Session = Depends(get_db), user: User = Depe
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
     db.delete(skill)
     db.commit()
+    invalidate_catalog()
