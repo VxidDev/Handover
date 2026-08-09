@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+
 import '../models/skill.dart';
 import '../models/user_profile.dart';
 import '../services/api.dart';
 import '../theme/app_theme.dart';
 import '../theme/colors.dart';
 import 'intro_page.dart';
+import 'map_picker.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
+
   @override
   State<ProfileTab> createState() => _ProfileTabState();
 }
@@ -17,6 +20,7 @@ class _ProfileTabState extends State<ProfileTab> {
   bool _loading = true;
   String? _error;
   bool _savingAvailability = false;
+  bool _savingLocation = false;
 
   @override
   void initState() {
@@ -29,17 +33,21 @@ class _ProfileTabState extends State<ProfileTab> {
       _loading = true;
       _error = null;
     });
+
     try {
       final res = await Api.get('/api/users/me');
       final profile = UserProfile.fromJson(res as Map<String, dynamic>);
       Api.currentUserId = profile.id;
+
       if (!mounted) return;
+
       setState(() {
         _profile = profile;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         _error = describeError(e);
         _loading = false;
@@ -49,23 +57,77 @@ class _ProfileTabState extends State<ProfileTab> {
 
   Future<void> _toggleAvailability(bool value) async {
     setState(() => _savingAvailability = true);
+
     try {
-      final res = await Api.patch('/api/users/me', body: {'is_available': value});
+      final res = await Api.patch(
+        '/api/users/me',
+        body: {'is_available': value},
+      );
+
       if (!mounted) return;
+
       setState(() {
         _profile = UserProfile.fromJson(res as Map<String, dynamic>);
         _savingAvailability = false;
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() => _savingAvailability = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(describeError(e))),
+      );
+    }
+  }
+
+  Future<void> _chooseLocation() async {
+    final selection = await Navigator.of(context).push<GridSelection>(
+      MaterialPageRoute(
+        builder: (_) => LocationGridPickerPage(
+          initialLat: Api.demoLat,
+          initialLng: Api.demoLng,
+        ),
+      ),
+    );
+
+    if (selection == null || !mounted) return;
+
+    setState(() => _savingLocation = true);
+
+    try {
+      final res = await Api.patch(
+        '/api/users/me',
+        body: {
+          'grid': selection.cellId,
+        },
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _profile = UserProfile.fromJson(res as Map<String, dynamic>);
+        _savingLocation = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your area has been updated.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _savingLocation = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(describeError(e))),
+      );
     }
   }
 
   Future<void> _addSkill() async {
     final controller = TextEditingController();
     final blurb = TextEditingController();
+
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -88,7 +150,10 @@ class _ProfileTabState extends State<ProfileTab> {
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             child: const Text('Add'),
@@ -96,14 +161,26 @@ class _ProfileTabState extends State<ProfileTab> {
         ],
       ),
     );
+
     final skillName = name?.trim() ?? '';
     if (skillName.isEmpty) return;
+
     try {
-      await Api.post('/api/users/me/skills', body: {'name': skillName, 'blurb': blurb.text.trim()});
+      await Api.post(
+        '/api/users/me/skills',
+        body: {
+          'name': skillName,
+          'blurb': blurb.text.trim(),
+        },
+      );
+
       await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(describeError(e))),
+      );
     }
   }
 
@@ -113,7 +190,10 @@ class _ProfileTabState extends State<ProfileTab> {
       await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(describeError(e))),
+      );
     }
   }
 
@@ -128,12 +208,17 @@ class _ProfileTabState extends State<ProfileTab> {
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () async {
               await Api.clearSession();
+
               if (!mounted) return;
+
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => const IntroPage()),
                 (_) => false,
@@ -155,7 +240,7 @@ class _ProfileTabState extends State<ProfileTab> {
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
           children: _buildBody(),
         ),
       ),
@@ -171,6 +256,7 @@ class _ProfileTabState extends State<ProfileTab> {
         ),
       ];
     }
+
     if (_error != null) {
       return [
         Padding(
@@ -197,6 +283,7 @@ class _ProfileTabState extends State<ProfileTab> {
     }
 
     final p = _profile!;
+
     return [
       Container(
         padding: const EdgeInsets.all(18),
@@ -242,20 +329,30 @@ class _ProfileTabState extends State<ProfileTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(p.name,
-                      style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700, fontSize: 16)),
+                  Text(
+                    p.name,
+                    style: const TextStyle(
+                      color: AppColors.ink,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       const Icon(Icons.place_outlined, size: 13, color: AppColors.inkFaint),
                       const SizedBox(width: 3),
-                      Text(p.grid ?? 'Near you',
-                          style: const TextStyle(fontSize: 12, color: AppColors.inkFaint)),
+                      Text(
+                        p.grid ?? 'Near you',
+                        style: const TextStyle(fontSize: 12, color: AppColors.inkFaint),
+                      ),
                       const SizedBox(width: 10),
                       const Icon(Icons.eco_outlined, size: 13, color: AppColors.sage),
                       const SizedBox(width: 3),
-                      Text('${p.karma} karma',
-                          style: const TextStyle(fontSize: 12, color: AppColors.inkFaint)),
+                      Text(
+                        '${p.karma} karma',
+                        style: const TextStyle(fontSize: 12, color: AppColors.inkFaint),
+                      ),
                     ],
                   ),
                 ],
@@ -292,6 +389,8 @@ class _ProfileTabState extends State<ProfileTab> {
           ),
         ),
       ),
+      const SizedBox(height: 12),
+      _locationCard(p),
       const SizedBox(height: 28),
       Text('Skills you offer', style: Theme.of(context).textTheme.titleMedium),
       const SizedBox(height: 4),
@@ -313,8 +412,13 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
           ActionChip(
             avatar: const Icon(Icons.add_rounded, size: 17, color: AppColors.terracottaDeep),
-            label: const Text('Add skill',
-                style: TextStyle(color: AppColors.terracottaDeep, fontWeight: FontWeight.w600)),
+            label: const Text(
+              'Add skill',
+              style: TextStyle(
+                color: AppColors.terracottaDeep,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             backgroundColor: AppColors.terracottaTint,
             onPressed: _addSkill,
           ),
@@ -326,5 +430,121 @@ class _ProfileTabState extends State<ProfileTab> {
         child: const Text('Sign out'),
       ),
     ];
+  }
+
+  Widget _locationCard(UserProfile p) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.paper,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.terracottaTint,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.map_outlined,
+                  size: 20,
+                  color: AppColors.terracottaDeep,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Privacy area',
+                      style: TextStyle(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'You appear as a rough grid cell, not an exact address.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.inkFaint,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.sand,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.place_outlined,
+                  size: 15,
+                  color: AppColors.inkFaint,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    p.grid ?? 'Not set yet',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.inkSoft,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _savingLocation ? null : _chooseLocation,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.terracotta,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(100),
+                ),
+              ),
+              icon: _savingLocation
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.edit_location_alt_outlined, size: 18),
+              label: Text(
+                p.grid == null ? 'Choose on map' : 'Update on map',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

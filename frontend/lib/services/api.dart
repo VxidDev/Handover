@@ -30,12 +30,11 @@ String describeError(Object error) {
             msg = msg.replaceFirst('Value error, ', '');
           }
           return '• $msg';
-        }).toSet(); // Using Set removes duplicates if email & password fail the same rule
+        }).toSet();
 
         return messages.join('\n');
       } 
       
-      // If the backend returned a simple error detail string like {"detail": "Unauthorized"}
       if (decoded is Map && decoded['detail'] is String) {
         return decoded['detail'];
       }
@@ -49,11 +48,6 @@ String describeError(Object error) {
   return 'Can\'t reach the server at ${Api.baseUrl}. Is the backend running?';
 }
 
-/// Thin HTTP client for the Handover API.
-///
-/// Keeps the JWT in memory and persists it in [SharedPreferences] so a
-/// session survives app restarts. Override the base URL at build time with
-/// `--dart-define=API_BASE_URL=http://10.0.2.2:8099` (Android emulator).
 class Api {
   Api._();
 
@@ -64,8 +58,6 @@ class Api {
 
   static const String _tokenKey = 'handover_token';
 
-  /// Demo neighborhood center used until real location capture exists, so
-  /// search results include believable distances.
   static const double demoLat = 37.7749;
   static const double demoLng = -122.4195;
 

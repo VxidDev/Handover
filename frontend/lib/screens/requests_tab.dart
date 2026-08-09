@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../models/help_request.dart';
 import '../services/api.dart';
 import '../theme/colors.dart';
@@ -6,8 +7,6 @@ import '../theme/colors.dart';
 class RequestsTab extends StatefulWidget {
   const RequestsTab({super.key, this.isActive = true});
 
-  /// Whether this tab is currently selected in [HomeShell]. When it becomes
-  /// active the list reloads so newly sent/received requests show up.
   final bool isActive;
 
   @override
@@ -78,17 +77,47 @@ class _RequestsTabState extends State<RequestsTab> {
     final received = _requests.where((r) => r.providerId == Api.currentUserId).toList();
     final sent = _requests.where((r) => r.requesterId == Api.currentUserId).toList();
 
-    return Scaffold(
-      backgroundColor: AppColors.cream,
-      appBar: AppBar(title: const Text('Requests')),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          children: _buildSections(received, sent),
+    return Container(
+      color: AppColors.cream,
+      child: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          color: AppColors.terracotta,
+          backgroundColor: Colors.white,
+          onRefresh: _load,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 130),
+            children: _buildSections(received, sent),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _header() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Handshakes',
+          style: TextStyle(
+            fontSize: 13,
+            color: AppColors.inkFaint,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Your requests',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.6,
+                height: 1.1,
+              ),
+        ),
+      ],
     );
   }
 
@@ -96,67 +125,152 @@ class _RequestsTabState extends State<RequestsTab> {
     if (_loading && _requests.isEmpty) {
       return const [
         Padding(
-          padding: EdgeInsets.symmetric(vertical: 60),
-          child: Center(child: CircularProgressIndicator()),
+          padding: EdgeInsets.symmetric(vertical: 70),
+          child: Center(
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.6,
+                color: AppColors.terracotta,
+              ),
+            ),
+          ),
         ),
       ];
     }
+    
     if (_error != null) {
       return [
+        _header(),
+        const SizedBox(height: 40),
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 60),
+          padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
             children: [
-              const Icon(Icons.cloud_off_rounded, color: AppColors.inkFaint, size: 40),
-              const SizedBox(height: 12),
+              Container(
+                width: 64,
+                height: 64,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.sand,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                ),
+                child: const Icon(Icons.cloud_off_rounded, color: AppColors.inkFaint, size: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Something went wrong',
+                style: TextStyle(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 6),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                style: TextStyle(
+                  color: AppColors.inkSoft.withValues(alpha: 0.9),
+                  fontSize: 13,
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _load,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Retry'),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Try again'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.terracotta,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
               ),
             ],
           ),
         ),
       ];
     }
+    
     if (_requests.isEmpty) {
-      return const [_EmptyState()];
+      return [
+        _header(),
+        const SizedBox(height: 40),
+        const _EmptyState(),
+      ];
     }
+    
     return [
-      if (_loading) const LinearProgressIndicator(minHeight: 2),
-      if (received.isNotEmpty) _sectionHeader('Neighbors asking you', received.length),
-      ...received.map((r) => _RequestCard(
-            request: r,
-            isReceived: true,
-            busy: _busyRequestId == r.id,
-            onRespond: (s) => _respond(r, s),
-          )),
-      if (sent.isNotEmpty) _sectionHeader('You asked for help', sent.length),
-      ...sent.map((r) => _RequestCard(
-            request: r,
-            isReceived: false,
-            busy: _busyRequestId == r.id,
-            onRespond: (s) => _respond(r, s),
-          )),
+      _header(),
+      const SizedBox(height: 24),
+      if (_loading)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(100),
+            child: LinearProgressIndicator(
+              minHeight: 3,
+              backgroundColor: AppColors.sand,
+              valueColor: const AlwaysStoppedAnimation(AppColors.terracotta),
+            ),
+          ),
+        ),
+      if (received.isNotEmpty) ...[
+        _sectionHeader('Neighbors asking you', received.length),
+        const SizedBox(height: 12),
+        ...received.map((r) => _RequestCard(
+              request: r,
+              isReceived: true,
+              busy: _busyRequestId == r.id,
+              onRespond: (s) => _respond(r, s),
+            )),
+      ],
+      if (sent.isNotEmpty) ...[
+        if (received.isNotEmpty) const SizedBox(height: 24),
+        _sectionHeader('You asked for help', sent.length),
+        const SizedBox(height: 12),
+        ...sent.map((r) => _RequestCard(
+              request: r,
+              isReceived: false,
+              busy: _busyRequestId == r.id,
+              onRespond: (s) => _respond(r, s),
+            )),
+      ],
     ];
   }
 
   Widget _sectionHeader(String title, int count) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 10),
-      child: Row(
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(width: 6),
-          Text('($count)', style: const TextStyle(color: AppColors.inkFaint, fontSize: 13)),
-        ],
-      ),
+    return Row(
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
+              ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: AppColors.sand,
+            borderRadius: BorderRadius.circular(100),
+          ),
+          child: Text(
+            '$count',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.inkSoft,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -177,12 +291,29 @@ class _RequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pending = request.status == 'pending';
+    final name = isReceived ? request.requesterName : request.providerName;
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    
+    final avatarBg = isReceived ? AppColors.terracottaTint : AppColors.sageLight;
+    final avatarFg = isReceived ? AppColors.terracottaDeep : AppColors.sage;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.paper,
-        borderRadius: BorderRadius.circular(18),
+        color: AppColors.paper.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.8),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.inkSoft.withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,51 +321,91 @@ class _RequestCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.sageLight,
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: avatarBg,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    width: 1,
+                  ),
+                ),
                 child: Text(
-                  isReceived
-                      ? (request.requesterName.isNotEmpty ? request.requesterName[0] : '?')
-                      : (request.providerName.isNotEmpty ? request.providerName[0] : '?'),
-                  style: const TextStyle(color: AppColors.sage, fontWeight: FontWeight.w700, fontSize: 14),
+                  initial,
+                  style: TextStyle(
+                    color: avatarFg,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isReceived ? request.requesterName : request.providerName,
-                      style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700, fontSize: 14.5),
+                      name,
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        letterSpacing: -0.2,
+                      ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
-                      'wants ${request.skillName} help',
-                      style: const TextStyle(color: AppColors.inkSoft, fontSize: 12.5),
+                      'wants help with ${request.skillName}',
+                      style: TextStyle(
+                        color: AppColors.inkSoft.withValues(alpha: 0.9),
+                        fontSize: 13,
+                        height: 1.3,
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               StatusBadge(status: request.status),
             ],
           ),
           if (request.message != null && request.message!.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              request.message!,
-              style: const TextStyle(color: AppColors.inkSoft, fontSize: 13, height: 1.4),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.sand.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                request.message!,
+                style: TextStyle(
+                  color: AppColors.inkSoft.withValues(alpha: 0.95),
+                  fontSize: 13.5,
+                  height: 1.45,
+                ),
+              ),
             ),
           ],
           if (isReceived && pending) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: busy ? null : () => onRespond('declined'),
-                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      side: BorderSide(color: AppColors.error.withValues(alpha: 0.2)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                     child: const Text('Decline'),
                   ),
                 ),
@@ -242,11 +413,23 @@ class _RequestCard extends StatelessWidget {
                 Expanded(
                   child: FilledButton(
                     onPressed: busy ? null : () => onRespond('accepted'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.sage,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
+                    ),
                     child: busy
                         ? const SizedBox(
                             height: 18,
                             width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Text('Accept'),
                   ),
@@ -274,10 +457,22 @@ class StatusBadge extends StatelessWidget {
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: bg.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(
+          color: bg.withValues(alpha: 0.8),
+          width: 1,
+        ),
+      ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: color),
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+          color: color,
+          letterSpacing: 0.1,
+        ),
       ),
     );
   }
@@ -289,26 +484,46 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 70),
+      padding: const EdgeInsets.symmetric(vertical: 44),
       child: Column(
         children: [
           Container(
             width: 72,
             height: 72,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: AppColors.sageLight, shape: BoxShape.circle),
-            child: const Icon(Icons.handshake_outlined, size: 32, color: AppColors.sage),
+            decoration: BoxDecoration(
+              color: AppColors.sageLight.withValues(alpha: 0.6),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.8),
+                width: 1.5,
+              ),
+            ),
+            child: const Icon(
+              Icons.handshake_outlined,
+              size: 32,
+              color: AppColors.sage,
+            ),
           ),
           const SizedBox(height: 18),
           const Text(
             'No requests yet',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+              letterSpacing: -0.2,
+            ),
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'When you ask a neighbor for help — or someone asks you — it\'ll show up here.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: AppColors.inkSoft, height: 1.5),
+            style: TextStyle(
+              fontSize: 13.5,
+              color: AppColors.inkSoft.withValues(alpha: 0.9),
+              height: 1.5,
+            ),
           ),
         ],
       ),
