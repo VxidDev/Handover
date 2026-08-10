@@ -115,48 +115,15 @@ class _SearchTabState extends State<SearchTab> {
     }
   }
 
+  // Simplified: dialog now owns the API call and error handling
   Future<void> _requestHelp(NeighborSkill neighbor) async {
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: AppColors.ink.withValues(alpha: 0.3),
       builder: (ctx) => _RequestHelpDialog(neighbor: neighbor),
     );
-
-    if (confirmed != true) return;
-
-    try {
-      final skillId = neighbor.skillId;
-
-      if (skillId == null) {
-        throw const ApiException('Skill has no id');
-      }
-
-      await Api.post('/api/requests', body: {
-        'skill_id': skillId,
-        'message': neighbor.blurb, // Or however you pass the message
-      });
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('High five sent to ${neighbor.name.split(' ').first}! ✋'),
-          backgroundColor: AppColors.ink,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(describeError(e)),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
+    if (confirmed == true && mounted) {
+      _load();
     }
   }
 
@@ -618,10 +585,11 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
   final _message = TextEditingController();
   bool _sending = false;
   bool _success = false;
+  String? _error;
 
+  late final AnimationController _highFiveController;
   late final Animation<double> _successScale;
   late final Animation<double> _successFade;
-  late final AnimationController _highFiveController;
 
   @override
   void initState() {
@@ -653,20 +621,50 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
     super.dispose();
   }
 
-  void _send() {
+  Future<void> _send() async {
     if (_sending) return;
-    setState(() => _sending = true);
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    FocusManager.instance.primaryFocus?.unfocus();
 
-    Future.delayed(const Duration(milliseconds: 400), () {
+    final skillId = widget.neighbor.skillId;
+    if (skillId == null) {
+      setState(() {
+        _sending = false;
+        _error = 'This skill has no id — please try again.';
+      });
+      return;
+    }
+
+    try {
+      // Real API call BEFORE any success UI
+      await Api.post('/api/requests', body: {
+        'skill_id': skillId,
+        'message': _message.text.trim(),
+      });
+
       if (!mounted) return;
-      setState(() => _success = true);
+
+      // Only transition to success after confirmed by server
+      setState(() {
+        _success = true;
+        _sending = false;
+      });
       _highFiveController.forward();
 
       Future.delayed(const Duration(milliseconds: 2200), () {
         if (!mounted) return;
         Navigator.of(context).pop(true);
       });
-    });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _sending = false;
+        _error = describeError(e);
+      });
+    }
   }
 
   @override
@@ -691,9 +689,7 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
             ),
           ],
         ),
-        child: _success
-            ? _buildSuccessAnimation()
-            : _buildRequestForm(),
+        child: _success ? _buildSuccessAnimation() : _buildRequestForm(),
       ),
     );
   }
@@ -807,7 +803,9 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
               color: Colors.white.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.inkSoft.withValues(alpha: 0.15),
+                color: _error != null
+                    ? AppColors.error.withValues(alpha: 0.4)
+                    : AppColors.inkSoft.withValues(alpha: 0.15),
                 width: 1,
               ),
             ),
@@ -832,13 +830,33 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
             ),
           ),
         ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, size: 16, color: AppColors.error),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(
+                      color: AppColors.error,
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
           child: Row(
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () => Navigator.pop(context, false),
+                  onTap: _sending ? null : () => Navigator.pop(context, false),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
@@ -865,7 +883,7 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
               Expanded(
                 flex: 2,
                 child: GestureDetector(
-                  onTap: _sending ? null : _send,
+                  onTap: _send,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -941,7 +959,6 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
       builder: (context, child) {
         final t = controller.value;
 
-        // Generate particles exactly once at the clap moment
         if (t >= 0.35 && !_triggered) {
           _triggered = true;
           _particles = _generateParticles();
@@ -952,7 +969,6 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
         double particleProgress;
 
         if (t < 0.35) {
-          // Phase 1: Approach - hands tilt INWARD toward each other
           final p = Curves.easeOutCubic.transform(t / 0.35);
           
           leftX = -65 + (62 * p);
@@ -960,16 +976,14 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
           rightX = 65 - (62 * p);
           rightY = 60 - (70 * p);
           
-          // Tilting inward toward each other
-          leftRot = 0.4 - (0.6 * p);  // 0.4 → -0.2 (tilts left)
-          rightRot = -0.4 + (0.6 * p); // -0.4 → 0.2 (tilts right)
+          leftRot = 0.4 - (0.6 * p);
+          rightRot = -0.4 + (0.6 * p);
           
           scale = 1.0;
           rippleScale = 0;
           rippleOpacity = 0;
           particleProgress = 0;
         } else if (t < 0.65) {
-          // Phase 2: Impact & Recoil - hands tilt OUTWARD (opposite directions)
           final p = (t - 0.35) / 0.30;
           final recoil = Curves.easeOutQuart.transform(p);
           
@@ -978,9 +992,8 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
           rightX = -4 + (34 * recoil);
           rightY = -10 + (10 * recoil);
           
-          // Left hand tilts MORE left, right hand tilts MORE right
-          leftRot = -0.2 - (0.15 * recoil);   // -0.2 → -0.35
-          rightRot = 0.2 + (0.15 * recoil);    // 0.2 → 0.35
+          leftRot = -0.2 - (0.15 * recoil);
+          rightRot = 0.2 + (0.15 * recoil);
           
           if (p < 0.15) {
             scale = 1.0 - (0.15 * (p / 0.15));
@@ -993,7 +1006,6 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
           rippleOpacity = (1 - rippleP).clamp(0.0, 1.0);
           particleProgress = p;
         } else {
-          // Phase 3: Settle
           leftX = -30; leftY = 0; leftRot = -0.35;
           rightX = 30; rightY = 0; rightRot = 0.35;
           scale = 1.0;
@@ -1006,7 +1018,6 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
           alignment: Alignment.center,
           clipBehavior: Clip.none,
           children: [
-            // Ripple
             if (rippleOpacity > 0.01)
               Transform.scale(
                 scale: rippleScale,
@@ -1023,7 +1034,6 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                 ),
               ),
 
-            // Particles
             for (final p in _particles)
               Transform.translate(
                 offset: Offset(
@@ -1043,7 +1053,6 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                 ),
               ),
 
-            // Left Hand
             Transform.translate(
               offset: Offset(leftX, leftY),
               child: Transform.rotate(
@@ -1069,7 +1078,6 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
               ),
             ),
 
-            // Right Hand (Identical icon, symmetrical rotation)
             Transform.translate(
               offset: Offset(rightX, rightY),
               child: Transform.rotate(

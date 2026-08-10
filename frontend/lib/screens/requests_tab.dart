@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/help_request.dart';
 import '../services/api.dart';
@@ -18,6 +19,7 @@ class _RequestsTabState extends State<RequestsTab> {
   bool _loading = true;
   String? _error;
   int? _busyRequestId;
+  final Set<int> _removingIds = {};
 
   @override
   void initState() {
@@ -72,18 +74,155 @@ class _RequestsTabState extends State<RequestsTab> {
     }
   }
 
+  Future<bool> _showCancelDialog(HelpRequest request) async {
+    final name = request.providerName.split(' ').first;
+    
+    return await showDialog<bool>(
+      context: context,
+      barrierColor: AppColors.ink.withValues(alpha: 0.3),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.paper,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.ink.withValues(alpha: 0.12),
+                blurRadius: 40,
+                offset: const Offset(0, 20),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.undo_rounded, color: AppColors.error, size: 28),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Withdraw request?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.ink,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'No worries. You can always reach out to $name again later if you change your mind.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: AppColors.inkSoft.withValues(alpha: 0.85),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(color: AppColors.inkSoft.withValues(alpha: 0.2), width: 1),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Keep it',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.inkSoft),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(100),
+                          boxShadow: [
+                            BoxShadow(color: AppColors.error.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 6)),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Yes, withdraw',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ) ?? false;
+  }
+
   Future<void> _cancel(HelpRequest request) async {
-    setState(() => _busyRequestId = request.id);
+    final confirmed = await _showCancelDialog(request);
+    if (!confirmed) return;
+
+    HapticFeedback.mediumImpact();
+    
+    // Step 1: Mark as removing → triggers exit animation
+    setState(() => _removingIds.add(request.id));
+
+    final apiFuture = Api.delete('/api/requests/${request.id}');
+
+    // Step 2: Wait for exit animation to finish
+    await Future.delayed(const Duration(milliseconds: 400));
+
     try {
-      await Api.delete('/api/requests/${request.id}');
-      await _load();
+      await apiFuture;
+      if (!mounted) return;
+      
+      // Step 3: Remove from list → space smoothly collapses
+      setState(() {
+        _requests.removeWhere((r) => r.id == request.id);
+        _removingIds.remove(request.id);
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Request to ${request.providerName.split(' ').first} withdrawn.'),
+            backgroundColor: AppColors.ink,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
+      setState(() => _removingIds.remove(request.id));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(describeError(e))),
       );
-    } finally {
-      if (mounted) setState(() => _busyRequestId = null);
     }
   }
 
@@ -249,13 +388,20 @@ class _RequestsTabState extends State<RequestsTab> {
         if (received.isNotEmpty) const SizedBox(height: 24),
         _sectionHeader('You asked for help', sent.length),
         const SizedBox(height: 12),
-        ...sent.map((r) => _RequestCard(
+        ...sent.map((r) {
+          final isRemoving = _removingIds.contains(r.id);
+          return _AnimatedRemoval(
+            key: ValueKey(r.id),
+            isRemoving: isRemoving,
+            child: _RequestCard(
               request: r,
               isReceived: false,
-              busy: _busyRequestId == r.id,
+              busy: _busyRequestId == r.id || isRemoving,
               onRespond: (s) => _respond(r, s),
               onCancel: () => _cancel(r),
-            )),
+            ),
+          );
+        }),
       ],
     ];
   }
@@ -287,6 +433,90 @@ class _RequestsTabState extends State<RequestsTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Wraps a card with smooth exit animation: fades, scales, and collapses height
+class _AnimatedRemoval extends StatefulWidget {
+  const _AnimatedRemoval({
+    super.key,
+    required this.isRemoving,
+    required this.child,
+  });
+
+  final bool isRemoving;
+  final Widget child;
+
+  @override
+  State<_AnimatedRemoval> createState() => _AnimatedRemovalState();
+}
+
+class _AnimatedRemovalState extends State<_AnimatedRemoval> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _heightFactor;
+  late final Animation<double> _opacity;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    _heightFactor = _controller.drive(CurveTween(curve: Curves.easeInOut));
+    _opacity = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.6, curve: Curves.easeOut)),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.92).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInCubic),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedRemoval oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isRemoving && !oldWidget.isRemoving) {
+      _controller.forward();
+    } else if (!widget.isRemoving && oldWidget.isRemoving) {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // When not removing, just show the child normally
+        if (_controller.value == 0.0 && !widget.isRemoving) {
+          return child!;
+        }
+
+        return SizeTransition(
+          sizeFactor: _heightFactor.drive(Tween(begin: 1.0, end: 0.0).chain(
+            CurveTween(curve: Curves.easeInOut),
+          )),
+          axisAlignment: -1.0,
+          child: FadeTransition(
+            opacity: _opacity,
+            child: ScaleTransition(
+              scale: _scale,
+              alignment: Alignment.topCenter,
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: widget.child,
     );
   }
 }
@@ -461,8 +691,8 @@ class _RequestCard extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: busy ? null : onCancel,
-                icon: const Icon(Icons.close_rounded, size: 18),
-                label: const Text('Cancel'),
+                icon: const Icon(Icons.undo_rounded, size: 18),
+                label: const Text('Withdraw request'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.error,
                   side: BorderSide(color: AppColors.error.withValues(alpha: 0.2)),
