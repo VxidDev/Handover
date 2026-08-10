@@ -14,8 +14,79 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMixin {
   int _index = 0;
+  
+  late final AnimationController _controller;
+  
+  // Content animations
+  late final Animation<double> _contentFade;
+  late final Animation<Offset> _contentSlide;
+  
+  // Nav bar animations
+  late final Animation<Offset> _navSlide;
+  late final Animation<double> _navFade;
+  
+  // Orange pill entrance animations
+  late final Animation<double> _pillScale;
+  late final Animation<double> _pillFade;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+
+    _contentFade = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
+    );
+    _contentSlide = Tween<Offset>(
+      begin: const Offset(0, 0.03),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _navSlide = Tween<Offset>(
+      begin: const Offset(0, 0.5),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.25, 0.85, curve: Curves.easeOutQuart),
+      ),
+    );
+    _navFade = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.25, 0.65, curve: Curves.easeOut),
+    );
+
+    _pillScale = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.45, 0.95, curve: Curves.easeOutBack),
+      ),
+    );
+    _pillFade = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.45, 0.75, curve: Curves.easeOut),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   void _selectTab(int index) {
     if (_index == index) return;
@@ -46,11 +117,19 @@ class _HomeShellState extends State<HomeShell> {
             left: 20,
             right: 20,
             bottom: bottomSafe + 18,
-            child: SizedBox(
-              height: 74,
-              child: _FloatingNavBar(
-                index: _index,
-                onTap: _selectTab,
+            child: SlideTransition(
+              position: _navSlide,
+              child: FadeTransition(
+                opacity: _navFade,
+                child: SizedBox(
+                  height: 74,
+                  child: _FloatingNavBar(
+                    index: _index,
+                    onTap: _selectTab,
+                    pillScale: _pillScale,
+                    pillFade: _pillFade,
+                  ),
+                ),
               ),
             ),
           ),
@@ -72,7 +151,7 @@ class _AnimatedTabStack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const duration = Duration(milliseconds: 360);
-    const curve = Curves.easeOutExpo;
+    const curve = Curves.easeOutQuart;
 
     return Stack(
       fit: StackFit.expand,
@@ -108,10 +187,14 @@ class _FloatingNavBar extends StatelessWidget {
   const _FloatingNavBar({
     required this.index,
     required this.onTap,
+    required this.pillScale,
+    required this.pillFade,
   });
 
   final int index;
   final ValueChanged<int> onTap;
+  final Animation<double> pillScale;
+  final Animation<double> pillFade;
 
   @override
   Widget build(BuildContext context) {
@@ -143,24 +226,29 @@ class _FloatingNavBar extends StatelessWidget {
 
               return Stack(
                 children: [
-                  // Sliding orange selection pill
                   AnimatedPositioned(
-                    duration: const Duration(milliseconds: 420),
-                    curve: Curves.easeOutExpo,
+                    duration: const Duration(milliseconds: 450),
+                    curve: Curves.easeOutQuart,
                     left: index * itemWidth,
                     width: itemWidth,
                     top: 0,
                     bottom: 0,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.terracotta.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(22),
+                    child: FadeTransition(
+                      opacity: pillFade,
+                      child: ScaleTransition(
+                        scale: pillScale,
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 5),
+                          decoration: BoxDecoration(
+                            color: AppColors.terracotta.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                        ),
                       ),
                     ),
                   ),
 
-                  // Nav items above the sliding pill
                   Positioned.fill(
                     child: Row(
                       children: [
@@ -233,8 +321,8 @@ class _NavItem extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutExpo,
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeOutQuart,
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
