@@ -75,11 +75,27 @@ class _RequestsTabState extends State<RequestsTab> {
   }
 
   Future<bool> _showCancelDialog(HelpRequest request) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final name = request.providerName.split(' ').first;
+    
+    final dialogBg = isDark ? AppColors.darkPaper : AppColors.paper;
+    final dialogBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.6);
+    final dialogShadow = isDark
+        ? Colors.black.withValues(alpha: 0.3)
+        : AppColors.ink.withValues(alpha: 0.12);
+    
+    final cancelBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : AppColors.inkSoft.withValues(alpha: 0.2);
     
     return await showDialog<bool>(
       context: context,
-      barrierColor: AppColors.ink.withValues(alpha: 0.3),
+      barrierColor: isDark
+          ? Colors.black.withValues(alpha: 0.5)
+          : AppColors.ink.withValues(alpha: 0.3),
       builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -87,12 +103,12 @@ class _RequestsTabState extends State<RequestsTab> {
           constraints: const BoxConstraints(maxWidth: 400),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: AppColors.paper,
+            color: dialogBg,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1),
+            border: Border.all(color: dialogBorder, width: 1),
             boxShadow: [
               BoxShadow(
-                color: AppColors.ink.withValues(alpha: 0.12),
+                color: dialogShadow,
                 blurRadius: 40,
                 offset: const Offset(0, 20),
               ),
@@ -112,12 +128,12 @@ class _RequestsTabState extends State<RequestsTab> {
                 child: const Icon(Icons.undo_rounded, color: AppColors.error, size: 28),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Withdraw request?',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.ink,
+                  color: theme.colorScheme.onSurface,
                   letterSpacing: -0.3,
                 ),
               ),
@@ -127,7 +143,7 @@ class _RequestsTabState extends State<RequestsTab> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13.5,
-                  color: AppColors.inkSoft.withValues(alpha: 0.85),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   height: 1.4,
                 ),
               ),
@@ -141,12 +157,16 @@ class _RequestsTabState extends State<RequestsTab> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(100),
-                          border: Border.all(color: AppColors.inkSoft.withValues(alpha: 0.2), width: 1),
+                          border: Border.all(color: cancelBorder, width: 1),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'Keep it',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.inkSoft),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
                           ),
                         ),
                       ),
@@ -189,29 +209,34 @@ class _RequestsTabState extends State<RequestsTab> {
 
     HapticFeedback.mediumImpact();
     
-    // Step 1: Mark as removing → triggers exit animation
     setState(() => _removingIds.add(request.id));
 
     final apiFuture = Api.delete('/api/requests/${request.id}');
 
-    // Step 2: Wait for exit animation to finish
     await Future.delayed(const Duration(milliseconds: 400));
 
     try {
       await apiFuture;
       if (!mounted) return;
       
-      // Step 3: Remove from list → space smoothly collapses
       setState(() {
         _requests.removeWhere((r) => r.id == request.id);
         _removingIds.remove(request.id);
       });
       
       if (mounted) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Request to ${request.providerName.split(' ').first} withdrawn.'),
-            backgroundColor: AppColors.ink,
+            content: Text(
+              'Request to ${request.providerName.split(' ').first} withdrawn.',
+              style: TextStyle(
+                color: isDark ? AppColors.darkInk : AppColors.cream,
+                fontSize: 13.5,
+              ),
+            ),
+            backgroundColor: isDark ? AppColors.darkPaper : AppColors.ink,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -228,16 +253,17 @@ class _RequestsTabState extends State<RequestsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final received = _requests.where((r) => r.providerId == Api.currentUserId).toList();
     final sent = _requests.where((r) => r.requesterId == Api.currentUserId).toList();
 
     return Container(
-      color: AppColors.cream,
+      color: theme.scaffoldBackgroundColor,
       child: SafeArea(
         bottom: false,
         child: RefreshIndicator(
           color: AppColors.terracotta,
-          backgroundColor: Colors.white,
+          backgroundColor: theme.colorScheme.surface,
           onRefresh: _load,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -250,14 +276,15 @@ class _RequestsTabState extends State<RequestsTab> {
   }
 
   Widget _header() {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Handshakes',
           style: TextStyle(
             fontSize: 13,
-            color: AppColors.inkFaint,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             fontWeight: FontWeight.w600,
             letterSpacing: 0.1,
           ),
@@ -265,7 +292,7 @@ class _RequestsTabState extends State<RequestsTab> {
         const SizedBox(height: 4),
         Text(
           'Your requests',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+          style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.6,
                 height: 1.1,
@@ -276,6 +303,9 @@ class _RequestsTabState extends State<RequestsTab> {
   }
 
   List<Widget> _buildSections(List<HelpRequest> received, List<HelpRequest> sent) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_loading && _requests.isEmpty) {
       return const [
         Padding(
@@ -295,6 +325,11 @@ class _RequestsTabState extends State<RequestsTab> {
     }
     
     if (_error != null) {
+      final errorIconBg = isDark ? AppColors.darkSand : AppColors.sand;
+      final errorIconBorder = isDark
+          ? AppColors.darkBorder.withValues(alpha: 0.6)
+          : Colors.white.withValues(alpha: 0.8);
+
       return [
         _header(),
         const SizedBox(height: 40),
@@ -307,17 +342,21 @@ class _RequestsTabState extends State<RequestsTab> {
                 height: 64,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.sand,
+                  color: errorIconBg,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                  border: Border.all(color: errorIconBorder, width: 1.5),
                 ),
-                child: const Icon(Icons.cloud_off_rounded, color: AppColors.inkFaint, size: 28),
+                child: Icon(
+                  Icons.cloud_off_rounded,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  size: 28,
+                ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Something went wrong',
                 style: TextStyle(
-                  color: AppColors.ink,
+                  color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
                   letterSpacing: -0.2,
@@ -328,7 +367,7 @@ class _RequestsTabState extends State<RequestsTab> {
                 _error!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: AppColors.inkSoft.withValues(alpha: 0.9),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 13,
                   height: 1.4,
                 ),
@@ -359,6 +398,8 @@ class _RequestsTabState extends State<RequestsTab> {
       ];
     }
     
+    final progressBg = isDark ? AppColors.darkSand : AppColors.sand;
+
     return [
       _header(),
       const SizedBox(height: 24),
@@ -369,7 +410,7 @@ class _RequestsTabState extends State<RequestsTab> {
             borderRadius: BorderRadius.circular(100),
             child: LinearProgressIndicator(
               minHeight: 3,
-              backgroundColor: AppColors.sand,
+              backgroundColor: progressBg,
               valueColor: const AlwaysStoppedAnimation(AppColors.terracotta),
             ),
           ),
@@ -407,11 +448,15 @@ class _RequestsTabState extends State<RequestsTab> {
   }
 
   Widget _sectionHeader(String title, int count) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final chipBg = isDark ? AppColors.darkSand : AppColors.sand;
+
     return Row(
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
               ),
@@ -420,15 +465,15 @@ class _RequestsTabState extends State<RequestsTab> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: AppColors.sand,
+            color: chipBg,
             borderRadius: BorderRadius.circular(100),
           ),
           child: Text(
             '$count',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: AppColors.inkSoft,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ),
@@ -437,7 +482,6 @@ class _RequestsTabState extends State<RequestsTab> {
   }
 }
 
-/// Wraps a card with smooth exit animation: fades, scales, and collapses height
 class _AnimatedRemoval extends StatefulWidget {
   const _AnimatedRemoval({
     super.key,
@@ -496,7 +540,6 @@ class _AnimatedRemovalState extends State<_AnimatedRemoval> with SingleTickerPro
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        // When not removing, just show the child normally
         if (_controller.value == 0.0 && !widget.isRemoving) {
           return child!;
         }
@@ -538,26 +581,46 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final pending = request.status == 'pending';
     final name = isReceived ? request.requesterName : request.providerName;
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
     
-    final avatarBg = isReceived ? AppColors.terracottaTint : AppColors.sageLight;
-    final avatarFg = isReceived ? AppColors.terracottaDeep : AppColors.sage;
+    final avatarBg = isReceived
+        ? (isDark ? AppColors.terracotta.withValues(alpha: 0.18) : AppColors.terracottaTint)
+        : (isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight);
+    
+    final avatarFg = isReceived
+        ? (isDark ? AppColors.terracotta : AppColors.terracottaDeep)
+        : (isDark ? AppColors.sage : AppColors.sage);
+
+    final cardBg = isDark
+        ? AppColors.darkPaper.withValues(alpha: 0.92)
+        : AppColors.paper.withValues(alpha: 0.92);
+
+    final cardBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.8);
+
+    final cardShadow = isDark
+        ? Colors.black.withValues(alpha: 0.25)
+        : AppColors.inkSoft.withValues(alpha: 0.05);
+
+    final messageBg = isDark
+        ? AppColors.darkSand.withValues(alpha: 0.6)
+        : AppColors.sand.withValues(alpha: 0.5);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.paper.withValues(alpha: 0.92),
+        color: cardBg,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.8),
-          width: 1.2,
-        ),
+        border: Border.all(color: cardBorder, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: AppColors.inkSoft.withValues(alpha: 0.05),
+            color: cardShadow,
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -577,7 +640,7 @@ class _RequestCard extends StatelessWidget {
                   color: avatarBg,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: cardBorder,
                     width: 1,
                   ),
                 ),
@@ -597,8 +660,8 @@ class _RequestCard extends StatelessWidget {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
-                        color: AppColors.ink,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                         letterSpacing: -0.2,
@@ -608,7 +671,7 @@ class _RequestCard extends StatelessWidget {
                     Text(
                       'wants help with ${request.skillName}',
                       style: TextStyle(
-                        color: AppColors.inkSoft.withValues(alpha: 0.9),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         fontSize: 13,
                         height: 1.3,
                       ),
@@ -626,13 +689,13 @@ class _RequestCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.sand.withValues(alpha: 0.5),
+                color: messageBg,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
                 request.message!,
                 style: TextStyle(
-                  color: AppColors.inkSoft.withValues(alpha: 0.95),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                   fontSize: 13.5,
                   height: 1.45,
                 ),
@@ -717,19 +780,31 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final (label, color, bg) = switch (status) {
-      'accepted' => ('Accepted', AppColors.success, AppColors.sageLight),
-      'declined' => ('Declined', AppColors.error, AppColors.terracottaTint),
-      'cancelled' => ('Cancelled', AppColors.inkSoft, AppColors.sand),
-      _ => ('Pending', AppColors.inkSoft, AppColors.sand),
+      'accepted' => ('Accepted', AppColors.success, 
+                     isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight),
+      'declined' => ('Declined', AppColors.error, 
+                     isDark ? AppColors.terracotta.withValues(alpha: 0.18) : AppColors.terracottaTint),
+      'cancelled' => ('Cancelled', 
+                     isDark ? AppColors.darkInkFaint : AppColors.inkSoft, 
+                     isDark ? AppColors.darkSand : AppColors.sand),
+      _ => ('Pending', 
+            isDark ? AppColors.darkInkFaint : AppColors.inkSoft, 
+            isDark ? AppColors.darkSand : AppColors.sand),
     };
+
+    final bgAlpha = isDark ? 0.25 : 0.6;
+    final borderAlpha = isDark ? 0.4 : 0.8;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: bg.withValues(alpha: 0.6),
+        color: bg.withValues(alpha: bgAlpha),
         borderRadius: BorderRadius.circular(100),
         border: Border.all(
-          color: bg.withValues(alpha: 0.8),
+          color: bg.withValues(alpha: borderAlpha),
           width: 1,
         ),
       ),
@@ -751,6 +826,17 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final iconBg = isDark
+        ? AppColors.sage.withValues(alpha: 0.18)
+        : AppColors.sageLight.withValues(alpha: 0.6);
+
+    final iconBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.5)
+        : Colors.white.withValues(alpha: 0.8);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 44),
       child: Column(
@@ -760,26 +846,23 @@ class _EmptyState extends StatelessWidget {
             height: 72,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.sageLight.withValues(alpha: 0.6),
+              color: iconBg,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.8),
-                width: 1.5,
-              ),
+              border: Border.all(color: iconBorder, width: 1.5),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.handshake_outlined,
               size: 32,
-              color: AppColors.sage,
+              color: isDark ? AppColors.sage : AppColors.sage,
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'No requests yet',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+              color: theme.colorScheme.onSurface,
               letterSpacing: -0.2,
             ),
           ),
@@ -789,7 +872,7 @@ class _EmptyState extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13.5,
-              color: AppColors.inkSoft.withValues(alpha: 0.9),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               height: 1.5,
             ),
           ),

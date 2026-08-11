@@ -18,7 +18,9 @@ class HandoverApp extends StatelessWidget {
     return MaterialApp(
       title: 'Handover',
       debugShowCheckedModeBanner: false,
+      darkTheme: AppTheme.dark,
       theme: AppTheme.light,
+      themeMode: ThemeMode.system,
       home: Api.hasToken ? const HomeShell() : const IntroPage(),
     );
   }

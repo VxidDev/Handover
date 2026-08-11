@@ -19,15 +19,10 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
   
   late final AnimationController _controller;
   
-  // Content animations
   late final Animation<double> _contentFade;
   late final Animation<Offset> _contentSlide;
-  
-  // Nav bar animations
   late final Animation<Offset> _navSlide;
   late final Animation<double> _navFade;
-  
-  // Orange pill entrance animations
   late final Animation<double> _pillScale;
   late final Animation<double> _pillFade;
 
@@ -90,17 +85,17 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
 
   void _selectTab(int index) {
     if (_index == index) return;
-
     HapticFeedback.lightImpact();
     setState(() => _index = index);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final bottomSafe = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
-      backgroundColor: AppColors.cream,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
           Positioned.fill(
@@ -198,6 +193,25 @@ class _FloatingNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final navGlassColor = isDark
+        ? AppColors.darkPaper.withValues(alpha: 0.85)
+        : Colors.white.withValues(alpha: 0.76);
+
+    final navBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.9);
+
+    final navShadow = isDark
+        ? Colors.black.withValues(alpha: 0.25)
+        : AppColors.inkSoft.withValues(alpha: 0.07);
+
+    final pillColor = isDark
+        ? AppColors.terracotta.withValues(alpha: 0.2)
+        : AppColors.terracotta.withValues(alpha: 0.14);
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(30),
       child: BackdropFilter(
@@ -206,15 +220,12 @@ class _FloatingNavBar extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.76),
+            color: navGlassColor,
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.9),
-              width: 1.4,
-            ),
+            border: Border.all(color: navBorder, width: 1.4),
             boxShadow: [
               BoxShadow(
-                color: AppColors.inkSoft.withValues(alpha: 0.07),
+                color: navShadow,
                 blurRadius: 28,
                 offset: const Offset(0, 14),
               ),
@@ -241,7 +252,7 @@ class _FloatingNavBar extends StatelessWidget {
                         child: Container(
                           margin: const EdgeInsets.symmetric(horizontal: 5),
                           decoration: BoxDecoration(
-                            color: AppColors.terracotta.withValues(alpha: 0.14),
+                            color: pillColor,
                             borderRadius: BorderRadius.circular(22),
                           ),
                         ),
@@ -303,6 +314,16 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final selectedColor = AppColors.terracotta;
+    final unselectedColor = isDark
+        ? theme.colorScheme.onSurface.withValues(alpha: 0.6)
+        : AppColors.inkSoft.withValues(alpha: 0.55);
+
+    final currentColor = isSelected ? selectedColor : unselectedColor;
+
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -315,9 +336,7 @@ class _NavItem extends StatelessWidget {
               Icon(
                 isSelected ? selectedIcon : icon,
                 size: 22,
-                color: isSelected
-                    ? AppColors.terracotta
-                    : AppColors.inkSoft.withValues(alpha: 0.55),
+                color: currentColor,
               ),
               const SizedBox(height: 3),
               AnimatedDefaultTextStyle(
@@ -327,16 +346,11 @@ class _NavItem extends StatelessWidget {
                   fontSize: 11.5,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   letterSpacing: 0.1,
-                  color: isSelected
-                      ? AppColors.terracotta
-                      : AppColors.inkSoft.withValues(alpha: 0.55),
+                  color: currentColor,
                 ),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                  ),
+                  child: Text(label, maxLines: 1),
                 ),
               ),
             ],

@@ -7,73 +7,70 @@ class FeatureRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.tint,
+    this.tint,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final Color tint;
+  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
-    // Removed hardcoded bottom padding; let the parent (IntroPage) handle layout spacing
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Unified terracotta-based tint for all three rows
+    final effectiveTint = tint ??
+        (isDark
+            ? AppColors.terracotta.withValues(alpha: 0.18)
+            : AppColors.terracottaTint);
+
+    // Icon border adapts to theme
+    final iconBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.5)
+        : Colors.white.withValues(alpha: 0.9);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Softer, more organic icon container that interacts with the frosted glass behind it
         Container(
           width: 44,
           height: 44,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            // Translucent base so the liquid glass effect shows through slightly
-            color: tint.withOpacity(0.85),
+            color: effectiveTint,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.9),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: tint.withOpacity(0.15),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+            border: Border.all(color: iconBorder, width: 1),
+          ),
+          child: Icon(
+            icon,
+            size: 22,
+            color: AppColors.terracotta,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  height: 1.35,
+                ),
               ),
             ],
-          ),
-          child: Icon(icon, color: AppColors.terracottaDeep, size: 22),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Padding(
-            // Optical alignment: text baseline sits slightly lower than the visual center of a square
-            padding: const EdgeInsets.only(top: 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w600, // Slightly softer, more human weight than 700
-                    fontSize: 15.5,
-                    letterSpacing: -0.2, // Tighter tracking for an editorial feel
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: AppColors.inkSoft.withOpacity(0.8),
-                    fontSize: 13.5,
-                    height: 1.45, // Relaxed line height for comfortable, warm reading
-                    letterSpacing: 0.1,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ],

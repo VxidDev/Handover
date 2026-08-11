@@ -8,17 +8,32 @@ class AvailabilityBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dotColor = available ? AppColors.success : AppColors.inkFaint;
-    final bgColor = available ? AppColors.sageLight : AppColors.sand;
-    final textColor = available ? AppColors.terracottaDeep : AppColors.inkFaint;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final dotColor = available
+        ? AppColors.success
+        : (isDark ? AppColors.darkInkFaint : AppColors.inkFaint);
+
+    final bgColor = available
+        ? (isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight)
+        : (isDark ? AppColors.darkSand : AppColors.sand);
+
+    final textColor = available
+        ? (isDark ? AppColors.sage : AppColors.terracottaDeep)
+        : (isDark ? AppColors.darkInkFaint : AppColors.inkFaint);
+
+    // In dark mode, we use lower alphas for the background and border 
+    // so the badge feels like a subtle tint rather than a solid shape.
+    final bgAlpha = isDark ? 0.25 : 0.6;
+    final borderAlpha = isDark ? 0.4 : 0.8;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: bgColor.withValues(alpha: 0.6),
+        color: bgColor.withValues(alpha: bgAlpha),
         borderRadius: BorderRadius.circular(100),
         border: Border.all(
-          color: bgColor.withValues(alpha: 0.8),
+          color: bgColor.withValues(alpha: borderAlpha),
           width: 1,
         ),
       ),

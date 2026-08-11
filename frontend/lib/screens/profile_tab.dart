@@ -198,13 +198,18 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   void _confirmSignOut() {
+    final theme = Theme.of(context);
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Sign out?'),
-        content: const Text(
+        content: Text(
           'You\'ll need to sign back in to see nearby requests.',
-          style: TextStyle(color: AppColors.inkSoft, fontSize: 13.5),
+          style: TextStyle(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            fontSize: 13.5,
+          ),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
@@ -234,7 +239,7 @@ class _ProfileTabState extends State<ProfileTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.cream,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('My skill wallet')),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -248,6 +253,20 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   List<Widget> _buildBody() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final cardBg = isDark ? AppColors.darkPaper : AppColors.paper;
+    final cardBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.8);
+    final cardShadow = isDark ? AppTheme.darkCardShadow : AppTheme.cardShadow;
+    final avatarBg = isDark
+        ? AppColors.terracotta.withValues(alpha: 0.18)
+        : AppColors.terracottaTint;
+    final avatarFg = isDark ? AppColors.terracotta : AppColors.terracottaDeep;
+    final mutedText = theme.colorScheme.onSurface.withValues(alpha: 0.5);
+
     if (_loading && _profile == null) {
       return const [
         Padding(
@@ -263,12 +282,19 @@ class _ProfileTabState extends State<ProfileTab> {
           padding: const EdgeInsets.symmetric(vertical: 60),
           child: Column(
             children: [
-              const Icon(Icons.cloud_off_rounded, color: AppColors.inkFaint, size: 40),
+              Icon(
+                Icons.cloud_off_rounded,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                size: 40,
+              ),
               const SizedBox(height: 12),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
@@ -288,9 +314,10 @@ class _ProfileTabState extends State<ProfileTab> {
       Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AppColors.paper,
+          color: cardBg,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: AppTheme.cardShadow,
+          border: Border.all(color: cardBorder, width: 1),
+          boxShadow: cardShadow,
         ),
         child: Row(
           children: [
@@ -299,11 +326,11 @@ class _ProfileTabState extends State<ProfileTab> {
               children: [
                 CircleAvatar(
                   radius: 26,
-                  backgroundColor: AppColors.terracottaTint,
+                  backgroundColor: avatarBg,
                   child: Text(
                     p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
-                    style: const TextStyle(
-                      color: AppColors.terracottaDeep,
+                    style: TextStyle(
+                      color: avatarFg,
                       fontWeight: FontWeight.w700,
                       fontSize: 18,
                     ),
@@ -316,9 +343,11 @@ class _ProfileTabState extends State<ProfileTab> {
                     width: 14,
                     height: 14,
                     decoration: BoxDecoration(
-                      color: p.isAvailable ? AppColors.success : AppColors.inkFaint,
+                      color: p.isAvailable
+                          ? AppColors.success
+                          : (isDark ? AppColors.darkInkFaint : AppColors.inkFaint),
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.paper, width: 2.5),
+                      border: Border.all(color: cardBg, width: 2.5),
                     ),
                   ),
                 ),
@@ -331,8 +360,8 @@ class _ProfileTabState extends State<ProfileTab> {
                 children: [
                   Text(
                     p.name,
-                    style: const TextStyle(
-                      color: AppColors.ink,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
@@ -340,18 +369,18 @@ class _ProfileTabState extends State<ProfileTab> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.place_outlined, size: 13, color: AppColors.inkFaint),
+                      Icon(Icons.place_outlined, size: 13, color: mutedText),
                       const SizedBox(width: 3),
                       Text(
                         p.grid ?? 'Near you',
-                        style: const TextStyle(fontSize: 12, color: AppColors.inkFaint),
+                        style: TextStyle(fontSize: 12, color: mutedText),
                       ),
                       const SizedBox(width: 10),
                       const Icon(Icons.eco_outlined, size: 13, color: AppColors.sage),
                       const SizedBox(width: 3),
                       Text(
                         '${p.karma} karma',
-                        style: const TextStyle(fontSize: 12, color: AppColors.inkFaint),
+                        style: TextStyle(fontSize: 12, color: mutedText),
                       ),
                     ],
                   ),
@@ -375,7 +404,9 @@ class _ProfileTabState extends State<ProfileTab> {
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: p.isAvailable ? AppColors.sageLight : AppColors.sand,
+          color: p.isAvailable
+              ? (isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight)
+              : (isDark ? AppColors.darkSand : AppColors.sand),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Text(
@@ -384,7 +415,7 @@ class _ProfileTabState extends State<ProfileTab> {
               : 'You\'re hidden from search while marked busy.',
           style: TextStyle(
             fontSize: 12.5,
-            color: p.isAvailable ? AppColors.sage : AppColors.inkFaint,
+            color: p.isAvailable ? AppColors.sage : mutedText,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -392,11 +423,11 @@ class _ProfileTabState extends State<ProfileTab> {
       const SizedBox(height: 12),
       _locationCard(p),
       const SizedBox(height: 28),
-      Text('Skills you offer', style: Theme.of(context).textTheme.titleMedium),
+      Text('Skills you offer', style: theme.textTheme.titleMedium),
       const SizedBox(height: 4),
-      const Text(
+      Text(
         'These show up when neighbors search for help.',
-        style: TextStyle(fontSize: 12.5, color: AppColors.inkFaint),
+        style: TextStyle(fontSize: 12.5, color: mutedText),
       ),
       const SizedBox(height: 12),
       Wrap(
@@ -407,19 +438,19 @@ class _ProfileTabState extends State<ProfileTab> {
             Chip(
               label: Text(s.name),
               onDeleted: () => _deleteSkill(s),
-              deleteIconColor: AppColors.inkFaint,
-              backgroundColor: AppColors.sand,
+              deleteIconColor: mutedText,
+              backgroundColor: isDark ? AppColors.darkSand : AppColors.sand,
             ),
           ActionChip(
-            avatar: const Icon(Icons.add_rounded, size: 17, color: AppColors.terracottaDeep),
-            label: const Text(
+            avatar: Icon(Icons.add_rounded, size: 17, color: avatarFg),
+            label: Text(
               'Add skill',
               style: TextStyle(
-                color: AppColors.terracottaDeep,
+                color: avatarFg,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            backgroundColor: AppColors.terracottaTint,
+            backgroundColor: avatarBg,
             onPressed: _addSkill,
           ),
         ],
@@ -433,12 +464,27 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Widget _locationCard(UserProfile p) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final cardBg = isDark ? AppColors.darkPaper : AppColors.paper;
+    final cardBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.8);
+    final cardShadow = isDark ? AppTheme.darkCardShadow : AppTheme.cardShadow;
+    final iconTileBg = isDark
+        ? AppColors.terracotta.withValues(alpha: 0.18)
+        : AppColors.terracottaTint;
+    final iconFg = isDark ? AppColors.terracotta : AppColors.terracottaDeep;
+    final mutedText = theme.colorScheme.onSurface.withValues(alpha: 0.5);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.paper,
+        color: cardBg,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: AppTheme.cardShadow,
+        border: Border.all(color: cardBorder, width: 1),
+        boxShadow: cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,34 +496,34 @@ class _ProfileTabState extends State<ProfileTab> {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.terracottaTint,
+                  color: iconTileBg,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.map_outlined,
                   size: 20,
-                  color: AppColors.terracottaDeep,
+                  color: iconFg,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Privacy area',
                       style: TextStyle(
-                        color: AppColors.ink,
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.w700,
                         fontSize: 14.5,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       'You appear as a rough grid cell, not an exact address.',
                       style: TextStyle(
                         fontSize: 12.5,
-                        color: AppColors.inkFaint,
+                        color: mutedText,
                         height: 1.35,
                       ),
                     ),
@@ -490,23 +536,23 @@ class _ProfileTabState extends State<ProfileTab> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: AppColors.sand,
+              color: isDark ? AppColors.darkSand : AppColors.sand,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.place_outlined,
                   size: 15,
-                  color: AppColors.inkFaint,
+                  color: mutedText,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     p.grid ?? 'Not set yet',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
-                      color: AppColors.inkSoft,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       fontWeight: FontWeight.w600,
                     ),
                   ),

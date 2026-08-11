@@ -115,11 +115,12 @@ class _SearchTabState extends State<SearchTab> {
     }
   }
 
-  // Simplified: dialog now owns the API call and error handling
   Future<void> _requestHelp(NeighborSkill neighbor) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      barrierColor: AppColors.ink.withValues(alpha: 0.3),
+      barrierColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.black.withValues(alpha: 0.5)
+          : AppColors.ink.withValues(alpha: 0.3),
       builder: (ctx) => _RequestHelpDialog(neighbor: neighbor),
     );
     if (confirmed == true && mounted) {
@@ -129,13 +130,15 @@ class _SearchTabState extends State<SearchTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
-      color: AppColors.cream,
+      color: theme.scaffoldBackgroundColor,
       child: SafeArea(
         bottom: false,
         child: RefreshIndicator(
           color: AppColors.terracotta,
-          backgroundColor: Colors.white,
+          backgroundColor: theme.colorScheme.surface,
           onRefresh: _load,
           child: StaggeredEntrance(
             duration: const Duration(milliseconds: 1000),
@@ -145,15 +148,15 @@ class _SearchTabState extends State<SearchTab> {
               children: [
                 StaggeredItem(index: 0, child: _header(context)),
                 const SizedBox(height: 20),
-                StaggeredItem(index: 1, child: _searchField()),
+                StaggeredItem(index: 1, child: _searchField(context)),
                 const SizedBox(height: 18),
-                StaggeredItem(index: 2, child: _distanceCard()),
+                StaggeredItem(index: 2, child: _distanceCard(context)),
                 const SizedBox(height: 18),
-                StaggeredItem(index: 3, child: _privacyNote()),
+                StaggeredItem(index: 3, child: _privacyNote(context)),
                 const SizedBox(height: 26),
                 StaggeredItem(index: 4, child: _resultsHeader(context)),
                 const SizedBox(height: 12),
-                ..._buildResults(startIndex: 5),
+                ..._buildResults(context, startIndex: 5),
               ],
             ),
           ),
@@ -163,14 +166,15 @@ class _SearchTabState extends State<SearchTab> {
   }
 
   Widget _header(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           _greeting,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
-            color: AppColors.inkFaint,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             fontWeight: FontWeight.w600,
             letterSpacing: 0.1,
           ),
@@ -178,7 +182,7 @@ class _SearchTabState extends State<SearchTab> {
         const SizedBox(height: 4),
         Text(
           'Find help nearby',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+          style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.6,
                 height: 1.1,
@@ -188,18 +192,30 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  Widget _searchField() {
+  Widget _searchField(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bgColor = isDark
+        ? AppColors.darkSand.withValues(alpha: 0.9)
+        : Colors.white.withValues(alpha: 0.72);
+
+    final borderColor = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.7)
+        : Colors.white.withValues(alpha: 0.9);
+
+    final shadowColor = isDark
+        ? Colors.black.withValues(alpha: 0.2)
+        : AppColors.inkSoft.withValues(alpha: 0.05);
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
+        color: bgColor,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.9),
-          width: 1.2,
-        ),
+        border: Border.all(color: borderColor, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: AppColors.inkSoft.withValues(alpha: 0.05),
+            color: shadowColor,
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -210,29 +226,29 @@ class _SearchTabState extends State<SearchTab> {
         onChanged: _onQueryChanged,
         onSubmitted: (_) => _submitSearch(),
         textInputAction: TextInputAction.search,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14.5,
-          color: AppColors.ink,
+          color: theme.colorScheme.onSurface,
         ),
         decoration: InputDecoration(
           hintText: 'Search a skill… e.g. plumbing',
-          hintStyle: const TextStyle(
-            color: AppColors.inkFaint,
+          hintStyle: TextStyle(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
             fontSize: 14,
           ),
-          prefixIcon: const Icon(
+          prefixIcon: Icon(
             Icons.search_rounded,
-            color: AppColors.inkFaint,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             size: 22,
           ),
           suffixIcon: _query.text.isEmpty
               ? null
               : IconButton(
                   onPressed: _clearSearch,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close_rounded,
                     size: 18,
-                    color: AppColors.inkFaint,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
           border: InputBorder.none,
@@ -245,19 +261,31 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  Widget _distanceCard() {
+  Widget _distanceCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bgColor = isDark
+        ? AppColors.darkPaper.withValues(alpha: 0.85)
+        : Colors.white.withValues(alpha: 0.6);
+
+    final borderColor = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.85);
+
+    final shadowColor = isDark
+        ? Colors.black.withValues(alpha: 0.2)
+        : AppColors.inkSoft.withValues(alpha: 0.04);
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.6),
+        color: bgColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.85),
-          width: 1.2,
-        ),
+        border: Border.all(color: borderColor, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: AppColors.inkSoft.withValues(alpha: 0.04),
+            color: shadowColor,
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -271,14 +299,14 @@ class _SearchTabState extends State<SearchTab> {
               const Icon(
                 Icons.near_me_rounded,
                 size: 16,
-                color: AppColors.terracottaDeep,
+                color: AppColors.terracotta,
               ),
               const SizedBox(width: 7),
-              const Text(
+              Text(
                 'Distance',
                 style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.ink,
+                  color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.1,
                 ),
@@ -288,7 +316,7 @@ class _SearchTabState extends State<SearchTab> {
                 '$_radiusLabel km',
                 style: TextStyle(
                   fontSize: 12.5,
-                  color: AppColors.inkSoft.withValues(alpha: 0.9),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -307,32 +335,44 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  Widget _privacyNote() {
+  Widget _privacyNote(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bgColor = isDark
+        ? AppColors.terracotta.withValues(alpha: 0.15)
+        : AppColors.terracottaTint.withValues(alpha: 0.4);
+
+    final borderColor = isDark
+        ? AppColors.terracotta.withValues(alpha: 0.3)
+        : AppColors.terracottaTint.withValues(alpha: 0.7);
+
+    final textColor = isDark
+        ? AppColors.terracotta
+        : AppColors.terracottaDeep;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.terracottaTint.withValues(alpha: 0.4),
+        color: bgColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.terracottaTint.withValues(alpha: 0.7),
-          width: 1,
-        ),
+        border: Border.all(color: borderColor, width: 1),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             Icons.lock_outline_rounded,
             size: 18,
-            color: AppColors.terracottaDeep,
+            color: textColor,
           ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               'Neighbors appear as approximate areas and distances. Exact locations are shared only after both sides accept.',
               style: TextStyle(
                 fontSize: 12.5,
-                color: AppColors.terracottaDeep,
+                color: textColor,
                 height: 1.45,
               ),
             ),
@@ -343,11 +383,18 @@ class _SearchTabState extends State<SearchTab> {
   }
 
   Widget _resultsHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final chipBg = isDark
+        ? AppColors.darkSand
+        : AppColors.sand;
+
     return Row(
       children: [
         Text(
           'Nearby neighbors',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
               ),
@@ -356,15 +403,15 @@ class _SearchTabState extends State<SearchTab> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: AppColors.sand,
+            color: chipBg,
             borderRadius: BorderRadius.circular(100),
           ),
           child: Text(
             '${_results.length}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: AppColors.inkSoft,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ),
@@ -372,7 +419,10 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  List<Widget> _buildResults({int startIndex = 5}) {
+  List<Widget> _buildResults(BuildContext context, {int startIndex = 5}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_loading && _results.isEmpty) {
       return [
         StaggeredItem(
@@ -395,6 +445,11 @@ class _SearchTabState extends State<SearchTab> {
     }
 
     if (_error != null) {
+      final errorIconBg = isDark ? AppColors.darkSand : AppColors.sand;
+      final errorIconBorder = isDark
+          ? AppColors.darkBorder.withValues(alpha: 0.6)
+          : Colors.white.withValues(alpha: 0.8);
+
       return [
         StaggeredItem(
           index: startIndex,
@@ -407,24 +462,21 @@ class _SearchTabState extends State<SearchTab> {
                   height: 64,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: AppColors.sand,
+                    color: errorIconBg,
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      width: 1.5,
-                    ),
+                    border: Border.all(color: errorIconBorder, width: 1.5),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.cloud_off_rounded,
-                    color: AppColors.inkFaint,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     size: 28,
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Something went wrong',
                   style: TextStyle(
-                    color: AppColors.ink,
+                    color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                     letterSpacing: -0.2,
@@ -435,7 +487,7 @@ class _SearchTabState extends State<SearchTab> {
                   _error!,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppColors.inkSoft.withValues(alpha: 0.9),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     fontSize: 13,
                     height: 1.4,
                   ),
@@ -465,6 +517,8 @@ class _SearchTabState extends State<SearchTab> {
       ];
     }
 
+    final progressBg = isDark ? AppColors.darkSand : AppColors.sand;
+
     return [
       if (_loading)
         StaggeredItem(
@@ -475,7 +529,7 @@ class _SearchTabState extends State<SearchTab> {
               borderRadius: BorderRadius.circular(100),
               child: LinearProgressIndicator(
                 minHeight: 3,
-                backgroundColor: AppColors.sand,
+                backgroundColor: progressBg,
                 valueColor: const AlwaysStoppedAnimation(AppColors.terracotta),
               ),
             ),
@@ -514,6 +568,14 @@ class _EmptyResults extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final iconBg = isDark ? AppColors.darkSand : AppColors.sand;
+    final iconBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.8);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 44),
       child: Column(
@@ -523,24 +585,21 @@ class _EmptyResults extends StatelessWidget {
             height: 64,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.sand,
+              color: iconBg,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.8),
-                width: 1.5,
-              ),
+              border: Border.all(color: iconBorder, width: 1.5),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.search_off_rounded,
-              color: AppColors.inkFaint,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               size: 28,
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No matches yet',
             style: TextStyle(
-              color: AppColors.ink,
+              color: theme.colorScheme.onSurface,
               fontWeight: FontWeight.w700,
               fontSize: 15,
               letterSpacing: -0.2,
@@ -553,7 +612,7 @@ class _EmptyResults extends StatelessWidget {
                 : 'Try widening your radius to see more neighbors nearby.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: AppColors.inkFaint.withValues(alpha: 0.95),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
               fontSize: 12.5,
               height: 1.4,
             ),
@@ -639,7 +698,6 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
     }
 
     try {
-      // Real API call BEFORE any success UI
       await Api.post('/api/requests', body: {
         'skill_id': skillId,
         'message': _message.text.trim(),
@@ -647,7 +705,6 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
 
       if (!mounted) return;
 
-      // Only transition to success after confirmed by server
       setState(() {
         _success = true;
         _sending = false;
@@ -669,32 +726,41 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final dialogBg = isDark ? AppColors.darkPaper : AppColors.paper;
+    final dialogBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.6);
+    final dialogShadow = isDark
+        ? Colors.black.withValues(alpha: 0.3)
+        : AppColors.ink.withValues(alpha: 0.12);
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 400),
         decoration: BoxDecoration(
-          color: AppColors.paper,
+          color: dialogBg,
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.6),
-            width: 1,
-          ),
+          border: Border.all(color: dialogBorder, width: 1),
           boxShadow: [
             BoxShadow(
-              color: AppColors.ink.withValues(alpha: 0.12),
+              color: dialogShadow,
               blurRadius: 40,
               offset: const Offset(0, 20),
             ),
           ],
         ),
-        child: _success ? _buildSuccessAnimation() : _buildRequestForm(),
+        child: _success ? _buildSuccessAnimation(context) : _buildRequestForm(context),
       ),
     );
   }
 
-  Widget _buildSuccessAnimation() {
+  Widget _buildSuccessAnimation(BuildContext context) {
+    final theme = Theme.of(context);
     final firstName = widget.neighbor.name.split(' ').first;
 
     return Padding(
@@ -710,12 +776,12 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
           const SizedBox(height: 20),
           FadeTransition(
             opacity: _successFade,
-            child: const Text(
+            child: Text(
               'High five sent! ✋',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppColors.ink,
+                color: theme.colorScheme.onSurface,
                 letterSpacing: -0.3,
               ),
             ),
@@ -728,7 +794,7 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13.5,
-                color: AppColors.inkSoft.withValues(alpha: 0.8),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 height: 1.4,
               ),
             ),
@@ -738,9 +804,29 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
     );
   }
 
-  Widget _buildRequestForm() {
+  Widget _buildRequestForm(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final firstName = widget.neighbor.name.split(' ').first;
-    final avatarColor = AppColors.avatarFor(widget.neighbor.name);
+    final avatarColor = AppColors.avatarFor(widget.neighbor.name, isDark: isDark);
+
+    final avatarBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.5)
+        : Colors.white.withValues(alpha: 0.8);
+
+    final textFieldBg = isDark
+        ? AppColors.darkSand.withValues(alpha: 0.9)
+        : Colors.white.withValues(alpha: 0.7);
+
+    final textFieldBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.7)
+        : AppColors.inkSoft.withValues(alpha: 0.15);
+
+    final errorBorder = AppColors.error.withValues(alpha: 0.4);
+
+    final cancelBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : AppColors.inkSoft.withValues(alpha: 0.2);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -756,10 +842,7 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
                 decoration: BoxDecoration(
                   color: avatarColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    width: 1.5,
-                  ),
+                  border: Border.all(color: avatarBorder, width: 1.5),
                 ),
                 child: Text(
                   widget.neighbor.name.isNotEmpty
@@ -776,10 +859,10 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
               Text(
                 'Ask $firstName for help',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.ink,
+                  color: theme.colorScheme.onSurface,
                   letterSpacing: -0.3,
                 ),
               ),
@@ -789,7 +872,7 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.inkSoft.withValues(alpha: 0.8),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   height: 1.4,
                 ),
               ),
@@ -800,12 +883,10 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: textFieldBg,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: _error != null
-                    ? AppColors.error.withValues(alpha: 0.4)
-                    : AppColors.inkSoft.withValues(alpha: 0.15),
+                color: _error != null ? errorBorder : textFieldBorder,
                 width: 1,
               ),
             ),
@@ -813,15 +894,15 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
               controller: _message,
               autofocus: true,
               maxLines: 3,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: AppColors.ink,
+                color: theme.colorScheme.onSurface,
                 height: 1.4,
               ),
               decoration: InputDecoration(
                 hintText: 'What do you need help with? (optional)',
                 hintStyle: TextStyle(
-                  color: AppColors.inkFaint.withValues(alpha: 0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                   fontSize: 14,
                 ),
                 border: InputBorder.none,
@@ -861,18 +942,15 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(100),
-                      border: Border.all(
-                        color: AppColors.inkSoft.withValues(alpha: 0.2),
-                        width: 1,
-                      ),
+                      border: Border.all(color: cancelBorder, width: 1),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Text(
                         'Cancel',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.inkSoft,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                       ),
                     ),
@@ -894,7 +972,7 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
                       borderRadius: BorderRadius.circular(100),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.terracotta.withValues(alpha: 0.25),
+                          color: AppColors.terracotta.withValues(alpha: isDark ? 0.35 : 0.25),
                           blurRadius: 12,
                           offset: const Offset(0, 6),
                         ),
@@ -953,6 +1031,7 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AnimatedBuilder(
       animation: controller,
@@ -961,7 +1040,7 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
 
         if (t >= 0.35 && !_triggered) {
           _triggered = true;
-          _particles = _generateParticles();
+          _particles = _generateParticles(isDark: isDark);
         }
 
         double leftX, leftY, rightX, rightY, scale, leftRot, rightRot;
@@ -1067,9 +1146,9 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                       size: 64,
                       shadows: [
                         Shadow(
-                          color: Colors.black.withValues(alpha: 0.15),
+                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.15),
                           blurRadius: 8,
-                          offset: Offset(0, 4),
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -1090,9 +1169,9 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                     size: 64,
                     shadows: [
                       Shadow(
-                        color: Colors.black.withValues(alpha: 0.15),
+                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.15),
                         blurRadius: 8,
-                        offset: Offset(0, 4),
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -1105,7 +1184,7 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
     );
   }
 
-  List<_Particle> _generateParticles() {
+  List<_Particle> _generateParticles({bool isDark = false}) {
     final random = math.Random();
     final particles = <_Particle>[];
     for (int i = 0; i < 16; i++) {
@@ -1115,7 +1194,9 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
         dx: math.cos(angle) * speed,
         dy: math.sin(angle) * speed,
         size: 5 + random.nextDouble() * 6,
-        color: i % 2 == 0 ? AppColors.terracotta : AppColors.goldTint,
+        color: i % 2 == 0
+            ? AppColors.terracotta
+            : (isDark ? AppColors.gold : AppColors.goldTint),
       ));
     }
     return particles;

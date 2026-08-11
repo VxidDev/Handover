@@ -16,7 +16,9 @@ class SkillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avatarColor = AppColors.avatarFor(neighbor.name);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final avatarColor = AppColors.avatarFor(neighbor.name, isDark: isDark);
     final isAvailable = neighbor.available;
 
     final metaParts = <String>[
@@ -30,18 +32,39 @@ class SkillCard extends StatelessWidget {
 
     final hasBlurb = neighbor.blurb.trim().isNotEmpty;
 
+    final cardBg = isDark
+        ? AppColors.darkPaper.withValues(alpha: 0.92)
+        : AppColors.paper.withValues(alpha: 0.92);
+
+    final cardBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.8);
+
+    final cardShadow = isDark
+        ? Colors.black.withValues(alpha: 0.25)
+        : AppColors.inkSoft.withValues(alpha: 0.05);
+
+    final avatarBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.5)
+        : Colors.white.withValues(alpha: 0.8);
+
+    final buttonBg = isAvailable
+        ? AppColors.terracotta
+        : (isDark ? AppColors.darkSand : AppColors.sand);
+
+    final buttonFg = isAvailable
+        ? Colors.white
+        : (isDark ? AppColors.darkInkFaint : AppColors.inkFaint);
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.paper.withValues(alpha: 0.92),
+        color: cardBg,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.8),
-          width: 1.2,
-        ),
+        border: Border.all(color: cardBorder, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: AppColors.inkSoft.withValues(alpha: 0.05),
+            color: cardShadow,
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -60,10 +83,7 @@ class SkillCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: avatarColor.withValues(alpha: 0.16),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    width: 1,
-                  ),
+                  border: Border.all(color: avatarBorder, width: 1),
                 ),
                 child: Text(
                   neighbor.initial,
@@ -81,29 +101,26 @@ class SkillCard extends StatelessWidget {
                   children: [
                     Text(
                       neighbor.skill,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.2,
-                          ),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text.rich(
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       TextSpan(
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12.5,
-                          color: AppColors.inkFaint,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                           height: 1.35,
                         ),
                         children: [
                           TextSpan(
                             text: neighbor.name,
                             style: TextStyle(
-                              color: AppColors.inkSoft.withValues(alpha: 0.9),
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -125,7 +142,7 @@ class SkillCard extends StatelessWidget {
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: AppColors.inkSoft.withValues(alpha: 0.95),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
                 fontSize: 13.5,
                 height: 1.45,
               ),
@@ -137,13 +154,14 @@ class SkillCard extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: isAvailable ? onRequest : null,
               style: FilledButton.styleFrom(
-                backgroundColor:
-                    isAvailable ? AppColors.terracotta : AppColors.sand,
-                foregroundColor:
-                    isAvailable ? Colors.white : AppColors.inkFaint,
-                disabledBackgroundColor:
-                    AppColors.sand.withValues(alpha: 0.7),
-                disabledForegroundColor: AppColors.inkFaint,
+                backgroundColor: buttonBg,
+                foregroundColor: buttonFg,
+                disabledBackgroundColor: isDark
+                    ? AppColors.darkSand.withValues(alpha: 0.7)
+                    : AppColors.sand.withValues(alpha: 0.7),
+                disabledForegroundColor: isDark
+                    ? AppColors.darkInkFaint
+                    : AppColors.inkFaint,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 shape: RoundedRectangleBorder(
