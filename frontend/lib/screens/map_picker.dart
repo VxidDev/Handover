@@ -71,16 +71,28 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final cellCenter = _cellBounds?.center;
 
+    final infoCardBg = isDark
+        ? AppColors.darkPaper.withValues(alpha: 0.9)
+        : Colors.white.withValues(alpha: 0.82);
+
+    final infoCardBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.9);
+
+    final infoCardShadow = isDark
+        ? Colors.black.withValues(alpha: 0.25)
+        : AppColors.inkSoft.withValues(alpha: 0.06);
+
+    final lockIconColor = isDark ? AppColors.terracotta : AppColors.terracottaDeep;
+
     return Scaffold(
-      backgroundColor: AppColors.cream,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Choose your area'),
-        backgroundColor: AppColors.cream,
-        foregroundColor: AppColors.ink,
-        elevation: 0,
-        scrolledUnderElevation: 0,
       ),
       body: Stack(
         children: [
@@ -120,7 +132,7 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.terracotta.withValues(alpha: 0.25),
+                              color: AppColors.terracotta.withValues(alpha: isDark ? 0.4 : 0.25),
                               blurRadius: 18,
                               offset: const Offset(0, 8),
                             ),
@@ -144,15 +156,12 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.82),
+                color: infoCardBg,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  width: 1.2,
-                ),
+                border: Border.all(color: infoCardBorder, width: 1.2),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.inkSoft.withValues(alpha: 0.06),
+                    color: infoCardShadow,
                     blurRadius: 18,
                     offset: const Offset(0, 8),
                   ),
@@ -163,15 +172,15 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
                   Icon(
                     Icons.lock_outline_rounded,
                     size: 18,
-                    color: AppColors.terracottaDeep,
+                    color: lockIconColor,
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Tap the map. We’ll turn this into a rough grid area instead of your exact location.',
+                      "Tap the map. We'll turn this into a rough grid area instead of your exact location.",
                       style: TextStyle(
                         fontSize: 12.5,
-                        color: AppColors.inkSoft,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         height: 1.35,
                       ),
                     ),
@@ -194,9 +203,9 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text(
                     'Selected grid: $_cellId',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
-                      color: AppColors.inkFaint,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                       fontWeight: FontWeight.w600,
                     ),
                   ),

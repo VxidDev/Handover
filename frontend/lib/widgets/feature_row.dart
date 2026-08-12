@@ -7,26 +7,21 @@ class FeatureRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    this.tint,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // Unified terracotta-based tint for all three rows
-    final effectiveTint = tint ??
-        (isDark
-            ? AppColors.terracotta.withValues(alpha: 0.18)
-            : AppColors.terracottaTint);
+    final effectiveTint = isDark
+        ? AppColors.terracotta.withValues(alpha: 0.18)
+        : AppColors.terracottaTint;
 
-    // Icon border adapts to theme
     final iconBorder = isDark
         ? AppColors.darkBorder.withValues(alpha: 0.5)
         : Colors.white.withValues(alpha: 0.9);
