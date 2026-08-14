@@ -6,6 +6,7 @@ from ..database import get_db
 from ..deps import get_current_user
 from ..models import Request, Skill, User
 from ..schemas import RequestCreateIn, RequestOut, RequestUpdateIn
+from typing import Optional
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
@@ -57,10 +58,13 @@ def create_request(
 def list_requests(
     role: str = Query(default="all", pattern="^(all|sent|received)$"),
     status_filter: str = Query(default="all", alias="status"),
+    amount: Optional[float] = Query(default=50, ge=1, le=100),
+    active_only: bool = Query(default=False, alias="active"),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     query = db.query(Request)
+
     if role == "sent":
         query = query.filter(Request.requester_id == user.id)
     elif role == "received":
@@ -69,9 +73,14 @@ def list_requests(
         query = query.filter(
             or_(Request.requester_id == user.id, Request.provider_id == user.id)
         )
+
     if status_filter != "all":
         query = query.filter(Request.status == status_filter)
-    requests = query.order_by(Request.created_at.desc()).all()
+
+    if active_only:
+        query = query.filter(Request.status != "cancelled")
+    
+    requests = query.order_by(Request.created_at.desc()).limit(amount).all()
     return [_to_out(r) for r in requests]
 
 

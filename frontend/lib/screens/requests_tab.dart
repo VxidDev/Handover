@@ -14,47 +14,84 @@ class RequestsTab extends StatefulWidget {
   State<RequestsTab> createState() => _RequestsTabState();
 }
 
-class _RequestsTabState extends State<RequestsTab> {
-  List<HelpRequest> _requests = [];
-  bool _loading = true;
-  String? _error;
-  int? _busyRequestId;
+class _RequestsTabState extends State<RequestsTab>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  final Map<int, List<HelpRequest>> _requests = {0: [], 1: [], 2: []};
+  final Map<int, bool> _loading = {0: true, 1: true, 2: true};
+  final Map<int, String?> _error = {0: null, 1: null, 2: null};
   final Set<int> _removingIds = {};
+  int? _busyRequestId;
+  int _currentTabIndex = 0;
+
+  static const _tabs = [
+    (label: 'Sent', path: '/api/requests?role=sent&amount=20&active=true'),
+    (label: 'Cancelled', path: '/api/requests?status=cancelled&amount=50'),
+    (label: 'Received', path: '/api/requests?role=received&amount=20&active=true'),
+  ];
+
+  int get _totalCount =>
+      _requests.values.fold(0, (sum, list) => sum + list.length);
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _currentTabIndex = _tabController.index;
+        });
+        final idx = _tabController.index;
+        if (_requests[idx]!.isEmpty && !_loading[idx]! && _error[idx] == null) {
+          _load(idx);
+        }
+      }
+    });
+    _loadAll();
   }
 
   @override
   void didUpdateWidget(covariant RequestsTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!oldWidget.isActive && widget.isActive) {
-      _load();
+      _loadAll();
     }
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _loadAll() {
+    for (var i = 0; i < _tabs.length; i++) {
+      _load(i);
+    }
+  }
+
+  Future<void> _load(int tabIndex) async {
     setState(() {
-      _loading = true;
-      _error = null;
+      _loading[tabIndex] = true;
+      _error[tabIndex] = null;
     });
     try {
-      final res = await Api.get('/api/requests');
+      final res = await Api.get(_tabs[tabIndex].path);
       final items = (res as List)
           .map((e) => HelpRequest.fromJson(e as Map<String, dynamic>))
           .toList();
       if (!mounted) return;
       setState(() {
-        _requests = items;
-        _loading = false;
+        _requests[tabIndex] = items;
+        _loading[tabIndex] = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = describeError(e);
-        _loading = false;
+        _error[tabIndex] = describeError(e);
+        _loading[tabIndex] = false;
       });
     }
   }
@@ -63,7 +100,7 @@ class _RequestsTabState extends State<RequestsTab> {
     setState(() => _busyRequestId = request.id);
     try {
       await Api.patch('/api/requests/${request.id}', body: {'status': status});
-      await _load();
+      _loadAll();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -78,7 +115,7 @@ class _RequestsTabState extends State<RequestsTab> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final name = request.providerName.split(' ').first;
-    
+
     final dialogBg = isDark ? AppColors.darkPaper : AppColors.paper;
     final dialogBorder = isDark
         ? AppColors.darkBorder.withValues(alpha: 0.6)
@@ -86,121 +123,132 @@ class _RequestsTabState extends State<RequestsTab> {
     final dialogShadow = isDark
         ? Colors.black.withValues(alpha: 0.3)
         : AppColors.ink.withValues(alpha: 0.12);
-    
     final cancelBorder = isDark
         ? AppColors.darkBorder.withValues(alpha: 0.6)
         : AppColors.inkSoft.withValues(alpha: 0.2);
-    
+
     return await showDialog<bool>(
-      context: context,
-      barrierColor: isDark
-          ? Colors.black.withValues(alpha: 0.5)
-          : AppColors.ink.withValues(alpha: 0.3),
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: dialogBg,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: dialogBorder, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: dialogShadow,
-                blurRadius: 40,
-                offset: const Offset(0, 20),
+          context: context,
+          barrierColor: isDark
+              ? Colors.black.withValues(alpha: 0.5)
+              : AppColors.ink.withValues(alpha: 0.3),
+          builder: (ctx) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: dialogBg,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: dialogBorder, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: dialogShadow,
+                    blurRadius: 40,
+                    offset: const Offset(0, 20),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.undo_rounded, color: AppColors.error, size: 28),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Withdraw request?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'No worries. You can always reach out to $name again later if you change your mind.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(ctx, false),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(100),
-                          border: Border.all(color: cancelBorder, width: 1),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Keep it',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  Container(
+                    width: 56,
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.undo_rounded,
+                        color: AppColors.error, size: 28),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Withdraw request?',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No worries. You can always reach out to $name again later if you change your mind.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(ctx, false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(100),
+                              border: Border.all(color: cancelBorder, width: 1),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Keep it',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.7),
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(ctx, true),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: AppColors.error,
-                          borderRadius: BorderRadius.circular(100),
-                          boxShadow: [
-                            BoxShadow(color: AppColors.error.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 6)),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'Yes, withdraw',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(ctx, true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: AppColors.error,
+                              borderRadius: BorderRadius.circular(100),
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      AppColors.error.withValues(alpha: 0.2),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'Yes, withdraw',
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-    ) ?? false;
+        ) ??
+        false;
   }
 
   Future<void> _cancel(HelpRequest request) async {
@@ -208,25 +256,24 @@ class _RequestsTabState extends State<RequestsTab> {
     if (!confirmed) return;
 
     HapticFeedback.mediumImpact();
-    
     setState(() => _removingIds.add(request.id));
 
     final apiFuture = Api.delete('/api/requests/${request.id}');
-
     await Future.delayed(const Duration(milliseconds: 400));
 
     try {
       await apiFuture;
       if (!mounted) return;
-      
+
       setState(() {
-        _requests.removeWhere((r) => r.id == request.id);
+        for (final key in _requests.keys) {
+          _requests[key]!.removeWhere((r) => r.id == request.id);
+        }
         _removingIds.remove(request.id);
       });
-      
+
       if (mounted) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -238,38 +285,46 @@ class _RequestsTabState extends State<RequestsTab> {
             ),
             backgroundColor: isDark ? AppColors.darkPaper : AppColors.ink,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _removingIds.remove(request.id));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(describeError(e))),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final received = _requests.where((r) => r.providerId == Api.currentUserId).toList();
-    final sent = _requests.where((r) => r.requesterId == Api.currentUserId).toList();
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       color: theme.scaffoldBackgroundColor,
       child: SafeArea(
         bottom: false,
-        child: RefreshIndicator(
-          color: AppColors.terracotta,
-          backgroundColor: theme.colorScheme.surface,
-          onRefresh: _load,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 130),
-            children: _buildSections(received, sent),
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 18, 20, 0),
+              child: _header(),
+            ),
+            const SizedBox(height: 20),
+            _buildTabBar(isDark),
+            const SizedBox(height: 4),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children:
+                    List.generate(_tabs.length, (i) => _buildTabContent(i)),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -277,36 +332,258 @@ class _RequestsTabState extends State<RequestsTab> {
 
   Widget _header() {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(
-          'Handshakes',
-          style: TextStyle(
-            fontSize: 13,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 20),
+                child: Text(
+                  'Handshakes',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 20),
+                child: Text(
+                  'Your requests',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.6,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Your requests',
-          style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.6,
-                height: 1.1,
-              ),
+        Container(
+          margin: const EdgeInsets.only(right: 20, bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.terracotta.withValues(alpha: 0.18)
+                : AppColors.terracottaTint,
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.terracotta.withValues(alpha: 0.3)
+                  : AppColors.terracottaTint.withValues(alpha: 0.6),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            '$_totalCount',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color:
+                  isDark ? AppColors.terracotta : AppColors.terracottaDeep,
+              letterSpacing: -0.2,
+            ),
+          ),
         ),
       ],
     );
   }
 
-  List<Widget> _buildSections(List<HelpRequest> received, List<HelpRequest> sent) {
+  Widget _buildTabBar(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppColors.darkSand.withValues(alpha: 0.6)
+              : AppColors.sand.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: isDark
+                ? AppColors.darkBorder.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final tabWidth = constraints.maxWidth / _tabs.length;
+
+            return Stack(
+              children: [
+                // Sliding pill — no margin, fills full tab width
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  left: _currentTabIndex * tabWidth,
+                  width: tabWidth,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkPaper : Colors.white,
+                      borderRadius: BorderRadius.circular(26),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.darkBorder.withValues(alpha: 0.5)
+                            : Colors.white.withValues(alpha: 0.95),
+                        width: 1.2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark
+                              ? Colors.black.withValues(alpha: 0.2)
+                              : AppColors.inkSoft.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          spreadRadius: -2,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Tabs
+                Positioned.fill(
+                  child: Row(
+                    children: List.generate(_tabs.length, (i) {
+                      final tab = _tabs[i];
+                      final count = _requests[i]?.length ?? 0;
+                      final isLoading = _loading[i] ?? false;
+                      final isSelected = _currentTabIndex == i;
+
+                      return Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            setState(() {
+                              _currentTabIndex = i;
+                            });
+                            _tabController.animateTo(i);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 220),
+                                    curve: Curves.easeOutQuart,
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                      letterSpacing: -0.1,
+                                      height: 1.2,
+                                      color: isSelected
+                                          ? (isDark ? AppColors.darkInk : AppColors.ink)
+                                          : (isDark ? AppColors.darkInk : AppColors.ink)
+                                              .withValues(alpha: 0.5),
+                                    ),
+                                    child: Text(
+                                      tab.label,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                ),
+                                if (count > 0 && !isLoading) ...[
+                                  const SizedBox(width: 6),
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 220),
+                                    curve: Curves.easeOutQuart,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppColors.terracotta.withValues(alpha: 0.14)
+                                          : (isDark
+                                                  ? AppColors.darkInk
+                                                  : AppColors.ink)
+                                              .withValues(alpha: 0.06),
+                                      borderRadius: BorderRadius.circular(100),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? AppColors.terracotta.withValues(alpha: 0.2)
+                                            : Colors.transparent,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '$count',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected
+                                            ? (isDark
+                                                ? AppColors.terracotta
+                                                : AppColors.terracottaDeep)
+                                            : (isDark
+                                                    ? AppColors.darkInk
+                                                    : AppColors.ink)
+                                                .withValues(alpha: 0.55),
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabContent(int tabIndex) {
+    final requests = _requests[tabIndex]!;
+    final loading = _loading[tabIndex]!;
+    final error = _error[tabIndex];
+
+    return RefreshIndicator(
+      color: AppColors.terracotta,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      onRefresh: () => _load(tabIndex),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 130),
+        children: _buildList(tabIndex, requests, loading, error),
+      ),
+    );
+  }
+
+  List<Widget> _buildList(
+    int tabIndex,
+    List<HelpRequest> requests,
+    bool loading,
+    String? error,
+  ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    if (_loading && _requests.isEmpty) {
+    if (loading && requests.isEmpty) {
       return const [
         Padding(
           padding: EdgeInsets.symmetric(vertical: 70),
@@ -323,87 +600,24 @@ class _RequestsTabState extends State<RequestsTab> {
         ),
       ];
     }
-    
-    if (_error != null) {
-      final errorIconBg = isDark ? AppColors.darkSand : AppColors.sand;
-      final errorIconBorder = isDark
-          ? AppColors.darkBorder.withValues(alpha: 0.6)
-          : Colors.white.withValues(alpha: 0.8);
 
+    if (error != null) {
       return [
-        _header(),
-        const SizedBox(height: 40),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: errorIconBg,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: errorIconBorder, width: 1.5),
-                ),
-                child: Icon(
-                  Icons.cloud_off_rounded,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  size: 28,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Something went wrong',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _load,
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Try again'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.terracotta,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _errorState(error, () => _load(tabIndex), isDark, theme),
       ];
     }
-    
-    if (_requests.isEmpty) {
+
+    if (requests.isEmpty) {
       return [
-        _header(),
-        const SizedBox(height: 40),
-        const _EmptyState(),
+        _EmptyState(tabIndex: tabIndex),
       ];
     }
-    
+
     final progressBg = isDark ? AppColors.darkSand : AppColors.sand;
+    final isSentTab = tabIndex == 0;
 
     return [
-      _header(),
-      const SizedBox(height: 24),
-      if (_loading)
+      if (loading)
         Padding(
           padding: const EdgeInsets.only(bottom: 14),
           child: ClipRRect(
@@ -415,69 +629,94 @@ class _RequestsTabState extends State<RequestsTab> {
             ),
           ),
         ),
-      if (received.isNotEmpty) ...[
-        _sectionHeader('Neighbors asking you', received.length),
-        const SizedBox(height: 12),
-        ...received.map((r) => _RequestCard(
-              request: r,
-              isReceived: true,
-              busy: _busyRequestId == r.id,
-              onRespond: (s) => _respond(r, s),
-            )),
-      ],
-      if (sent.isNotEmpty) ...[
-        if (received.isNotEmpty) const SizedBox(height: 24),
-        _sectionHeader('You asked for help', sent.length),
-        const SizedBox(height: 12),
-        ...sent.map((r) {
-          final isRemoving = _removingIds.contains(r.id);
+      ...requests.map((r) {
+        final isRemoving = _removingIds.contains(r.id);
+        final card = _RequestCard(
+          request: r,
+          isReceived: tabIndex == 2,
+          busy: _busyRequestId == r.id || isRemoving,
+          onRespond: (s) => _respond(r, s),
+          onCancel: isSentTab ? () => _cancel(r) : null,
+        );
+
+        if (isSentTab) {
           return _AnimatedRemoval(
             key: ValueKey(r.id),
             isRemoving: isRemoving,
-            child: _RequestCard(
-              request: r,
-              isReceived: false,
-              busy: _busyRequestId == r.id || isRemoving,
-              onRespond: (s) => _respond(r, s),
-              onCancel: () => _cancel(r),
-            ),
+            child: card,
           );
-        }),
-      ],
+        }
+        return card;
+      }),
     ];
   }
 
-  Widget _sectionHeader(String title, int count) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final chipBg = isDark ? AppColors.darkSand : AppColors.sand;
+  Widget _errorState(
+    String error,
+    VoidCallback retry,
+    bool isDark,
+    ThemeData theme,
+  ) {
+    final errorIconBg = isDark ? AppColors.darkSand : AppColors.sand;
+    final errorIconBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.8);
 
-    return Row(
-      children: [
-        Text(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.2,
-              ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: chipBg,
-            borderRadius: BorderRadius.circular(100),
-          ),
-          child: Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: errorIconBg,
+              shape: BoxShape.circle,
+              border: Border.all(color: errorIconBorder, width: 1.5),
+            ),
+            child: Icon(
+              Icons.cloud_off_rounded,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              size: 28,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          Text(
+            'Something went wrong',
+            style: TextStyle(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: retry,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Try again'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.terracotta,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(100)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -496,7 +735,8 @@ class _AnimatedRemoval extends StatefulWidget {
   State<_AnimatedRemoval> createState() => _AnimatedRemovalState();
 }
 
-class _AnimatedRemovalState extends State<_AnimatedRemoval> with SingleTickerProviderStateMixin {
+class _AnimatedRemovalState extends State<_AnimatedRemoval>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _heightFactor;
   late final Animation<double> _opacity;
@@ -512,7 +752,9 @@ class _AnimatedRemovalState extends State<_AnimatedRemoval> with SingleTickerPro
 
     _heightFactor = _controller.drive(CurveTween(curve: Curves.easeInOut));
     _opacity = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.6, curve: Curves.easeOut)),
+      CurvedAnimation(
+          parent: _controller,
+          curve: const Interval(0.0, 0.6, curve: Curves.easeOut)),
     );
     _scale = Tween<double>(begin: 1.0, end: 0.92).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInCubic),
@@ -548,7 +790,7 @@ class _AnimatedRemovalState extends State<_AnimatedRemoval> with SingleTickerPro
           sizeFactor: _heightFactor.drive(Tween(begin: 1.0, end: 0.0).chain(
             CurveTween(curve: Curves.easeInOut),
           )),
-          axisAlignment: -1.0,
+          alignment: Alignment.topCenter,
           child: FadeTransition(
             opacity: _opacity,
             child: ScaleTransition(
@@ -586,11 +828,15 @@ class _RequestCard extends StatelessWidget {
     final pending = request.status == 'pending';
     final name = isReceived ? request.requesterName : request.providerName;
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    
+
     final avatarBg = isReceived
-        ? (isDark ? AppColors.terracotta.withValues(alpha: 0.18) : AppColors.terracottaTint)
-        : (isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight);
-    
+        ? (isDark
+            ? AppColors.terracotta.withValues(alpha: 0.18)
+            : AppColors.terracottaTint)
+        : (isDark
+            ? AppColors.sage.withValues(alpha: 0.18)
+            : AppColors.sageLight);
+
     final avatarFg = isReceived
         ? (isDark ? AppColors.terracotta : AppColors.terracottaDeep)
         : (isDark ? AppColors.sage : AppColors.sage);
@@ -671,7 +917,8 @@ class _RequestCard extends StatelessWidget {
                     Text(
                       'wants help with ${request.skillName}',
                       style: TextStyle(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         fontSize: 13,
                         height: 1.3,
                       ),
@@ -711,7 +958,8 @@ class _RequestCard extends StatelessWidget {
                     onPressed: busy ? null : () => onRespond('declined'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
-                      side: BorderSide(color: AppColors.error.withValues(alpha: 0.2)),
+                      side: BorderSide(
+                          color: AppColors.error.withValues(alpha: 0.2)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(100),
                       ),
@@ -758,7 +1006,8 @@ class _RequestCard extends StatelessWidget {
                 label: const Text('Withdraw request'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.error,
-                  side: BorderSide(color: AppColors.error.withValues(alpha: 0.2)),
+                  side: BorderSide(
+                      color: AppColors.error.withValues(alpha: 0.2)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(100),
                   ),
@@ -783,16 +1032,30 @@ class StatusBadge extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final (label, color, bg) = switch (status) {
-      'accepted' => ('Accepted', AppColors.success, 
-                     isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight),
-      'declined' => ('Declined', AppColors.error, 
-                     isDark ? AppColors.terracotta.withValues(alpha: 0.18) : AppColors.terracottaTint),
-      'cancelled' => ('Cancelled', 
-                     isDark ? AppColors.darkInkFaint : AppColors.inkSoft, 
-                     isDark ? AppColors.darkSand : AppColors.sand),
-      _ => ('Pending', 
-            isDark ? AppColors.darkInkFaint : AppColors.inkSoft, 
-            isDark ? AppColors.darkSand : AppColors.sand),
+      'accepted' => (
+          'Accepted',
+          AppColors.success,
+          isDark
+              ? AppColors.sage.withValues(alpha: 0.18)
+              : AppColors.sageLight
+        ),
+      'declined' => (
+          'Declined',
+          AppColors.error,
+          isDark
+              ? AppColors.terracotta.withValues(alpha: 0.18)
+              : AppColors.terracottaTint
+        ),
+      'cancelled' => (
+          'Cancelled',
+          isDark ? AppColors.darkInkFaint : AppColors.inkSoft,
+          isDark ? AppColors.darkSand : AppColors.sand
+        ),
+      _ => (
+          'Pending',
+          isDark ? AppColors.darkInkFaint : AppColors.inkSoft,
+          isDark ? AppColors.darkSand : AppColors.sand
+        ),
     };
 
     final bgAlpha = isDark ? 0.25 : 0.6;
@@ -822,7 +1085,9 @@ class StatusBadge extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({required this.tabIndex});
+
+  final int tabIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -836,6 +1101,17 @@ class _EmptyState extends StatelessWidget {
     final iconBorder = isDark
         ? AppColors.darkBorder.withValues(alpha: 0.5)
         : Colors.white.withValues(alpha: 0.8);
+
+    final messages = [
+      ('No sent requests',
+          "Requests you send to neighbors will appear here."),
+      ('No cancelled requests',
+          "Withdrawn or cancelled requests will appear here."),
+      ('No received requests',
+          "When neighbors ask you for help, their requests will appear here."),
+    ];
+
+    final (title, subtitle) = messages[tabIndex];
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 44),
@@ -858,7 +1134,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            'No requests yet',
+            title,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -868,7 +1144,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'When you ask a neighbor for help — or someone asks you — it\'ll show up here.',
+            subtitle,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13.5,
