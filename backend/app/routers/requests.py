@@ -81,7 +81,9 @@ def list_requests(
         query = query.filter(Request.status != "cancelled")
     
     requests = query.order_by(Request.created_at.desc()).limit(amount).all()
-    return [_to_out(r) for r in requests]
+    valid_requests = [r for r in requests if r.skill is not None]
+
+    return [_to_out(r) for r in valid_requests]
 
 
 @router.delete("/{request_id}", response_model=RequestOut)

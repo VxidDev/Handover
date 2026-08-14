@@ -52,7 +52,10 @@ class Skill(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     owner: Mapped["User"] = relationship(back_populates="skills")
-    requests: Mapped[list["Request"]] = relationship(back_populates="skill")
+    requests: Mapped[list["Request"]] = relationship(
+        back_populates="skill",
+        passive_deletes=True,
+    )
 
 
 class Request(Base):

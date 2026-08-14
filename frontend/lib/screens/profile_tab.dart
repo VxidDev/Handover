@@ -21,6 +21,7 @@ class _ProfileTabState extends State<ProfileTab> {
   String? _error;
   bool _savingAvailability = false;
   bool _savingLocation = false;
+  final Set<int> _removingSkillIds = {};
 
   @override
   void initState() {
@@ -125,59 +126,28 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Future<void> _addSkill() async {
-    final controller = TextEditingController();
-    final blurb = TextEditingController();
-
-    final name = await showDialog<String>(
+    final result = await showModalBottomSheet<Map<String, String>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add a skill'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(hintText: 'e.g. Spanish Tutoring'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: blurb,
-              maxLines: 2,
-              decoration: const InputDecoration(hintText: 'Short description (optional)'),
-            ),
-          ],
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _AddSkillBottomSheet(),
     );
 
-    final skillName = name?.trim() ?? '';
-    if (skillName.isEmpty) return;
+    if (result == null) return;
+
+    final name = result['name']!.trim();
+    final blurb = result['blurb']!.trim();
+
+    if (name.isEmpty) return;
 
     try {
       await Api.post(
         '/api/users/me/skills',
-        body: {
-          'name': skillName,
-          'blurb': blurb.text.trim(),
-        },
+        body: {'name': name, 'blurb': blurb},
       );
-
       await _load();
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(describeError(e))),
       );
@@ -185,11 +155,27 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Future<void> _deleteSkill(Skill skill) async {
+    // Mark as removing to trigger exit animation
+    setState(() => _removingSkillIds.add(skill.id));
+
+    // Wait for exit animation to complete
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
     try {
       await Api.delete('/api/users/me/skills/${skill.id}');
+
+      if (mounted) {
+        setState(() => _removingSkillIds.remove(skill.id));
+      }
+
       await _load();
     } catch (e) {
       if (!mounted) return;
+
+      // Remove from set — triggers smooth reverse animation
+      setState(() => _removingSkillIds.remove(skill.id));
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(describeError(e))),
@@ -435,11 +421,15 @@ class _ProfileTabState extends State<ProfileTab> {
         runSpacing: 8,
         children: [
           for (final s in p.skills)
-            Chip(
-              label: Text(s.name),
-              onDeleted: () => _deleteSkill(s),
-              deleteIconColor: mutedText,
-              backgroundColor: isDark ? AppColors.darkSand : AppColors.sand,
+            _AnimatedSkillRemoval(
+              key: ValueKey(s.id),
+              isRemoving: _removingSkillIds.contains(s.id),
+              child: Chip(
+                label: Text(s.name),
+                onDeleted: () => _deleteSkill(s),
+                deleteIconColor: mutedText,
+                backgroundColor: isDark ? AppColors.darkSand : AppColors.sand,
+              ),
             ),
           ActionChip(
             avatar: Icon(Icons.add_rounded, size: 17, color: avatarFg),
@@ -590,6 +580,398 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AnimatedSkillRemoval extends StatefulWidget {
+  const _AnimatedSkillRemoval({
+    super.key,
+    required this.isRemoving,
+    required this.child,
+  });
+
+  final bool isRemoving;
+  final Widget child;
+
+  @override
+  State<_AnimatedSkillRemoval> createState() => _AnimatedSkillRemovalState();
+}
+
+class _AnimatedSkillRemovalState extends State<_AnimatedSkillRemoval>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<double> _scale;
+  late final Animation<double> _widthFactor;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    // Opacity fades out in the first 65% — fast start, then graceful slow-down
+    _opacity = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.65, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    // Scale shrinks subtly throughout the whole animation — "being absorbed" feel
+    _scale = Tween<double>(begin: 1.0, end: 0.88).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInCubic,
+      ),
+    );
+
+    // Width collapse starts 50ms after fade begins, with smooth easeInOutQuart
+    _widthFactor = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.1, 1.0, curve: Curves.easeInOutQuart),
+      ),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedSkillRemoval oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isRemoving && !oldWidget.isRemoving) {
+      _controller.forward();
+    } else if (!widget.isRemoving && oldWidget.isRemoving) {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // When idle, return the child directly for zero overhead
+        if (_controller.value == 0.0 && !widget.isRemoving) {
+          return child!;
+        }
+
+        // ClipRect prevents the scaled chip from overflowing as space shrinks
+        return ClipRect(
+          child: Align(
+            // widthFactor drives the space collapse — Wrap reflows siblings smoothly
+            widthFactor: _widthFactor.value,
+            alignment: Alignment.centerLeft,
+            child: Opacity(
+              opacity: _opacity.value,
+              child: Transform.scale(
+                scale: _scale.value,
+                alignment: Alignment.center,
+                child: child,
+              ),
+            ),
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
+class _AddSkillBottomSheet extends StatefulWidget {
+  const _AddSkillBottomSheet();
+
+  @override
+  State<_AddSkillBottomSheet> createState() => _AddSkillBottomSheetState();
+}
+
+class _AddSkillBottomSheetState extends State<_AddSkillBottomSheet>
+    with SingleTickerProviderStateMixin {
+  final _name = TextEditingController();
+  final _blurb = TextEditingController();
+  bool _submitting = false;
+  String? _error;
+
+  late final AnimationController _successController;
+  late final Animation<double> _successScale;
+  late final Animation<double> _successOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _successController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _successScale = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _successController,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOutBack),
+      ),
+    );
+
+    _successOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _successController,
+        curve: const Interval(0.0, 0.3, curve: Curves.easeOut),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _successController.dispose();
+    _name.dispose();
+    _blurb.dispose();
+    super.dispose();
+  }
+
+  void _submit() async {
+    final name = _name.text.trim();
+
+    if (name.isEmpty) {
+      setState(() => _error = 'Please enter a skill name.');
+      return;
+    }
+
+    setState(() => _submitting = true);
+
+    // Play success animation
+    _successController.forward();
+
+    // Wait for animation to play, then close
+    await Future.delayed(const Duration(milliseconds: 700));
+
+    if (!mounted) return;
+
+    Navigator.of(context).pop({
+      'name': name,
+      'blurb': _blurb.text.trim(),
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    final dialogBg = isDark ? AppColors.darkPaper : AppColors.paper;
+    final successColor = isDark ? AppColors.sage : AppColors.sage;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: Container(
+        decoration: BoxDecoration(
+          color: dialogBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+
+                Text(
+                  'Add a skill',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Neighbors nearby will see this when they search for help.',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Skill name field
+                Text(
+                  'SKILL NAME',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _name,
+                  autofocus: true,
+                  maxLength: 50,
+                  onChanged: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Spanish Tutoring',
+                    counterText: '',
+                    filled: true,
+                    fillColor: isDark
+                        ? AppColors.darkSand.withValues(alpha: 0.5)
+                        : AppColors.sand.withValues(alpha: 0.5),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    errorText: _error,
+                    errorStyle: TextStyle(fontSize: 12, color: AppColors.error),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Blurb field
+                Text(
+                  'DESCRIPTION',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _blurb,
+                  maxLines: 3,
+                  maxLength: 200,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: theme.colorScheme.onSurface,
+                    height: 1.4,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Tell neighbors what you can help with…',
+                    filled: true,
+                    fillColor: isDark
+                        ? AppColors.darkSand.withValues(alpha: 0.5)
+                        : AppColors.sand.withValues(alpha: 0.5),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _submitting ? null : () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          side: BorderSide(
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+                            width: 1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: _submitting ? null : _submit,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.terracotta,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                        ),
+                        child: AnimatedBuilder(
+                          animation: _successController,
+                          builder: (context, child) {
+                            if (_successController.value > 0.0) {
+                              return FadeTransition(
+                                opacity: _successOpacity,
+                                child: ScaleTransition(
+                                  scale: _successScale,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.check_rounded,
+                                        size: 20,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Text(
+                                        'Added!',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            return child!;
+                          },
+                          child: _submitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Add skill'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
