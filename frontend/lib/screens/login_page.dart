@@ -110,7 +110,6 @@ class _LoginPageState extends State<LoginPage> {
     final isDark = theme.brightness == Brightness.dark;
     final isSignup = _mode == AuthMode.signUp;
 
-    // Theme-aware back button
     final backButtonBg = isDark
         ? AppColors.darkSand.withValues(alpha: 0.9)
         : Colors.white.withValues(alpha: 0.7);
@@ -136,7 +135,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 28),
 
-              // Animated title
               StaggeredItem(
                 index: 1,
                 child: _crossFade(
@@ -152,7 +150,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 8),
 
-              // Animated subtitle
               StaggeredItem(
                 index: 2,
                 child: _crossFade(
@@ -171,7 +168,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 32),
 
-              // Animated name field
               _AnimatedNameField(
                 show: isSignup,
                 child: Column(
@@ -210,7 +206,7 @@ class _LoginPageState extends State<LoginPage> {
                   controller: _password,
                   hintText: '••••••••',
                   icon: Icons.lock_outline_rounded,
-                  obscureText: true,
+                  isPassword: true,
                 ),
               ),
               const SizedBox(height: 28),
@@ -253,50 +249,12 @@ class _LoginPageState extends State<LoginPage> {
                   onPressed: _loading ? null : _toggleMode,
                   child: _crossFade(
                     Text(
-                      isSignup ? 'I already have an account — sign in' : 'New here? Create an account',
+                      isSignup ? 'I already have an account, sign in' : 'New here? Create an account',
                       key: ValueKey('toggle-$_mode'),
                       style: TextStyle(
                         color: isDark ? AppColors.terracotta : AppColors.terracottaDeep,
                       ),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              StaggeredItem(
-                index: 7,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.darkSand.withValues(alpha: 0.6)
-                        : Colors.white.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isDark
-                          ? AppColors.darkBorder.withValues(alpha: 0.6)
-                          : Colors.white.withValues(alpha: 0.8),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        size: 16,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Demo accounts (password: demo1234): maya, diego, owen, priya @example.com',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),
@@ -308,7 +266,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-/// Small theme-aware field label ("Name", "Email", "Password").
 class _FieldLabel extends StatelessWidget {
   const _FieldLabel({required this.label});
   final String label;
@@ -328,7 +285,6 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-/// Smoothly expands/collapses the name field with identical easing both ways.
 class _AnimatedNameField extends StatefulWidget {
   const _AnimatedNameField({required this.show, required this.child});
 
@@ -396,13 +352,12 @@ class _AnimatedNameFieldState extends State<_AnimatedNameField>
   }
 }
 
-/// Theme-aware translucent text field.
-class _GlassField extends StatelessWidget {
+class _GlassField extends StatefulWidget {
   const _GlassField({
     required this.controller,
     required this.hintText,
     required this.icon,
-    this.obscureText = false,
+    this.isPassword = false,
     this.keyboardType,
     this.textCapitalization = TextCapitalization.none,
   });
@@ -410,9 +365,16 @@ class _GlassField extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
   final IconData icon;
-  final bool obscureText;
+  final bool isPassword;
   final TextInputType? keyboardType;
   final TextCapitalization textCapitalization;
+
+  @override
+  State<_GlassField> createState() => _GlassFieldState();
+}
+
+class _GlassFieldState extends State<_GlassField> {
+  late bool _obscureText = widget.isPassword;
 
   @override
   Widget build(BuildContext context) {
@@ -445,24 +407,49 @@ class _GlassField extends StatelessWidget {
         ],
       ),
       child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        textCapitalization: textCapitalization,
-        style: TextStyle(fontSize: 14.5, color: theme.colorScheme.onSurface),
+        controller: widget.controller,
+        obscureText: _obscureText,
+        keyboardType: widget.keyboardType,
+        textCapitalization: widget.textCapitalization,
+        style: TextStyle(
+          fontSize: 14.5, 
+          color: theme.colorScheme.onSurface,
+          height: 1.2,
+        ),
         decoration: InputDecoration(
-          hintText: hintText,
+          hintText: widget.hintText,
           hintStyle: TextStyle(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-            fontSize: 14,
+            fontSize: 14.5,
           ),
+          
+          prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          suffixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          
           prefixIcon: Icon(
-            icon,
+            widget.icon,
             color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             size: 20,
           ),
+
+          suffixIcon: widget.isPassword
+              ? IconButton(
+                  icon: Icon(
+                    _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscureText = !_obscureText;
+                    });
+                  },
+                )
+              : null,
+              
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
     );

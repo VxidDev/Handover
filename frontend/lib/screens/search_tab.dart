@@ -27,6 +27,8 @@ class _SearchTabState extends State<SearchTab> {
   bool _loading = true;
   String? _error;
 
+  static const _defaultRadius = 2.0;
+
   @override
   void initState() {
     super.initState();
@@ -54,9 +56,10 @@ class _SearchTabState extends State<SearchTab> {
     if (_radius == _radius.roundToDouble()) {
       return _radius.toInt().toString();
     }
-
     return _radius.toStringAsFixed(1);
   }
+
+  bool get _hasActiveFilters => _radius != _defaultRadius;
 
   void _onQueryChanged(String value) {
     setState(() {});
@@ -79,6 +82,20 @@ class _SearchTabState extends State<SearchTab> {
     _query.clear();
     setState(() {});
     _load();
+  }
+
+  Future<void> _openFilters() async {
+    final result = await showModalBottomSheet<double>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _FiltersBottomSheet(initialRadius: _radius),
+    );
+
+    if (result != null && result != _radius) {
+      setState(() => _radius = result);
+      _scheduleSearch();
+    }
   }
 
   Future<void> _load() async {
@@ -148,15 +165,11 @@ class _SearchTabState extends State<SearchTab> {
               children: [
                 StaggeredItem(index: 0, child: _header(context)),
                 const SizedBox(height: 20),
-                StaggeredItem(index: 1, child: _searchField(context)),
-                const SizedBox(height: 18),
-                StaggeredItem(index: 2, child: _distanceCard(context)),
-                const SizedBox(height: 18),
-                StaggeredItem(index: 3, child: _privacyNote(context)),
-                const SizedBox(height: 26),
-                StaggeredItem(index: 4, child: _resultsHeader(context)),
+                StaggeredItem(index: 1, child: _searchRow(context)),
+                const SizedBox(height: 24),
+                StaggeredItem(index: 2, child: _resultsHeader(context)),
                 const SizedBox(height: 12),
-                ..._buildResults(context, startIndex: 5),
+                ..._buildResults(context, startIndex: 3),
               ],
             ),
           ),
@@ -183,16 +196,16 @@ class _SearchTabState extends State<SearchTab> {
         Text(
           'Find help nearby',
           style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.6,
-                height: 1.1,
-              ),
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.6,
+            height: 1.1,
+          ),
         ),
       ],
     );
   }
 
-  Widget _searchField(BuildContext context) {
+  Widget _searchRow(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -208,177 +221,129 @@ class _SearchTabState extends State<SearchTab> {
         ? Colors.black.withValues(alpha: 0.2)
         : AppColors.inkSoft.withValues(alpha: 0.05);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: borderColor, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor,
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _query,
-        onChanged: _onQueryChanged,
-        onSubmitted: (_) => _submitSearch(),
-        textInputAction: TextInputAction.search,
-        style: TextStyle(
-          fontSize: 14.5,
-          color: theme.colorScheme.onSurface,
-        ),
-        decoration: InputDecoration(
-          hintText: 'Search a skill… e.g. plumbing',
-          hintStyle: TextStyle(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-            fontSize: 14,
-          ),
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-            size: 22,
-          ),
-          suffixIcon: _query.text.isEmpty
-              ? null
-              : IconButton(
-                  onPressed: _clearSearch,
-                  icon: Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
+    final filterButtonBg = _hasActiveFilters
+        ? (isDark
+            ? AppColors.terracotta.withValues(alpha: 0.18)
+            : AppColors.terracottaTint)
+        : bgColor;
+
+    final filterButtonBorder = _hasActiveFilters
+        ? (isDark
+            ? AppColors.terracotta.withValues(alpha: 0.3)
+            : AppColors.terracottaTint.withValues(alpha: 0.7))
+        : borderColor;
+
+    final filterIconColor = _hasActiveFilters
+        ? (isDark ? AppColors.terracotta : AppColors.terracottaDeep)
+        : theme.colorScheme.onSurface.withValues(alpha: 0.5);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: borderColor, width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: shadowColor,
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
                 ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 14,
-            horizontal: 16,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _distanceCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final bgColor = isDark
-        ? AppColors.darkPaper.withValues(alpha: 0.85)
-        : Colors.white.withValues(alpha: 0.6);
-
-    final borderColor = isDark
-        ? AppColors.darkBorder.withValues(alpha: 0.6)
-        : Colors.white.withValues(alpha: 0.85);
-
-    final shadowColor = isDark
-        ? Colors.black.withValues(alpha: 0.2)
-        : AppColors.inkSoft.withValues(alpha: 0.04);
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor,
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.near_me_rounded,
-                size: 16,
-                color: AppColors.terracotta,
-              ),
-              const SizedBox(width: 7),
-              Text(
-                'Distance',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.1,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '$_radiusLabel km',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          RadiusChipSelector(
-            value: _radius,
-            onChanged: (v) {
-              setState(() => _radius = v);
-              _scheduleSearch();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _privacyNote(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final bgColor = isDark
-        ? AppColors.terracotta.withValues(alpha: 0.15)
-        : AppColors.terracottaTint.withValues(alpha: 0.4);
-
-    final borderColor = isDark
-        ? AppColors.terracotta.withValues(alpha: 0.3)
-        : AppColors.terracottaTint.withValues(alpha: 0.7);
-
-    final textColor = isDark
-        ? AppColors.terracotta
-        : AppColors.terracottaDeep;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.lock_outline_rounded,
-            size: 18,
-            color: textColor,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Neighbors appear as approximate areas and distances. Exact locations are shared only after both sides accept.',
+              ],
+            ),
+            child: TextField(
+              controller: _query,
+              onChanged: _onQueryChanged,
+              onSubmitted: (_) => _submitSearch(),
+              textInputAction: TextInputAction.search,
               style: TextStyle(
-                fontSize: 12.5,
-                color: textColor,
-                height: 1.45,
+                fontSize: 14.5,
+                color: theme.colorScheme.onSurface,
+                height: 1.2,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search a skill… e.g. plumbing',
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  fontSize: 14.5,
+                ),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  size: 22,
+                ),
+                prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                suffixIcon: _query.text.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: _clearSearch,
+                        icon: Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                suffixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 16,
+                ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: _openFilters,
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: filterButtonBg,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: filterButtonBorder, width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: shadowColor,
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.tune_rounded,
+                  size: 22,
+                  color: filterIconColor,
+                ),
+                if (_hasActiveFilters)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: AppColors.terracotta,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDark ? AppColors.darkSand : Colors.white,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -386,18 +351,16 @@ class _SearchTabState extends State<SearchTab> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final chipBg = isDark
-        ? AppColors.darkSand
-        : AppColors.sand;
+    final chipBg = isDark ? AppColors.darkSand : AppColors.sand;
 
     return Row(
       children: [
         Text(
           'Nearby neighbors',
           style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.2,
-              ),
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
         ),
         const SizedBox(width: 8),
         Container(
@@ -415,6 +378,23 @@ class _SearchTabState extends State<SearchTab> {
             ),
           ),
         ),
+        if (_hasActiveFilters) ...[
+          const Spacer(),
+          GestureDetector(
+            onTap: () {
+              setState(() => _radius = _defaultRadius);
+              _scheduleSearch();
+            },
+            child: Text(
+              'Reset filters',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: isDark ? AppColors.terracotta : AppColors.terracottaDeep,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -538,9 +518,9 @@ class _SearchTabState extends State<SearchTab> {
       ..._results.asMap().entries.map((entry) {
         final idx = entry.key;
         final n = entry.value;
-        
+
         final itemIndex = startIndex + idx + (_loading ? 1 : 0);
-        
+
         return StaggeredItem(
           index: itemIndex,
           begin: const Offset(0, 0.08),
@@ -631,6 +611,165 @@ class _EmptyResults extends StatelessWidget {
   }
 }
 
+class _FiltersBottomSheet extends StatefulWidget {
+  const _FiltersBottomSheet({required this.initialRadius});
+
+  final double initialRadius;
+
+  @override
+  State<_FiltersBottomSheet> createState() => _FiltersBottomSheetState();
+}
+
+class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
+  late double _radius = widget.initialRadius;
+
+  String get _radiusLabel {
+    if (_radius == _radius.roundToDouble()) {
+      return _radius.toInt().toString();
+    }
+    return _radius.toStringAsFixed(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    final dialogBg = isDark ? AppColors.darkPaper : AppColors.paper;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: Container(
+        decoration: BoxDecoration(
+          color: dialogBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Filters',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => _radius = 2.0);
+                      },
+                      child: Text(
+                        'Reset',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Narrow or widen your search area to find neighbors nearby.',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.near_me_rounded,
+                      size: 16,
+                      color: AppColors.terracotta,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      'Distance',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '$_radiusLabel km',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                RadiusChipSelector(
+                  value: _radius,
+                  onChanged: (v) {
+                    setState(() => _radius = v);
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop(_radius),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.terracotta,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Apply filters',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _RequestHelpDialog extends StatefulWidget {
   const _RequestHelpDialog({required this.neighbor});
 
@@ -640,7 +779,8 @@ class _RequestHelpDialog extends StatefulWidget {
   State<_RequestHelpDialog> createState() => _RequestHelpDialogState();
 }
 
-class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTickerProviderStateMixin {
+class _RequestHelpDialogState extends State<_RequestHelpDialog>
+    with SingleTickerProviderStateMixin {
   final _message = TextEditingController();
   bool _sending = false;
   bool _success = false;
@@ -754,7 +894,9 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
             ),
           ],
         ),
-        child: _success ? _buildSuccessAnimation(context) : _buildRequestForm(context),
+        child: _success
+            ? _buildSuccessAnimation(context)
+            : _buildRequestForm(context),
       ),
     );
   }
@@ -808,7 +950,8 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final firstName = widget.neighbor.name.split(' ').first;
-    final avatarColor = AppColors.avatarFor(widget.neighbor.name, isDark: isDark);
+    final avatarColor =
+        AppColors.avatarFor(widget.neighbor.name, isDark: isDark);
 
     final avatarBorder = isDark
         ? AppColors.darkBorder.withValues(alpha: 0.5)
@@ -916,7 +1059,8 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
             child: Row(
               children: [
-                const Icon(Icons.error_outline_rounded, size: 16, color: AppColors.error),
+                const Icon(Icons.error_outline_rounded,
+                    size: 16, color: AppColors.error),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -950,7 +1094,8 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                          color:
+                              theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                       ),
                     ),
@@ -972,7 +1117,8 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
                       borderRadius: BorderRadius.circular(100),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.terracotta.withValues(alpha: isDark ? 0.35 : 0.25),
+                          color: AppColors.terracotta
+                              .withValues(alpha: isDark ? 0.35 : 0.25),
                           blurRadius: 12,
                           offset: const Offset(0, 6),
                         ),
@@ -991,7 +1137,8 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog> with SingleTicke
                           : const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                                Icon(Icons.send_rounded,
+                                    size: 16, color: Colors.white),
                                 SizedBox(width: 8),
                                 Text(
                                   'Send request',
@@ -1049,15 +1196,15 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
 
         if (t < 0.35) {
           final p = Curves.easeOutCubic.transform(t / 0.35);
-          
+
           leftX = -65 + (62 * p);
           leftY = 60 - (70 * p);
           rightX = 65 - (62 * p);
           rightY = 60 - (70 * p);
-          
+
           leftRot = 0.4 - (0.6 * p);
           rightRot = -0.4 + (0.6 * p);
-          
+
           scale = 1.0;
           rippleScale = 0;
           rippleOpacity = 0;
@@ -1065,28 +1212,32 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
         } else if (t < 0.65) {
           final p = (t - 0.35) / 0.30;
           final recoil = Curves.easeOutQuart.transform(p);
-          
+
           leftX = 4 - (34 * recoil);
           leftY = -10 + (10 * recoil);
           rightX = -4 + (34 * recoil);
           rightY = -10 + (10 * recoil);
-          
+
           leftRot = -0.2 - (0.15 * recoil);
           rightRot = 0.2 + (0.15 * recoil);
-          
+
           if (p < 0.15) {
             scale = 1.0 - (0.15 * (p / 0.15));
           } else {
             scale = 0.85 + (0.15 * ((p - 0.15) / 0.85));
           }
-          
+
           final rippleP = p;
           rippleScale = 1.0 + (rippleP * 3.0);
           rippleOpacity = (1 - rippleP).clamp(0.0, 1.0);
           particleProgress = p;
         } else {
-          leftX = -30; leftY = 0; leftRot = -0.35;
-          rightX = 30; rightY = 0; rightRot = 0.35;
+          leftX = -30;
+          leftY = 0;
+          leftRot = -0.35;
+          rightX = 30;
+          rightY = 0;
+          rightRot = 0.35;
           scale = 1.0;
           rippleScale = 0;
           rippleOpacity = 0;
@@ -1106,13 +1257,13 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppColors.terracotta.withValues(alpha: rippleOpacity * 0.6),
+                      color: AppColors.terracotta
+                          .withValues(alpha: rippleOpacity * 0.6),
                       width: 4,
                     ),
                   ),
                 ),
               ),
-
             for (final p in _particles)
               Transform.translate(
                 offset: Offset(
@@ -1120,18 +1271,19 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                   p.dy * particleProgress * 80 - (particleProgress * 25),
                 ),
                 child: Transform.scale(
-                  scale: (1 + particleProgress * 0.5) * (1 - particleProgress * 0.8),
+                  scale: (1 + particleProgress * 0.5) *
+                      (1 - particleProgress * 0.8),
                   child: Container(
                     width: p.size,
                     height: p.size,
                     decoration: BoxDecoration(
-                      color: p.color.withValues(alpha: (1 - particleProgress).clamp(0.0, 1.0)),
+                      color: p.color
+                          .withValues(alpha: (1 - particleProgress).clamp(0.0, 1.0)),
                       shape: BoxShape.circle,
                     ),
                   ),
                 ),
               ),
-
             Transform.translate(
               offset: Offset(leftX, leftY),
               child: Transform.rotate(
@@ -1146,17 +1298,17 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                       size: 64,
                       shadows: [
                         Shadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.15),
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.25 : 0.15),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                  )
+                  ),
                 ),
               ),
             ),
-
             Transform.translate(
               offset: Offset(rightX, rightY),
               child: Transform.rotate(
@@ -1169,7 +1321,8 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                     size: 64,
                     shadows: [
                       Shadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.15),
+                        color: Colors.black
+                            .withValues(alpha: isDark ? 0.25 : 0.15),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),

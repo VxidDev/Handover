@@ -101,7 +101,7 @@ class IntroPage extends StatelessWidget {
                     child: const FeatureRow(
                       icon: Icons.favorite_outline_rounded,
                       title: 'Gratitude, not payment',
-                      subtitle: 'Optional tips to say thank you — never required.',
+                      subtitle: 'Optional tips to say thank you, never required.',
                     ),
                   ),
                 ),
