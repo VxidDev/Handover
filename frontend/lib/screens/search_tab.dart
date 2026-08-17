@@ -44,11 +44,9 @@ class _SearchTabState extends State<SearchTab> {
 
   String get _greeting {
     final hour = DateTime.now().hour;
-
     if (hour < 5) return 'Good night 🌙';
     if (hour < 12) return 'Good morning ☀️';
     if (hour < 18) return 'Good afternoon 👋';
-
     return 'Good evening 🌆';
   }
 
@@ -124,7 +122,6 @@ class _SearchTabState extends State<SearchTab> {
       });
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         _error = describeError(e);
         _loading = false;
@@ -161,14 +158,14 @@ class _SearchTabState extends State<SearchTab> {
             duration: const Duration(milliseconds: 1000),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 130),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
               children: [
                 StaggeredItem(index: 0, child: _header(context)),
+                const SizedBox(height: 16),
+                StaggeredItem(index: 1, child: _searchBar(context)),
                 const SizedBox(height: 20),
-                StaggeredItem(index: 1, child: _searchRow(context)),
-                const SizedBox(height: 24),
                 StaggeredItem(index: 2, child: _resultsHeader(context)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 ..._buildResults(context, startIndex: 3),
               ],
             ),
@@ -186,13 +183,13 @@ class _SearchTabState extends State<SearchTab> {
         Text(
           _greeting,
           style: TextStyle(
-            fontSize: 13,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            fontSize: 12.5,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
+            letterSpacing: 0.2,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         Text(
           'Find help nearby',
           style: theme.textTheme.headlineMedium?.copyWith(
@@ -205,54 +202,42 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  Widget _searchRow(BuildContext context) {
+  Widget _searchBar(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     final bgColor = isDark
-        ? AppColors.darkSand.withValues(alpha: 0.9)
-        : Colors.white.withValues(alpha: 0.72);
+        ? AppColors.darkSand.withValues(alpha: 0.85)
+        : Colors.white.withValues(alpha: 0.75);
 
     final borderColor = isDark
-        ? AppColors.darkBorder.withValues(alpha: 0.7)
-        : Colors.white.withValues(alpha: 0.9);
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.85);
 
     final shadowColor = isDark
-        ? Colors.black.withValues(alpha: 0.2)
-        : AppColors.inkSoft.withValues(alpha: 0.05);
-
-    final filterButtonBg = _hasActiveFilters
-        ? (isDark
-            ? AppColors.terracotta.withValues(alpha: 0.18)
-            : AppColors.terracottaTint)
-        : bgColor;
-
-    final filterButtonBorder = _hasActiveFilters
-        ? (isDark
-            ? AppColors.terracotta.withValues(alpha: 0.3)
-            : AppColors.terracottaTint.withValues(alpha: 0.7))
-        : borderColor;
+        ? Colors.black.withValues(alpha: 0.12)
+        : AppColors.inkSoft.withValues(alpha: 0.04);
 
     final filterIconColor = _hasActiveFilters
         ? (isDark ? AppColors.terracotta : AppColors.terracottaDeep)
-        : theme.colorScheme.onSurface.withValues(alpha: 0.5);
+        : theme.colorScheme.onSurface.withValues(alpha: 0.4);
 
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: borderColor, width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: shadowColor,
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
             child: TextField(
               controller: _query,
               onChanged: _onQueryChanged,
@@ -264,94 +249,91 @@ class _SearchTabState extends State<SearchTab> {
                 height: 1.2,
               ),
               decoration: InputDecoration(
-                hintText: 'Search a skill… e.g. plumbing',
+                hintText: 'Search a skill…',
                 hintStyle: TextStyle(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
                   fontSize: 14.5,
                 ),
                 prefixIcon: Icon(
                   Icons.search_rounded,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  size: 22,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  size: 20,
                 ),
-                prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 44,
+                  minHeight: 44,
+                ),
                 suffixIcon: _query.text.isEmpty
                     ? null
-                    : IconButton(
-                        onPressed: _clearSearch,
-                        icon: Icon(
+                    : GestureDetector(
+                        onTap: _clearSearch,
+                        child: Icon(
                           Icons.close_rounded,
-                          size: 18,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          size: 16,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
                         ),
                       ),
-                suffixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                suffixIconConstraints: const BoxConstraints(
+                  minWidth: 36,
+                  minHeight: 36,
+                ),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 16,
+                  vertical: 13,
+                  horizontal: 12,
                 ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        GestureDetector(
-          onTap: _openFilters,
-          child: Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: filterButtonBg,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: filterButtonBorder, width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: shadowColor,
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(
-                  Icons.tune_rounded,
-                  size: 22,
-                  color: filterIconColor,
-                ),
-                if (_hasActiveFilters)
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: AppColors.terracotta,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isDark ? AppColors.darkSand : Colors.white,
-                          width: 1.5,
+
+          // Divider
+          Container(
+            width: 1,
+            height: 20,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+          ),
+
+          // Filter icon
+          GestureDetector(
+            onTap: _openFilters,
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 19,
+                    color: filterIconColor,
+                  ),
+                  if (_hasActiveFilters)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: AppColors.terracotta,
+                          shape: BoxShape.circle,
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _resultsHeader(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
-    final chipBg = isDark ? AppColors.darkSand : AppColors.sand;
 
     return Row(
       children: [
@@ -360,21 +342,22 @@ class _SearchTabState extends State<SearchTab> {
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
             letterSpacing: -0.2,
+            fontSize: 15.5,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 7),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
           decoration: BoxDecoration(
-            color: chipBg,
+            color: isDark ? AppColors.darkSand : AppColors.sand,
             borderRadius: BorderRadius.circular(100),
           ),
           child: Text(
             '${_results.length}',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
             ),
           ),
         ),
@@ -386,9 +369,9 @@ class _SearchTabState extends State<SearchTab> {
               _scheduleSearch();
             },
             child: Text(
-              'Reset filters',
+              'Reset · ${_radiusLabel}km',
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: isDark ? AppColors.terracotta : AppColors.terracottaDeep,
               ),
@@ -399,7 +382,7 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  List<Widget> _buildResults(BuildContext context, {int startIndex = 5}) {
+  List<Widget> _buildResults(BuildContext context, {int startIndex = 3}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -408,13 +391,13 @@ class _SearchTabState extends State<SearchTab> {
         StaggeredItem(
           index: startIndex,
           child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 64),
+            padding: EdgeInsets.symmetric(vertical: 56),
             child: Center(
               child: SizedBox(
-                width: 28,
-                height: 28,
+                width: 26,
+                height: 26,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.6,
+                  strokeWidth: 2.4,
                   color: AppColors.terracotta,
                 ),
               ),
@@ -434,12 +417,12 @@ class _SearchTabState extends State<SearchTab> {
         StaggeredItem(
           index: startIndex,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 44),
+            padding: const EdgeInsets.symmetric(vertical: 40),
             child: Column(
               children: [
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 56,
+                  height: 56,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: errorIconBg,
@@ -449,34 +432,37 @@ class _SearchTabState extends State<SearchTab> {
                   child: Icon(
                     Icons.cloud_off_rounded,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                    size: 28,
+                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 Text(
                   'Something went wrong',
                   style: TextStyle(
                     color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                    fontSize: 14.5,
                     letterSpacing: -0.2,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 5),
                 Text(
                   _error!,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                    fontSize: 13,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    fontSize: 12.5,
                     height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 FilledButton.icon(
                   onPressed: _load,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  icon: const Icon(Icons.refresh_rounded, size: 17),
                   label: const Text('Try again'),
+                  style: FilledButton.styleFrom(
+                    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),
@@ -504,11 +490,11 @@ class _SearchTabState extends State<SearchTab> {
         StaggeredItem(
           index: startIndex,
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.only(bottom: 12),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(100),
               child: LinearProgressIndicator(
-                minHeight: 3,
+                minHeight: 2.5,
                 backgroundColor: progressBg,
                 valueColor: const AlwaysStoppedAnimation(AppColors.terracotta),
               ),
@@ -518,14 +504,13 @@ class _SearchTabState extends State<SearchTab> {
       ..._results.asMap().entries.map((entry) {
         final idx = entry.key;
         final n = entry.value;
-
         final itemIndex = startIndex + idx + (_loading ? 1 : 0);
 
         return StaggeredItem(
           index: itemIndex,
-          begin: const Offset(0, 0.08),
+          begin: const Offset(0, 0.06),
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.only(bottom: 12),
             child: SkillCard(
               neighbor: n,
               onRequest: () => _requestHelp(n),
@@ -557,12 +542,12 @@ class _EmptyResults extends StatelessWidget {
         : Colors.white.withValues(alpha: 0.8);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 44),
+      padding: const EdgeInsets.symmetric(vertical: 40),
       child: Column(
         children: [
           Container(
-            width: 64,
-            height: 64,
+            width: 56,
+            height: 56,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: iconBg,
@@ -572,37 +557,40 @@ class _EmptyResults extends StatelessWidget {
             child: Icon(
               Icons.search_off_rounded,
               color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-              size: 28,
+              size: 24,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Text(
             'No matches yet',
             style: TextStyle(
               color: theme.colorScheme.onSurface,
               fontWeight: FontWeight.w700,
-              fontSize: 15,
+              fontSize: 14.5,
               letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
           Text(
             hasQuery
                 ? 'Try a different skill or widen your radius.'
-                : 'Try widening your radius to see more neighbors nearby.',
+                : 'Try widening your radius to see more neighbors.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               fontSize: 12.5,
               height: 1.4,
             ),
           ),
           if (hasQuery) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             TextButton.icon(
               onPressed: onClear,
-              icon: const Icon(Icons.clear_rounded, size: 18),
+              icon: const Icon(Icons.clear_rounded, size: 16),
               label: const Text('Clear search'),
+              style: TextButton.styleFrom(
+                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ],
@@ -658,12 +646,11 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
-
                 Row(
                   children: [
                     Expanded(
@@ -677,15 +664,13 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () {
-                        setState(() => _radius = 2.0);
-                      },
+                      onTap: () => setState(() => _radius = 2.0),
                       child: Text(
                         'Reset',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                         ),
                       ),
                     ),
@@ -693,27 +678,26 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Narrow or widen your search area to find neighbors nearby.',
+                  'Adjust your search area to find neighbors nearby.',
                   style: TextStyle(
                     fontSize: 13.5,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 24),
-
+                const SizedBox(height: 22),
                 Row(
                   children: [
                     const Icon(
                       Icons.near_me_rounded,
-                      size: 16,
+                      size: 15,
                       color: AppColors.terracotta,
                     ),
                     const SizedBox(width: 7),
                     Text(
                       'Distance',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13.5,
                         color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.1,
@@ -724,21 +708,18 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                       '$_radiusLabel km',
                       style: TextStyle(
                         fontSize: 13,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 RadiusChipSelector(
                   value: _radius,
-                  onChanged: (v) {
-                    setState(() => _radius = v);
-                  },
+                  onChanged: (v) => setState(() => _radius = v),
                 ),
-                const SizedBox(height: 24),
-
+                const SizedBox(height: 22),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
@@ -749,15 +730,12 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(100),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
                       elevation: 0,
                     ),
                     child: const Text(
-                      'Apply filters',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      'Apply',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -979,11 +957,11 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
           child: Column(
             children: [
               Container(
-                width: 56,
-                height: 56,
+                width: 52,
+                height: 52,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: avatarColor.withValues(alpha: 0.15),
+                  color: avatarColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                   border: Border.all(color: avatarBorder, width: 1.5),
                 ),
@@ -994,28 +972,28 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                   style: TextStyle(
                     color: avatarColor,
                     fontWeight: FontWeight.w700,
-                    fontSize: 20,
+                    fontSize: 19,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Text(
                 'Ask $firstName for help',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 17.5,
                   fontWeight: FontWeight.w600,
                   color: theme.colorScheme.onSurface,
                   letterSpacing: -0.3,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               Text(
                 'They\'ll get a notification and can accept or decline.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 13,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontSize: 12.5,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                   height: 1.4,
                 ),
               ),
@@ -1023,11 +1001,11 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
           child: Container(
             decoration: BoxDecoration(
               color: textFieldBg,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: _error != null ? errorBorder : textFieldBorder,
                 width: 1,
@@ -1038,36 +1016,36 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
               autofocus: true,
               maxLines: 3,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13.5,
                 color: theme.colorScheme.onSurface,
                 height: 1.4,
               ),
               decoration: InputDecoration(
                 hintText: 'What do you need help with? (optional)',
                 hintStyle: TextStyle(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-                  fontSize: 14,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+                  fontSize: 13.5,
                 ),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.all(16),
+                contentPadding: const EdgeInsets.all(14),
               ),
             ),
           ),
         ),
         if (_error != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+            padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
             child: Row(
               children: [
                 const Icon(Icons.error_outline_rounded,
-                    size: 16, color: AppColors.error),
-                const SizedBox(width: 8),
+                    size: 15, color: AppColors.error),
+                const SizedBox(width: 7),
                 Expanded(
                   child: Text(
                     _error!,
                     style: const TextStyle(
                       color: AppColors.error,
-                      fontSize: 13,
+                      fontSize: 12.5,
                       height: 1.3,
                     ),
                   ),
@@ -1076,14 +1054,14 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
             ),
           ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
           child: Row(
             children: [
               Expanded(
                 child: GestureDetector(
                   onTap: _sending ? null : () => Navigator.pop(context, false),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(100),
                       border: Border.all(color: cancelBorder, width: 1),
@@ -1092,10 +1070,10 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                       child: Text(
                         'Cancel',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w600,
                           color:
-                              theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                              theme.colorScheme.onSurface.withValues(alpha: 0.65),
                         ),
                       ),
                     ),
@@ -1109,7 +1087,7 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                   onTap: _send,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                     decoration: BoxDecoration(
                       color: _sending
                           ? AppColors.terracotta.withValues(alpha: 0.6)
@@ -1118,19 +1096,19 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.terracotta
-                              .withValues(alpha: isDark ? 0.35 : 0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
+                              .withValues(alpha: isDark ? 0.3 : 0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
                         ),
                       ],
                     ),
                     child: Center(
                       child: _sending
                           ? const SizedBox(
-                              width: 20,
-                              height: 20,
+                              width: 18,
+                              height: 18,
                               child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
+                                strokeWidth: 2.2,
                                 color: Colors.white,
                               ),
                             )
@@ -1138,12 +1116,12 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.send_rounded,
-                                    size: 16, color: Colors.white),
-                                SizedBox(width: 8),
+                                    size: 15, color: Colors.white),
+                                SizedBox(width: 7),
                                 Text(
                                   'Send request',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 13.5,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
@@ -1196,15 +1174,12 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
 
         if (t < 0.35) {
           final p = Curves.easeOutCubic.transform(t / 0.35);
-
           leftX = -65 + (62 * p);
           leftY = 60 - (70 * p);
           rightX = 65 - (62 * p);
           rightY = 60 - (70 * p);
-
           leftRot = 0.4 - (0.6 * p);
           rightRot = -0.4 + (0.6 * p);
-
           scale = 1.0;
           rippleScale = 0;
           rippleOpacity = 0;
@@ -1212,21 +1187,17 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
         } else if (t < 0.65) {
           final p = (t - 0.35) / 0.30;
           final recoil = Curves.easeOutQuart.transform(p);
-
           leftX = 4 - (34 * recoil);
           leftY = -10 + (10 * recoil);
           rightX = -4 + (34 * recoil);
           rightY = -10 + (10 * recoil);
-
           leftRot = -0.2 - (0.15 * recoil);
           rightRot = 0.2 + (0.15 * recoil);
-
           if (p < 0.15) {
             scale = 1.0 - (0.15 * (p / 0.15));
           } else {
             scale = 0.85 + (0.15 * ((p - 0.15) / 0.85));
           }
-
           final rippleP = p;
           rippleScale = 1.0 + (rippleP * 3.0);
           rippleOpacity = (1 - rippleP).clamp(0.0, 1.0);
