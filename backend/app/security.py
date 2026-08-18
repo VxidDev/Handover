@@ -73,6 +73,7 @@ def decode_room_token(token: str, request_id: int) -> int:
 def _contact_fernet() -> Fernet:
     key = settings.CONTACT_ENCRYPTION_KEY
     if key is None:
+        print("[WARNING] CONTACT_ENCRYPTION_KEY is None, randomizing...")
         digest = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
         key = base64.urlsafe_b64encode(digest).decode()
     try:
