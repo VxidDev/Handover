@@ -6,7 +6,6 @@ from ..database import get_db
 from ..deps import get_current_user
 from ..models import Request, Skill, User
 from ..schemas import RequestCreateIn, RequestOut, RequestUpdateIn
-from typing import Optional
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
@@ -58,7 +57,7 @@ def create_request(
 def list_requests(
     role: str = Query(default="all", pattern="^(all|sent|received)$"),
     status_filter: str = Query(default="all", alias="status"),
-    amount: Optional[float] = Query(default=50, ge=1, le=100),
+    amount: int = Query(default=50, ge=1, le=100),
     active_only: bool = Query(default=False, alias="active"),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -120,6 +119,9 @@ def update_request(
     if req.status != "pending":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Request already answered")
     req.status = payload.status
+    req.provider_share_phone = (
+        payload.share_phone if payload.status == "accepted" else False
+    )
     db.commit()
     db.refresh(req)
     return _to_out(req)

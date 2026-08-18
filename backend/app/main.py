@@ -2,16 +2,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from .config import settings
-from .database import Base, engine
-from .routers import auth, requests, skills, users
+from .config import settings, UPLOAD_DIR
+from .database import Base, engine, run_startup_migrations
+from .routers import auth, requests, rooms, skills, users, uploads
 from .seed import run as run_seed
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    run_startup_migrations()
     run_seed()
     yield
 
@@ -26,10 +28,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
+app.include_router(uploads.router, prefix=settings.API_PREFIX)
 app.include_router(auth.router, prefix=settings.API_PREFIX)
 app.include_router(users.router, prefix=settings.API_PREFIX)
 app.include_router(skills.router, prefix=settings.API_PREFIX)
 app.include_router(requests.router, prefix=settings.API_PREFIX)
+app.include_router(rooms.router, prefix=settings.API_PREFIX)
 
 
 @app.get("/health", tags=["meta"])

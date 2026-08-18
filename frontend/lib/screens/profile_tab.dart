@@ -21,6 +21,8 @@ class _ProfileTabState extends State<ProfileTab> {
   String? _error;
   bool _savingAvailability = false;
   bool _savingLocation = false;
+  bool _savingPhone = false;
+  final _phoneController = TextEditingController();
   final Set<int> _removingSkillIds = {};
 
   @override
@@ -44,6 +46,7 @@ class _ProfileTabState extends State<ProfileTab> {
 
       setState(() {
         _profile = profile;
+        _phoneController.text = profile.phone ?? '';
         _loading = false;
       });
     } catch (e) {
@@ -54,6 +57,41 @@ class _ProfileTabState extends State<ProfileTab> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _savePhone({bool clear = false}) async {
+    final phone = clear ? null : _phoneController.text.trim();
+    if (!clear && phone!.isEmpty) return;
+    setState(() => _savingPhone = true);
+    try {
+      final res = await Api.patch('/api/users/me', body: {'phone': phone});
+      if (!mounted) return;
+      final profile = UserProfile.fromJson(res as Map<String, dynamic>);
+      setState(() {
+        _profile = profile;
+        _phoneController.text = profile.phone ?? '';
+        _savingPhone = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            clear ? 'Phone number cleared.' : 'Phone number saved privately.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _savingPhone = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
   }
 
   Future<void> _toggleAvailability(bool value) async {
@@ -76,9 +114,9 @@ class _ProfileTabState extends State<ProfileTab> {
 
       setState(() => _savingAvailability = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(describeError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -99,9 +137,7 @@ class _ProfileTabState extends State<ProfileTab> {
     try {
       final res = await Api.patch(
         '/api/users/me',
-        body: {
-          'grid': selection.cellId,
-        },
+        body: {'grid': selection.cellId},
       );
 
       if (!mounted) return;
@@ -119,9 +155,9 @@ class _ProfileTabState extends State<ProfileTab> {
 
       setState(() => _savingLocation = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(describeError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -148,9 +184,9 @@ class _ProfileTabState extends State<ProfileTab> {
       await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(describeError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -177,9 +213,9 @@ class _ProfileTabState extends State<ProfileTab> {
       // Remove from set — triggers smooth reverse animation
       setState(() => _removingSkillIds.remove(skill.id));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(describeError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -331,7 +367,9 @@ class _ProfileTabState extends State<ProfileTab> {
                     decoration: BoxDecoration(
                       color: p.isAvailable
                           ? AppColors.success
-                          : (isDark ? AppColors.darkInkFaint : AppColors.inkFaint),
+                          : (isDark
+                                ? AppColors.darkInkFaint
+                                : AppColors.inkFaint),
                       shape: BoxShape.circle,
                       border: Border.all(color: cardBg, width: 2.5),
                     ),
@@ -362,7 +400,11 @@ class _ProfileTabState extends State<ProfileTab> {
                         style: TextStyle(fontSize: 12, color: mutedText),
                       ),
                       const SizedBox(width: 10),
-                      const Icon(Icons.eco_outlined, size: 13, color: AppColors.sage),
+                      const Icon(
+                        Icons.eco_outlined,
+                        size: 13,
+                        color: AppColors.sage,
+                      ),
                       const SizedBox(width: 3),
                       Text(
                         '${p.karma} karma',
@@ -379,10 +421,7 @@ class _ProfileTabState extends State<ProfileTab> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Switch(
-                    value: p.isAvailable,
-                    onChanged: _toggleAvailability,
-                  ),
+                : Switch(value: p.isAvailable, onChanged: _toggleAvailability),
           ],
         ),
       ),
@@ -391,7 +430,9 @@ class _ProfileTabState extends State<ProfileTab> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: p.isAvailable
-              ? (isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight)
+              ? (isDark
+                    ? AppColors.sage.withValues(alpha: 0.18)
+                    : AppColors.sageLight)
               : (isDark ? AppColors.darkSand : AppColors.sand),
           borderRadius: BorderRadius.circular(14),
         ),
@@ -408,6 +449,8 @@ class _ProfileTabState extends State<ProfileTab> {
       ),
       const SizedBox(height: 12),
       _locationCard(p),
+      const SizedBox(height: 12),
+      _phoneCard(p),
       const SizedBox(height: 28),
       Text('Skills you offer', style: theme.textTheme.titleMedium),
       const SizedBox(height: 4),
@@ -435,10 +478,7 @@ class _ProfileTabState extends State<ProfileTab> {
             avatar: Icon(Icons.add_rounded, size: 17, color: avatarFg),
             label: Text(
               'Add skill',
-              style: TextStyle(
-                color: avatarFg,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: avatarFg, fontWeight: FontWeight.w600),
             ),
             backgroundColor: avatarBg,
             onPressed: _addSkill,
@@ -446,10 +486,7 @@ class _ProfileTabState extends State<ProfileTab> {
         ],
       ),
       const SizedBox(height: 36),
-      OutlinedButton(
-        onPressed: _confirmSignOut,
-        child: const Text('Sign out'),
-      ),
+      OutlinedButton(onPressed: _confirmSignOut, child: const Text('Sign out')),
     ];
   }
 
@@ -489,11 +526,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   color: iconTileBg,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  Icons.map_outlined,
-                  size: 20,
-                  color: iconFg,
-                ),
+                child: Icon(Icons.map_outlined, size: 20, color: iconFg),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -531,11 +564,7 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.place_outlined,
-                  size: 15,
-                  color: mutedText,
-                ),
+                Icon(Icons.place_outlined, size: 15, color: mutedText),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -574,10 +603,92 @@ class _ProfileTabState extends State<ProfileTab> {
                       ),
                     )
                   : const Icon(Icons.edit_location_alt_outlined, size: 18),
-              label: Text(
-                p.grid == null ? 'Choose on map' : 'Update on map',
-              ),
+              label: Text(p.grid == null ? 'Choose on map' : 'Update on map'),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _phoneCard(UserProfile p) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final muted = theme.colorScheme.onSurface.withValues(alpha: 0.58);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkPaper : AppColors.paper,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark
+              ? AppColors.darkBorder.withValues(alpha: 0.6)
+              : Colors.white.withValues(alpha: 0.8),
+        ),
+        boxShadow: isDark ? AppTheme.darkCardShadow : AppTheme.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.lock_outline_rounded, color: AppColors.sage),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Private phone',
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Stored encrypted and owner-only. It is shared only when you explicitly choose to reveal it for an accepted handover.',
+            style: TextStyle(fontSize: 12.5, color: muted, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            autofillHints: const [AutofillHints.telephoneNumber],
+            maxLength: 40,
+            decoration: const InputDecoration(
+              hintText: 'Phone number',
+              counterText: '',
+              prefixIcon: Icon(Icons.phone_outlined, size: 19),
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (p.phone != null && p.phone!.isNotEmpty)
+                TextButton(
+                  onPressed: _savingPhone
+                      ? null
+                      : () => _savePhone(clear: true),
+                  child: const Text('Clear'),
+                ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: _savingPhone ? null : _savePhone,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 11,
+                  ),
+                ),
+                child: _savingPhone
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Save'),
+              ),
+            ],
           ),
         ],
       ),
@@ -623,12 +734,10 @@ class _AnimatedSkillRemovalState extends State<_AnimatedSkillRemoval>
     );
 
     // Scale shrinks subtly throughout the whole animation — "being absorbed" feel
-    _scale = Tween<double>(begin: 1.0, end: 0.88).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeInCubic,
-      ),
-    );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 0.88,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInCubic));
 
     // Width collapse starts 50ms after fade begins, with smooth easeInOutQuart
     _widthFactor = Tween<double>(begin: 1.0, end: 0.0).animate(
@@ -754,10 +863,7 @@ class _AddSkillBottomSheetState extends State<_AddSkillBottomSheet>
 
     if (!mounted) return;
 
-    Navigator.of(context).pop({
-      'name': name,
-      'blurb': _blurb.text.trim(),
-    });
+    Navigator.of(context).pop({'name': name, 'blurb': _blurb.text.trim()});
   }
 
   @override
@@ -893,11 +999,16 @@ class _AddSkillBottomSheetState extends State<_AddSkillBottomSheet>
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: _submitting ? null : () => Navigator.pop(context),
+                        onPressed: _submitting
+                            ? null
+                            : () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          foregroundColor: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.6),
                           side: BorderSide(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.15,
+                            ),
                             width: 1,
                           ),
                           shape: RoundedRectangleBorder(

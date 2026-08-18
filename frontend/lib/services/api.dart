@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,7 +21,9 @@ String describeError(Object error) {
 
       final List<dynamic>? errorList = decoded is List
           ? decoded
-          : (decoded is Map && decoded['detail'] is List ? decoded['detail'] : null);
+          : (decoded is Map && decoded['detail'] is List
+                ? decoded['detail']
+                : null);
 
       if (errorList != null && errorList.isNotEmpty) {
         final messages = errorList.map((err) {
@@ -33,8 +36,8 @@ String describeError(Object error) {
         }).toSet();
 
         return messages.join('\n');
-      } 
-      
+      }
+
       if (decoded is Map && decoded['detail'] is String) {
         return decoded['detail'];
       }
@@ -96,15 +99,24 @@ class Api {
   }
 
   static Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        if (_token != null) 'Authorization': 'Bearer $_token',
-      };
+    'Content-Type': 'application/json',
+    if (_token != null) 'Authorization': 'Bearer $_token',
+  };
 
   static Uri _uri(String path, [Map<String, dynamic>? query]) {
     final uri = Uri.parse('$baseUrl$path');
     if (query == null || query.isEmpty) return uri;
     final q = query.map((k, v) => MapEntry(k, v.toString()));
     return uri.replace(queryParameters: q);
+  }
+
+  static Uri roomWebSocketUri(int requestId, String roomToken) {
+    final apiUri = Uri.parse(baseUrl);
+    return apiUri.replace(
+      scheme: apiUri.scheme == 'https' ? 'wss' : 'ws',
+      path: '/api/requests/$requestId/chat',
+      queryParameters: {'token': roomToken},
+    );
   }
 
   static Future<dynamic> _send(Future<http.Response> Function() request) async {
@@ -126,14 +138,34 @@ class Api {
     throw ApiException(detail, statusCode: res.statusCode);
   }
 
+  static Future<Map<String, dynamic>> uploadFile(String path, File file) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $_token';
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode >= 400) {
+      throw Exception(response.body);
+    }
+
+    return json.decode(response.body) as Map<String, dynamic>;
+  }
+
   static Future<dynamic> get(String path, {Map<String, dynamic>? query}) =>
       _send(() => http.get(_uri(path, query), headers: _headers));
 
-  static Future<dynamic> post(String path, {Object? body}) =>
-      _send(() => http.post(_uri(path), headers: _headers, body: jsonEncode(body ?? {})));
+  static Future<dynamic> post(String path, {Object? body}) => _send(
+    () =>
+        http.post(_uri(path), headers: _headers, body: jsonEncode(body ?? {})),
+  );
 
-  static Future<dynamic> patch(String path, {Object? body}) =>
-      _send(() => http.patch(_uri(path), headers: _headers, body: jsonEncode(body ?? {})));
+  static Future<dynamic> patch(String path, {Object? body}) => _send(
+    () =>
+        http.patch(_uri(path), headers: _headers, body: jsonEncode(body ?? {})),
+  );
 
   static Future<dynamic> delete(String path) =>
       _send(() => http.delete(_uri(path), headers: _headers));

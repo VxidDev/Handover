@@ -64,13 +64,16 @@ request/response shape.
 | POST   | `/api/auth/signup`            |      | Create an account, returns token + profile   |
 | POST   | `/api/auth/login`             |      | Log in, returns token + profile              |
 | GET    | `/api/users/me`               | ✔    | Current profile + skills                     |
-| PATCH  | `/api/users/me`               | ✔    | Update name / availability / location        |
+| PATCH  | `/api/users/me`               | ✔    | Update profile and encrypted private phone    |
 | POST   | `/api/users/me/skills`        | ✔    | Add a skill to your wallet                   |
 | DELETE | `/api/users/me/skills/{id}`   | ✔    | Remove a skill                               |
 | GET    | `/api/skills`                 |      | Search skills (keyword, radius, location)    |
 | POST   | `/api/requests`               | ✔    | Ask a neighbor for help                      |
 | GET    | `/api/requests`               | ✔    | List requests (`role=sent/received`, `status`) |
-| PATCH  | `/api/requests/{id}`          | ✔    | Accept/decline (owner only)                  |
+| PATCH  | `/api/requests/{id}`          | ✔    | Accept/decline with per-request phone consent |
+| POST   | `/api/requests/{id}/room-token` | ✔  | Create a 15-minute token for an accepted room |
+| GET    | `/api/requests/{id}/messages` | ✔    | Read accepted-room message history            |
+| WS     | `/api/requests/{id}/chat`     | room token | Private real-time handover chat          |
 
 Example search with a 5 km radius:
 
@@ -90,10 +93,13 @@ never exposed in search responses.
 | `DATABASE_URL`     | `sqlite:///data/handover.db` | SQLAlchemy connection URL |
 | `SECRET_KEY`       | random per-process    | Signs auth tokens; set a fixed one in production |
 | `TOKEN_TTL_SECONDS`| 604800 (7 days)       | Auth token lifetime          |
+| `ROOM_TOKEN_TTL_SECONDS` | 900 (15 minutes) | Request-room token lifetime |
+| `CONTACT_ENCRYPTION_KEY` | derived from `SECRET_KEY` | Separate Fernet key for private contacts in production |
 
 Tokens are JWT (HS256, signed with `SECRET_KEY`, stateless). Passwords are
-hashed with PBKDF2-SHA256 (260k iterations) using per-password salts so no
-hashing library is required.
+hashed with Argon2; legacy PBKDF2 hashes are accepted during migration.
+Private phone numbers are encrypted with Fernet and are revealed only through
+an accepted request for which the provider explicitly opted in.
 
 ## Layout
 

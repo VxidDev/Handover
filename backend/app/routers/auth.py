@@ -5,12 +5,13 @@ from ..database import get_db
 from ..models import User
 from ..schemas import AuthOut, LoginIn, SignupIn, UserMeOut
 from ..security import create_token, hash_password, verify_password
+from .users import user_me_out
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _to_me_out(user: User) -> UserMeOut:
-    return UserMeOut.model_validate(user)
+    return user_me_out(user)
 
 
 @router.post("/signup", response_model=AuthOut, status_code=status.HTTP_201_CREATED)

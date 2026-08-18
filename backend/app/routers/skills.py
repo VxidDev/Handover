@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from ..cache import SKILLS_CATALOG_KEY, cache
 from ..database import get_db
 from ..deps import get_current_user_optional
-from ..models import Skill, User
+from ..models import Skill, User, SkillImage
 from ..schemas import SkillSearchOut
 
 router = APIRouter(prefix="/skills", tags=["skills"])
@@ -18,7 +18,7 @@ EARTH_RADIUS_KM = 6371.0
 def _load_catalog(db: Session) -> list[dict[str, Any]]:
     rows = (
         db.query(Skill)
-        .options(joinedload(Skill.owner))
+        .options(joinedload(Skill.owner), joinedload(Skill.images))
         .join(User)
         .order_by(Skill.name.asc())
         .all()
@@ -35,6 +35,7 @@ def _load_catalog(db: Session) -> list[dict[str, Any]]:
             "lng": skill.owner.lng,
             "available": skill.owner.is_available,
             "karma": skill.owner.karma,
+            "images": [img.path for img in skill.images],
         }
         for skill in rows
     ]
@@ -88,8 +89,10 @@ def search_skills(
             and entry["lng"] is not None
         ):
             distance = round(haversine_km(lat, lng, entry["lat"], entry["lng"]), 1)
+
             if radius_km is not None and distance > radius_km:
                 continue
+
         results.append(
             SkillSearchOut(
                 skill_id=entry["skill_id"],
@@ -101,6 +104,7 @@ def search_skills(
                 distance_km=distance,
                 available=entry["available"],
                 karma=entry["karma"],
+                images=entry["images"],
             )
         )
     return results

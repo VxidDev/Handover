@@ -8,6 +8,7 @@ from typing import Any
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHash, VerificationError
+from cryptography.fernet import Fernet, InvalidToken
 
 from .config import settings
 
@@ -57,3 +58,35 @@ def decode_token(token: str) -> dict[str, Any]:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
     except jwt.PyJWTError:
         raise ValueError("Invalid token") from None
+
+
+def decode_room_token(token: str, request_id: int) -> int:
+    payload = decode_token(token)
+    try:
+        if payload.get("scope") != "request_room" or int(payload["request_id"]) != request_id:
+            raise ValueError("Invalid room token scope")
+        return int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise ValueError("Invalid room token scope") from None
+
+
+def _contact_fernet() -> Fernet:
+    key = settings.CONTACT_ENCRYPTION_KEY
+    if key is None:
+        digest = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
+        key = base64.urlsafe_b64encode(digest).decode()
+    try:
+        return Fernet(key.encode())
+    except (TypeError, ValueError):
+        raise RuntimeError("CONTACT_ENCRYPTION_KEY must be a valid Fernet key") from None
+
+
+def encrypt_contact(value: str) -> str:
+    return _contact_fernet().encrypt(value.encode()).decode()
+
+
+def decrypt_contact(value: str) -> str:
+    try:
+        return _contact_fernet().decrypt(value.encode()).decode()
+    except InvalidToken:
+        raise RuntimeError("Unable to decrypt private contact data") from None

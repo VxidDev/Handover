@@ -28,7 +28,10 @@ class _RequestsTabState extends State<RequestsTab>
   static const _tabs = [
     (label: 'Sent', path: '/api/requests?role=sent&amount=20&active=true'),
     (label: 'Cancelled', path: '/api/requests?status=cancelled&amount=50'),
-    (label: 'Received', path: '/api/requests?role=received&amount=20&active=true'),
+    (
+      label: 'Received',
+      path: '/api/requests?role=received&amount=20&active=true',
+    ),
   ];
 
   int get _totalCount =>
@@ -96,19 +99,72 @@ class _RequestsTabState extends State<RequestsTab>
     }
   }
 
-  Future<void> _respond(HelpRequest request, String status) async {
+  Future<void> _respond(
+    HelpRequest request,
+    String status, {
+    bool? sharePhone,
+  }) async {
     setState(() => _busyRequestId = request.id);
     try {
-      await Api.patch('/api/requests/${request.id}', body: {'status': status});
+      await Api.patch(
+        '/api/requests/${request.id}',
+        body: {
+          'status': status,
+          if (status == 'accepted') 'share_phone': sharePhone ?? false,
+        },
+      );
       _loadAll();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(describeError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
     } finally {
       if (mounted) setState(() => _busyRequestId = null);
     }
+  }
+
+  Future<void> _accept(HelpRequest request) async {
+    var sharePhone = false;
+    final choice = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Accept handover?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'A private chat with ${request.requesterName} will open in Messages.',
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Share phone number for this exchange?'),
+                subtitle: const Text(
+                  'Off by default. Your number is revealed only in this accepted handover.',
+                ),
+                value: sharePhone,
+                onChanged: (value) => setDialogState(() => sharePhone = value),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, sharePhone),
+              child: const Text('Accept'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    await _respond(request, 'accepted', sharePhone: choice);
   }
 
   Future<bool> _showCancelDialog(HelpRequest request) async {
@@ -134,8 +190,10 @@ class _RequestsTabState extends State<RequestsTab>
               : AppColors.ink.withValues(alpha: 0.3),
           builder: (ctx) => Dialog(
             backgroundColor: Colors.transparent,
-            insetPadding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 24,
+            ),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 400),
               padding: const EdgeInsets.all(24),
@@ -162,8 +220,11 @@ class _RequestsTabState extends State<RequestsTab>
                       color: AppColors.error.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.undo_rounded,
-                        color: AppColors.error, size: 28),
+                    child: const Icon(
+                      Icons.undo_rounded,
+                      color: AppColors.error,
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -203,8 +264,9 @@ class _RequestsTabState extends State<RequestsTab>
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.7),
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.7,
+                                  ),
                                 ),
                               ),
                             ),
@@ -222,8 +284,7 @@ class _RequestsTabState extends State<RequestsTab>
                               borderRadius: BorderRadius.circular(100),
                               boxShadow: [
                                 BoxShadow(
-                                  color:
-                                      AppColors.error.withValues(alpha: 0.2),
+                                  color: AppColors.error.withValues(alpha: 0.2),
                                   blurRadius: 12,
                                   offset: const Offset(0, 6),
                                 ),
@@ -233,9 +294,10 @@ class _RequestsTabState extends State<RequestsTab>
                               child: Text(
                                 'Yes, withdraw',
                                 style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
@@ -286,15 +348,17 @@ class _RequestsTabState extends State<RequestsTab>
             backgroundColor: isDark ? AppColors.darkPaper : AppColors.ink,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _removingIds.remove(request.id));
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(describeError(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -320,8 +384,10 @@ class _RequestsTabState extends State<RequestsTab>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children:
-                    List.generate(_tabs.length, (i) => _buildTabContent(i)),
+                children: List.generate(
+                  _tabs.length,
+                  (i) => _buildTabContent(i),
+                ),
               ),
             ),
           ],
@@ -388,8 +454,7 @@ class _RequestsTabState extends State<RequestsTab>
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color:
-                  isDark ? AppColors.terracotta : AppColors.terracottaDeep,
+              color: isDark ? AppColors.terracotta : AppColors.terracottaDeep,
               letterSpacing: -0.2,
             ),
           ),
@@ -484,13 +549,19 @@ class _RequestsTabState extends State<RequestsTab>
                                     curve: Curves.easeOutQuart,
                                     style: TextStyle(
                                       fontSize: 13.5,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
                                       letterSpacing: -0.1,
                                       height: 1.2,
                                       color: isSelected
-                                          ? (isDark ? AppColors.darkInk : AppColors.ink)
-                                          : (isDark ? AppColors.darkInk : AppColors.ink)
-                                              .withValues(alpha: 0.5),
+                                          ? (isDark
+                                                ? AppColors.darkInk
+                                                : AppColors.ink)
+                                          : (isDark
+                                                    ? AppColors.darkInk
+                                                    : AppColors.ink)
+                                                .withValues(alpha: 0.5),
                                     ),
                                     child: Text(
                                       tab.label,
@@ -510,15 +581,19 @@ class _RequestsTabState extends State<RequestsTab>
                                     ),
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? AppColors.terracotta.withValues(alpha: 0.14)
+                                          ? AppColors.terracotta.withValues(
+                                              alpha: 0.14,
+                                            )
                                           : (isDark
-                                                  ? AppColors.darkInk
-                                                  : AppColors.ink)
-                                              .withValues(alpha: 0.06),
+                                                    ? AppColors.darkInk
+                                                    : AppColors.ink)
+                                                .withValues(alpha: 0.06),
                                       borderRadius: BorderRadius.circular(100),
                                       border: Border.all(
                                         color: isSelected
-                                            ? AppColors.terracotta.withValues(alpha: 0.2)
+                                            ? AppColors.terracotta.withValues(
+                                                alpha: 0.2,
+                                              )
                                             : Colors.transparent,
                                         width: 1,
                                       ),
@@ -530,12 +605,12 @@ class _RequestsTabState extends State<RequestsTab>
                                         fontWeight: FontWeight.w700,
                                         color: isSelected
                                             ? (isDark
-                                                ? AppColors.terracotta
-                                                : AppColors.terracottaDeep)
+                                                  ? AppColors.terracotta
+                                                  : AppColors.terracottaDeep)
                                             : (isDark
-                                                    ? AppColors.darkInk
-                                                    : AppColors.ink)
-                                                .withValues(alpha: 0.55),
+                                                      ? AppColors.darkInk
+                                                      : AppColors.ink)
+                                                  .withValues(alpha: 0.55),
                                         height: 1.0,
                                       ),
                                     ),
@@ -602,15 +677,11 @@ class _RequestsTabState extends State<RequestsTab>
     }
 
     if (error != null) {
-      return [
-        _errorState(error, () => _load(tabIndex), isDark, theme),
-      ];
+      return [_errorState(error, () => _load(tabIndex), isDark, theme)];
     }
 
     if (requests.isEmpty) {
-      return [
-        _EmptyState(tabIndex: tabIndex),
-      ];
+      return [_EmptyState(tabIndex: tabIndex)];
     }
 
     final progressBg = isDark ? AppColors.darkSand : AppColors.sand;
@@ -635,7 +706,7 @@ class _RequestsTabState extends State<RequestsTab>
           request: r,
           isReceived: tabIndex == 2,
           busy: _busyRequestId == r.id || isRemoving,
-          onRespond: (s) => _respond(r, s),
+          onRespond: (s) => s == 'accepted' ? _accept(r) : _respond(r, s),
           onCancel: isSentTab ? () => _cancel(r) : null,
         );
 
@@ -710,9 +781,9 @@ class _RequestsTabState extends State<RequestsTab>
               backgroundColor: AppColors.terracotta,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(100)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
           ),
         ],
@@ -753,12 +824,14 @@ class _AnimatedRemovalState extends State<_AnimatedRemoval>
     _heightFactor = _controller.drive(CurveTween(curve: Curves.easeInOut));
     _opacity = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
-          parent: _controller,
-          curve: const Interval(0.0, 0.6, curve: Curves.easeOut)),
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
     );
-    _scale = Tween<double>(begin: 1.0, end: 0.92).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInCubic),
-    );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 0.92,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInCubic));
   }
 
   @override
@@ -787,9 +860,12 @@ class _AnimatedRemovalState extends State<_AnimatedRemoval>
         }
 
         return SizeTransition(
-          sizeFactor: _heightFactor.drive(Tween(begin: 1.0, end: 0.0).chain(
-            CurveTween(curve: Curves.easeInOut),
-          )),
+          sizeFactor: _heightFactor.drive(
+            Tween(
+              begin: 1.0,
+              end: 0.0,
+            ).chain(CurveTween(curve: Curves.easeInOut)),
+          ),
           alignment: Alignment.topCenter,
           child: FadeTransition(
             opacity: _opacity,
@@ -831,11 +907,11 @@ class _RequestCard extends StatelessWidget {
 
     final avatarBg = isReceived
         ? (isDark
-            ? AppColors.terracotta.withValues(alpha: 0.18)
-            : AppColors.terracottaTint)
+              ? AppColors.terracotta.withValues(alpha: 0.18)
+              : AppColors.terracottaTint)
         : (isDark
-            ? AppColors.sage.withValues(alpha: 0.18)
-            : AppColors.sageLight);
+              ? AppColors.sage.withValues(alpha: 0.18)
+              : AppColors.sageLight);
 
     final avatarFg = isReceived
         ? (isDark ? AppColors.terracotta : AppColors.terracottaDeep)
@@ -885,10 +961,7 @@ class _RequestCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: avatarBg,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: cardBorder,
-                    width: 1,
-                  ),
+                  border: Border.all(color: cardBorder, width: 1),
                 ),
                 child: Text(
                   initial,
@@ -917,8 +990,9 @@ class _RequestCard extends StatelessWidget {
                     Text(
                       'wants help with ${request.skillName}',
                       style: TextStyle(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
                         fontSize: 13,
                         height: 1.3,
                       ),
@@ -959,7 +1033,8 @@ class _RequestCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
                       side: BorderSide(
-                          color: AppColors.error.withValues(alpha: 0.2)),
+                        color: AppColors.error.withValues(alpha: 0.2),
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(100),
                       ),
@@ -1007,7 +1082,8 @@ class _RequestCard extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.error,
                   side: BorderSide(
-                      color: AppColors.error.withValues(alpha: 0.2)),
+                    color: AppColors.error.withValues(alpha: 0.2),
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(100),
                   ),
@@ -1033,29 +1109,27 @@ class StatusBadge extends StatelessWidget {
 
     final (label, color, bg) = switch (status) {
       'accepted' => (
-          'Accepted',
-          AppColors.success,
-          isDark
-              ? AppColors.sage.withValues(alpha: 0.18)
-              : AppColors.sageLight
-        ),
+        'Accepted',
+        AppColors.success,
+        isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight,
+      ),
       'declined' => (
-          'Declined',
-          AppColors.error,
-          isDark
-              ? AppColors.terracotta.withValues(alpha: 0.18)
-              : AppColors.terracottaTint
-        ),
+        'Declined',
+        AppColors.error,
+        isDark
+            ? AppColors.terracotta.withValues(alpha: 0.18)
+            : AppColors.terracottaTint,
+      ),
       'cancelled' => (
-          'Cancelled',
-          isDark ? AppColors.darkInkFaint : AppColors.inkSoft,
-          isDark ? AppColors.darkSand : AppColors.sand
-        ),
+        'Cancelled',
+        isDark ? AppColors.darkInkFaint : AppColors.inkSoft,
+        isDark ? AppColors.darkSand : AppColors.sand,
+      ),
       _ => (
-          'Pending',
-          isDark ? AppColors.darkInkFaint : AppColors.inkSoft,
-          isDark ? AppColors.darkSand : AppColors.sand
-        ),
+        'Pending',
+        isDark ? AppColors.darkInkFaint : AppColors.inkSoft,
+        isDark ? AppColors.darkSand : AppColors.sand,
+      ),
     };
 
     final bgAlpha = isDark ? 0.25 : 0.6;
@@ -1066,10 +1140,7 @@ class StatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg.withValues(alpha: bgAlpha),
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(
-          color: bg.withValues(alpha: borderAlpha),
-          width: 1,
-        ),
+        border: Border.all(color: bg.withValues(alpha: borderAlpha), width: 1),
       ),
       child: Text(
         label,
@@ -1103,12 +1174,15 @@ class _EmptyState extends StatelessWidget {
         : Colors.white.withValues(alpha: 0.8);
 
     final messages = [
-      ('No sent requests',
-          "Requests you send to neighbors will appear here."),
-      ('No cancelled requests',
-          "Withdrawn or cancelled requests will appear here."),
-      ('No received requests',
-          "When neighbors ask you for help, their requests will appear here."),
+      ('No sent requests', "Requests you send to neighbors will appear here."),
+      (
+        'No cancelled requests',
+        "Withdrawn or cancelled requests will appear here.",
+      ),
+      (
+        'No received requests',
+        "When neighbors ask you for help, their requests will appear here.",
+      ),
     ];
 
     final (title, subtitle) = messages[tabIndex];

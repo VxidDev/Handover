@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class SignupIn(BaseModel):
@@ -17,12 +17,21 @@ class LoginIn(BaseModel):
     password: str
 
 
+class SkillImageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    path: str
+    order: int
+
+
 class SkillOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     name: str
     blurb: str
+    images: list[SkillImageOut] = []
 
 
 class UserOut(BaseModel):
@@ -39,6 +48,7 @@ class UserOut(BaseModel):
 
 class UserMeOut(UserOut):
     skills: list[SkillOut] = []
+    phone: Optional[str] = None
 
 
 class AuthOut(BaseModel):
@@ -52,11 +62,13 @@ class UserUpdateIn(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     grid: Optional[str] = Field(default=None, max_length=20)
+    phone: Optional[str] = Field(default=None, max_length=50)
 
 
 class SkillCreateIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     blurb: str = Field(default="", max_length=500)
+    image_paths: list[str] = Field(default=[], max_length=3)
 
 
 class SkillSearchOut(BaseModel):
@@ -69,6 +81,7 @@ class SkillSearchOut(BaseModel):
     distance_km: Optional[float] = None
     available: bool
     karma: int
+    images: list[str] = []
 
 
 class RequestCreateIn(BaseModel):
@@ -93,3 +106,26 @@ class RequestOut(BaseModel):
 
 class RequestUpdateIn(BaseModel):
     status: str = Field(pattern="^(accepted|declined)$")
+    share_phone: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def require_acceptance_choice(self):
+        if self.status == "accepted" and self.share_phone is None:
+            raise ValueError("share_phone is required when accepting")
+        return self
+
+
+class ChatMessageOut(BaseModel):
+    id: int
+    request_id: int
+    sender_id: int
+    sender_name: str
+    body: str
+    created_at: datetime
+
+
+class RoomTokenOut(BaseModel):
+    token: str
+    expires_at: datetime
+    request: RequestOut
+    contact_info: dict[str, str]
