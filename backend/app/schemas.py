@@ -42,6 +42,7 @@ class UserOut(BaseModel):
     is_available: bool
     karma: int
     grid: str | None = None
+    banned_until: datetime | None = None
     created_at: datetime
 
 
@@ -128,3 +129,29 @@ class RoomTokenOut(BaseModel):
     expires_at: datetime
     request: RequestOut
     contact_info: dict[str, str]
+
+
+class ReportCreateIn(BaseModel):
+    content_type: str = Field(pattern="^(skill|chat_message)$")
+    content_id: int
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class ReportOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    content_type: str
+    content_id: int
+    status: str
+    toxicity_score: float | None = None
+    warning_issued: bool
+    created_at: datetime
+
+
+class WarningOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    reason: str
+    created_at: datetime

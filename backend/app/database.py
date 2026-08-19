@@ -43,6 +43,25 @@ def run_startup_migrations() -> None:
                 )
             )
 
+    if "users" in inspector.get_table_names():
+        user_columns = {column["name"] for column in inspector.get_columns("users")}
+        if "banned_until" not in user_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text("ALTER TABLE users ADD COLUMN banned_until DATETIME")
+                )
+
+    if "reports" in inspector.get_table_names():
+        indexes = {index["name"] for index in inspector.get_indexes("reports")}
+        if "uq_report_target" not in indexes:
+            with engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_report_target "
+                        "ON reports (reporter_id, content_type, content_id)"
+                    )
+                )
+
 
 def get_db():
     db = SessionLocal()

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/app_warning.dart';
 import '../models/skill.dart';
 import '../models/user_profile.dart';
 import '../services/api.dart';
@@ -18,6 +19,7 @@ class ProfileTab extends StatefulWidget {
 
 class _ProfileTabState extends State<ProfileTab> {
   UserProfile? _profile;
+  List<AppWarning> _warnings = [];
   bool _loading = true;
   String? _error;
   bool _savingAvailability = false;
@@ -50,6 +52,8 @@ class _ProfileTabState extends State<ProfileTab> {
         _phoneController.text = profile.phone ?? '';
         _loading = false;
       });
+
+      _loadWarnings();
     } catch (e) {
       if (!mounted) return;
 
@@ -57,6 +61,24 @@ class _ProfileTabState extends State<ProfileTab> {
         _error = describeError(e);
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _loadWarnings() async {
+    try {
+      final res = await Api.get('/api/reports/warnings');
+      if (!mounted) return;
+      final warnings = (res is List<dynamic>)
+          ? res
+                .map(
+                  (e) =>
+                      AppWarning.fromJson(e as Map<String, dynamic>),
+                )
+                .toList()
+          : <AppWarning>[];
+      setState(() => _warnings = warnings);
+    } catch (_) {
+      // Warnings are non-critical; ignore failures.
     }
   }
 
@@ -462,6 +484,14 @@ class _ProfileTabState extends State<ProfileTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (p.isBanned) ...[
+          _BanBanner(until: p.bannedUntil!),
+          const SizedBox(height: 16),
+        ],
+        if (_warnings.isNotEmpty) ...[
+          _WarningsBanner(warnings: _warnings),
+          const SizedBox(height: 16),
+        ],
         _HeroCard(profile: p, onSettings: _openSettings),
         const SizedBox(height: 16),
         _StatsRow(profile: p),
@@ -2051,6 +2081,155 @@ class _SignOutButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _BanBanner extends StatelessWidget {
+  const _BanBanner({required this.until});
+
+  final DateTime until;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final local = until.toLocal();
+    final date =
+        '${local.day.toString().padLeft(2, '0')}.${local.month.toString().padLeft(2, '0')}'
+        ' ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColors.busy.withValues(alpha: 0.18)
+            : AppColors.busy.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.busy.withValues(alpha: 0.35),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.busy.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.block_rounded,
+              color: AppColors.busy,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Account temporarily banned',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'You received too many warnings for inappropriate content. '
+                  'Access will be restored on $date.',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WarningsBanner extends StatelessWidget {
+  const _WarningsBanner({required this.warnings});
+
+  final List<AppWarning> warnings;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final count = warnings.length;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColors.busy.withValues(alpha: 0.16)
+            : AppColors.busy.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.busy.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.busy.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.busy,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$count moderation warning${count == 1 ? '' : 's'}',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Your reported content may have violated community '
+                  'guidelines. Repeated issues can limit your account.',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

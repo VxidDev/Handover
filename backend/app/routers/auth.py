@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..deps import check_ban
 from ..models import User
 from ..schemas import AuthOut, LoginIn, SignupIn, UserMeOut
 from ..security import create_token, hash_password, verify_password
@@ -40,4 +41,5 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
         )
+    check_ban(db, user)
     return AuthOut(token=create_token({"sub": str(user.id)}), user=_to_me_out(user))

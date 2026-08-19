@@ -35,6 +35,12 @@ class Settings:
     ROOM_TOKEN_TTL_SECONDS = int(os.getenv("ROOM_TOKEN_TTL_SECONDS", "900"))
     CONTACT_ENCRYPTION_KEY = os.getenv("CONTACT_ENCRYPTION_KEY")
 
+    WARNING_EXPIRY_DAYS = int(os.getenv("WARNING_EXPIRY_DAYS", "7"))
+    WARNING_BAN_THRESHOLD = int(os.getenv("WARNING_BAN_THRESHOLD", "10"))
+    WARNING_BAN_DURATION_DAYS = int(
+        os.getenv("WARNING_BAN_DURATION_DAYS", "7")
+    )
+
     def __init__(self) -> None:
         if not self.SECRET_KEY:
             _fail_startup(
