@@ -63,7 +63,10 @@ def decode_token(token: str) -> dict[str, Any]:
 def decode_room_token(token: str, request_id: int) -> int:
     payload = decode_token(token)
     try:
-        if payload.get("scope") != "request_room" or int(payload["request_id"]) != request_id:
+        if (
+            payload.get("scope") != "request_room"
+            or int(payload["request_id"]) != request_id
+        ):
             raise ValueError("Invalid room token scope")
         return int(payload["sub"])
     except (KeyError, TypeError, ValueError):
@@ -79,7 +82,9 @@ def _contact_fernet() -> Fernet:
     try:
         return Fernet(key.encode())
     except (TypeError, ValueError):
-        raise RuntimeError("CONTACT_ENCRYPTION_KEY must be a valid Fernet key") from None
+        raise RuntimeError(
+            "CONTACT_ENCRYPTION_KEY must be a valid Fernet key"
+        ) from None
 
 
 def encrypt_contact(value: str) -> str:

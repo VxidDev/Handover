@@ -84,7 +84,9 @@ abstract class AppTheme {
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -92,7 +94,9 @@ abstract class AppTheme {
           foregroundColor: AppColors.inkSoft,
           side: const BorderSide(color: AppColors.border, width: 1.4),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -105,7 +109,10 @@ abstract class AppTheme {
         filled: true,
         fillColor: AppColors.sand,
         hintStyle: const TextStyle(color: AppColors.inkFaint, fontSize: 14),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -123,7 +130,10 @@ abstract class AppTheme {
         backgroundColor: AppColors.sand,
         selectedColor: AppColors.terracottaTint,
         labelStyle: const TextStyle(color: AppColors.ink, fontSize: 13),
-        secondaryLabelStyle: const TextStyle(color: AppColors.terracottaDeep, fontSize: 13),
+        secondaryLabelStyle: const TextStyle(
+          color: AppColors.terracottaDeep,
+          fontSize: 13,
+        ),
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -148,7 +158,10 @@ abstract class AppTheme {
           );
         }),
       ),
-      dividerTheme: const DividerThemeData(color: AppColors.border, thickness: 1),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.border,
+        thickness: 1,
+      ),
       switchTheme: SwitchThemeData(
         thumbColor: const WidgetStatePropertyAll(Colors.white),
         trackColor: WidgetStateProperty.resolveWith((states) {
@@ -159,7 +172,10 @@ abstract class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.ink,
-        contentTextStyle: const TextStyle(color: AppColors.cream, fontSize: 13.5),
+        contentTextStyle: const TextStyle(
+          color: AppColors.cream,
+          fontSize: 13.5,
+        ),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -257,7 +273,9 @@ abstract class AppTheme {
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -265,7 +283,9 @@ abstract class AppTheme {
           foregroundColor: AppColors.darkInkSoft,
           side: const BorderSide(color: AppColors.darkBorder, width: 1.4),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -278,7 +298,10 @@ abstract class AppTheme {
         filled: true,
         fillColor: AppColors.darkSand,
         hintStyle: const TextStyle(color: AppColors.darkInkFaint, fontSize: 14),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -296,7 +319,10 @@ abstract class AppTheme {
         backgroundColor: AppColors.darkSand,
         selectedColor: AppColors.terracotta.withValues(alpha: 0.2),
         labelStyle: const TextStyle(color: AppColors.darkInk, fontSize: 13),
-        secondaryLabelStyle: const TextStyle(color: AppColors.terracotta, fontSize: 13),
+        secondaryLabelStyle: const TextStyle(
+          color: AppColors.terracotta,
+          fontSize: 13,
+        ),
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -321,7 +347,10 @@ abstract class AppTheme {
           );
         }),
       ),
-      dividerTheme: const DividerThemeData(color: AppColors.darkBorder, thickness: 1),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.darkBorder,
+        thickness: 1,
+      ),
       switchTheme: SwitchThemeData(
         thumbColor: const WidgetStatePropertyAll(Colors.white),
         trackColor: WidgetStateProperty.resolveWith((states) {
@@ -332,7 +361,10 @@ abstract class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.darkInk,
-        contentTextStyle: const TextStyle(color: AppColors.darkCream, fontSize: 13.5),
+        contentTextStyle: const TextStyle(
+          color: AppColors.darkCream,
+          fontSize: 13.5,
+        ),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -349,18 +381,18 @@ abstract class AppTheme {
   }
 
   static List<BoxShadow> get cardShadow => [
-        BoxShadow(
-          color: AppColors.shadow,
-          blurRadius: 18,
-          offset: const Offset(0, 6),
-        ),
-      ];
+    BoxShadow(
+      color: AppColors.shadow,
+      blurRadius: 18,
+      offset: const Offset(0, 6),
+    ),
+  ];
 
   static List<BoxShadow> get darkCardShadow => [
-        BoxShadow(
-          color: AppColors.darkShadow,
-          blurRadius: 18,
-          offset: const Offset(0, 6),
-        ),
-      ];
+    BoxShadow(
+      color: AppColors.darkShadow,
+      blurRadius: 18,
+      offset: const Offset(0, 6),
+    ),
+  ];
 }

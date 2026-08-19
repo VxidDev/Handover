@@ -39,7 +39,7 @@ class Settings:
         if not self.SECRET_KEY:
             _fail_startup(
                 "SECRET_KEY is not set. Generate one with:\n"
-                "  python -c \"import secrets; print(secrets.token_hex(32))\"\n"
+                '  python -c "import secrets; print(secrets.token_hex(32))"\n'
                 "Then set it in your .env or environment."
             )
 
@@ -47,25 +47,28 @@ class Settings:
             _fail_startup(
                 "CONTACT_ENCRYPTION_KEY is not set.\n"
                 "Generate one with:\n"
-                "  python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"\n"
+                '  python -c "from cryptography.fernet import Fernet; '
+                'print(Fernet.generate_key().decode())"\n'
                 "Then set it in your .env or environment.\n"
-                "This key is used to encrypt phone numbers — losing it makes stored data unrecoverable."
+                "This key is used to encrypt phone numbers — "
+                "losing it makes stored data unrecoverable."
             )
 
         self._validate_fernet_key()
 
     def _validate_fernet_key(self) -> None:
-        import base64
         try:
             from cryptography.fernet import Fernet
+
             Fernet(self.CONTACT_ENCRYPTION_KEY.encode())
-        except Exception:
+        except (ValueError, TypeError):
             _fail_startup(
                 f"CONTACT_ENCRYPTION_KEY is invalid.\n"
                 f"Current value: {self.CONTACT_ENCRYPTION_KEY!r}\n"
                 f"It must be a 44-character base64url string ending in '='.\n"
                 f"Generate a valid one with:\n"
-                f"  python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                f'  python -c "from cryptography.fernet import Fernet; '
+                f'print(Fernet.generate_key().decode())"'
             )
 
 

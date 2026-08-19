@@ -8,6 +8,7 @@ class UserProfile {
     required this.isAvailable,
     required this.karma,
     required this.skills,
+    required this.createdAt,
     this.grid,
     this.phone,
   });
@@ -20,6 +21,7 @@ class UserProfile {
   final String? grid;
   final String? phone;
   final List<Skill> skills;
+  final DateTime createdAt;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
     id: json['id'] as int,
@@ -29,6 +31,7 @@ class UserProfile {
     karma: json['karma'] as int? ?? 0,
     grid: json['grid'] as String?,
     phone: json['phone'] as String?,
+    createdAt: DateTime.parse(json['created_at'] as String),
     skills: (json['skills'] as List<dynamic>? ?? [])
         .map((e) => Skill.fromJson(e as Map<String, dynamic>))
         .toList(),

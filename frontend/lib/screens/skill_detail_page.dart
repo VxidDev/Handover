@@ -138,7 +138,7 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                                   return Image.network(
                                     url,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
+                                    errorBuilder: (_, _, _) =>
                                         _imagePlaceholder(theme, isDark),
                                   );
                                 },

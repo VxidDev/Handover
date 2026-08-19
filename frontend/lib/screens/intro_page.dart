@@ -19,12 +19,21 @@ class IntroPage extends StatelessWidget {
       reverseTransitionDuration: const Duration(milliseconds: 350),
       opaque: false,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        final fade = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-        final slide = Tween<Offset>(
-          begin: const Offset(0, 0.06),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
-        return FadeTransition(opacity: fade, child: SlideTransition(position: slide, child: child));
+        final fade = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        );
+        final slide =
+            Tween<Offset>(
+              begin: const Offset(0, 0.06),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            );
+        return FadeTransition(
+          opacity: fade,
+          child: SlideTransition(position: slide, child: child),
+        );
       },
     );
   }
@@ -62,7 +71,9 @@ class IntroPage extends StatelessWidget {
                     'Neighbors helping neighbors,\nskill by skill.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.65,
+                      ),
                       height: 1.5,
                       letterSpacing: 0.1,
                       fontWeight: FontWeight.w400,
@@ -77,7 +88,8 @@ class IntroPage extends StatelessWidget {
                     child: const FeatureRow(
                       icon: Icons.lock_outline_rounded,
                       title: 'Privacy-first',
-                      subtitle: 'Find skills nearby without sharing your address.',
+                      subtitle:
+                          'Find skills nearby without sharing your address.',
                     ),
                   ),
                 ),
@@ -89,7 +101,8 @@ class IntroPage extends StatelessWidget {
                     child: const FeatureRow(
                       icon: Icons.volunteer_activism_outlined,
                       title: 'Mutual aid',
-                      subtitle: 'Offer what you know, get help when you need it.',
+                      subtitle:
+                          'Offer what you know, get help when you need it.',
                     ),
                   ),
                 ),
@@ -101,7 +114,8 @@ class IntroPage extends StatelessWidget {
                     child: const FeatureRow(
                       icon: Icons.favorite_outline_rounded,
                       title: 'Gratitude, not payment',
-                      subtitle: 'Optional tips to say thank you, never required.',
+                      subtitle:
+                          'Optional tips to say thank you, never required.',
                     ),
                   ),
                 ),
@@ -114,7 +128,9 @@ class IntroPage extends StatelessWidget {
                     isPrimary: true,
                     onPressed: () => Navigator.push(
                       context,
-                      _fadeSlideRoute(const LoginPage(initialMode: AuthMode.signUp)),
+                      _fadeSlideRoute(
+                        const LoginPage(initialMode: AuthMode.signUp),
+                      ),
                     ),
                   ),
                 ),
@@ -127,9 +143,9 @@ class IntroPage extends StatelessWidget {
                     isPrimary: false,
                     onPressed: () {
                       if (Api.hasToken) {
-                        Navigator.of(context).pushReplacement(
-                          _fadeSlideRoute(const HomeShell()),
-                        );
+                        Navigator.of(
+                          context,
+                        ).pushReplacement(_fadeSlideRoute(const HomeShell()));
                       } else {
                         Navigator.push(
                           context,
@@ -160,7 +176,9 @@ class IntroPage extends StatelessWidget {
         ? AppColors.darkBorder.withValues(alpha: 0.6)
         : AppColors.inkSoft.withValues(alpha: 0.12);
 
-    final secondaryTextColor = theme.colorScheme.onSurface.withValues(alpha: 0.7);
+    final secondaryTextColor = theme.colorScheme.onSurface.withValues(
+      alpha: 0.7,
+    );
 
     return Material(
       color: isPrimary ? AppColors.terracotta : Colors.transparent,
@@ -176,11 +194,15 @@ class IntroPage extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 18),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(100),
-            border: isPrimary ? null : Border.all(color: secondaryBorderColor, width: 1.5),
+            border: isPrimary
+                ? null
+                : Border.all(color: secondaryBorderColor, width: 1.5),
             boxShadow: isPrimary
                 ? [
                     BoxShadow(
-                      color: AppColors.terracotta.withValues(alpha: isDark ? 0.35 : 0.25),
+                      color: AppColors.terracotta.withValues(
+                        alpha: isDark ? 0.35 : 0.25,
+                      ),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -229,17 +251,22 @@ class _AnimatedGlassCardState extends State<_AnimatedGlassCard>
       vsync: this,
     );
 
-    _scale = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _scale = Tween<double>(
+      begin: 0.85,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.5, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+      ),
     );
 
-    _slide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     _controller.forward();
   }
@@ -290,7 +317,10 @@ class _AnimatedGlassCardState extends State<_AnimatedGlassCard>
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 16,
+                ),
                 child: widget.child,
               ),
             ),
@@ -313,7 +343,6 @@ class _LogoState extends State<_Logo> with SingleTickerProviderStateMixin {
   late final Animation<double> _scale;
   late final Animation<double> _opacity;
   late final Animation<double> _rotation;
-  late final Animation<double> _sparkScale;
 
   static const _blobRadius = BorderRadius.only(
     topLeft: Radius.circular(48),
@@ -332,13 +361,17 @@ class _LogoState extends State<_Logo> with SingleTickerProviderStateMixin {
 
     _scale = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.4, end: 1.08)
-            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        tween: Tween<double>(
+          begin: 0.4,
+          end: 1.08,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
         weight: 70,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.08, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeInOutCubic)),
+        tween: Tween<double>(
+          begin: 1.08,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
         weight: 30,
       ),
     ]).animate(_controller);
@@ -350,17 +383,10 @@ class _LogoState extends State<_Logo> with SingleTickerProviderStateMixin {
       ),
     );
 
-    _rotation = Tween<double>(begin: -0.35, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
-
-    // The gold spark pops in after the blob lands
-    _sparkScale = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.55, 0.95, curve: Curves.easeOutBack),
-      ),
-    );
+    _rotation = Tween<double>(
+      begin: -0.35,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
   }
@@ -373,8 +399,6 @@ class _LogoState extends State<_Logo> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
@@ -396,12 +420,17 @@ class _LogoState extends State<_Logo> with SingleTickerProviderStateMixin {
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [AppColors.terracotta, AppColors.terracottaDeep],
+                          colors: [
+                            AppColors.terracotta,
+                            AppColors.terracottaDeep,
+                          ],
                         ),
                         borderRadius: _blobRadius,
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.terracottaDeep.withValues(alpha: 0.35),
+                            color: AppColors.terracottaDeep.withValues(
+                              alpha: 0.35,
+                            ),
                             blurRadius: 32,
                             spreadRadius: -8,
                             offset: const Offset(0, 16),

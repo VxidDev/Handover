@@ -1,9 +1,8 @@
-import os
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-from fastapi.responses import JSONResponse
+from anyio import to_thread
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from ..deps import get_current_user
 from ..models import User
@@ -15,6 +14,11 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def _write_file(filepath: Path, content: bytes) -> None:
+    with open(filepath, "wb") as f:
+        f.write(content)
 
 
 @router.post("/images")
@@ -39,7 +43,6 @@ async def upload_image(
     filename = f"{uuid.uuid4().hex}{ext}"
     filepath = UPLOAD_DIR / filename
 
-    with open(filepath, "wb") as f:
-        f.write(content)
+    await to_thread.run_sync(_write_file, filepath, content)
 
     return {"path": f"/uploads/{filename}"}

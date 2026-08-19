@@ -16,7 +16,8 @@ class StaggeredEntrance extends StatefulWidget {
   State<StaggeredEntrance> createState() => _StaggeredEntranceState();
 }
 
-class _StaggeredEntranceState extends State<StaggeredEntrance> with SingleTickerProviderStateMixin {
+class _StaggeredEntranceState extends State<StaggeredEntrance>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
@@ -34,10 +35,7 @@ class _StaggeredEntranceState extends State<StaggeredEntrance> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    return _StaggeredScope(
-      controller: _controller,
-      child: widget.child,
-    );
+    return _StaggeredScope(controller: _controller, child: widget.child);
   }
 }
 
@@ -46,7 +44,9 @@ class _StaggeredScope extends InheritedWidget {
   const _StaggeredScope({required this.controller, required super.child});
 
   static AnimationController of(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<_StaggeredScope>()!.controller;
+    return context
+        .dependOnInheritedWidgetOfExactType<_StaggeredScope>()!
+        .controller;
   }
 
   @override
@@ -69,9 +69,9 @@ class StaggeredItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = _StaggeredScope.of(context);
-    
+
     // Mimics the exact interval logic from your IntroPage
-    final step = 0.10; 
+    final step = 0.10;
     final start = (index * step).clamp(0.0, 0.8);
     final end = (start + 0.45).clamp(0.0, 1.0);
 
@@ -79,17 +79,17 @@ class StaggeredItem extends StatelessWidget {
       parent: controller,
       curve: Interval(start, end, curve: Curves.easeOutExpo),
     );
-    
+
     final slide = Tween<Offset>(begin: begin, end: Offset.zero).animate(
-      CurvedAnimation(parent: controller, curve: Interval(start, end, curve: Curves.easeOutExpo)),
+      CurvedAnimation(
+        parent: controller,
+        curve: Interval(start, end, curve: Curves.easeOutExpo),
+      ),
     );
 
     return FadeTransition(
       opacity: fade,
-      child: SlideTransition(
-        position: slide,
-        child: child,
-      ),
+      child: SlideTransition(position: slide, child: child),
     );
   }
 }

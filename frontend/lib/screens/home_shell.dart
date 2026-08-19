@@ -23,8 +23,6 @@ class _HomeShellState extends State<HomeShell>
 
   late final AnimationController _controller;
 
-  late final Animation<double> _contentFade;
-  late final Animation<Offset> _contentSlide;
   late final Animation<Offset> _navSlide;
   late final Animation<double> _navFade;
   late final Animation<double> _pillScale;
@@ -40,18 +38,6 @@ class _HomeShellState extends State<HomeShell>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     );
-
-    _contentFade = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
-    );
-    _contentSlide =
-        Tween<Offset>(begin: const Offset(0, 0.03), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _controller,
-            curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
-          ),
-        );
 
     _navSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
         .animate(

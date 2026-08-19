@@ -6,8 +6,8 @@ class Skill {
   final String blurb;
 
   factory Skill.fromJson(Map<String, dynamic> json) => Skill(
-        id: json['id'] as int,
-        name: json['name'] as String,
-        blurb: json['blurb'] as String? ?? '',
-      );
+    id: json['id'] as int,
+    name: json['name'] as String,
+    blurb: json['blurb'] as String? ?? '',
+  );
 }

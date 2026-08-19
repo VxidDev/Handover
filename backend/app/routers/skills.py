@@ -1,5 +1,5 @@
 import math
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from ..cache import SKILLS_CATALOG_KEY, cache
 from ..database import get_db
 from ..deps import get_current_user_optional
-from ..models import Skill, User, SkillImage
+from ..models import Skill, User
 from ..schemas import SkillSearchOut
 
 router = APIRouter(prefix="/skills", tags=["skills"])
@@ -64,9 +64,9 @@ def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 @router.get("", response_model=list[SkillSearchOut])
 def search_skills(
     q: str = Query(default="", max_length=100),
-    radius_km: Optional[float] = Query(default=None, ge=0),
-    lat: Optional[float] = Query(default=None, ge=-90, le=90),
-    lng: Optional[float] = Query(default=None, ge=-180, le=180),
+    radius_km: float | None = Query(default=None, ge=0),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lng: float | None = Query(default=None, ge=-180, le=180),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):

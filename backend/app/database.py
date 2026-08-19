@@ -1,16 +1,17 @@
-from pathlib import Path
-
 from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-from .config import settings, DATA_DIR
+from .config import DATA_DIR, settings
 
 for _dir in (DATA_DIR,):
     _dir.mkdir(parents=True, exist_ok=True)
 
-connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+connect_args = (
+    {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+)
 
 engine = create_engine(settings.DATABASE_URL, connect_args=connect_args)
+
 
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -20,7 +21,9 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
 
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 class Base(DeclarativeBase):
     pass

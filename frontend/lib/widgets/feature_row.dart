@@ -38,11 +38,7 @@ class FeatureRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: iconBorder, width: 1),
           ),
-          child: Icon(
-            icon,
-            size: 22,
-            color: AppColors.terracotta,
-          ),
+          child: Icon(icon, size: 22, color: AppColors.terracotta),
         ),
         const SizedBox(width: 14),
         Expanded(

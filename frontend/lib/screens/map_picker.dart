@@ -87,13 +87,13 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
         ? Colors.black.withValues(alpha: 0.25)
         : AppColors.inkSoft.withValues(alpha: 0.06);
 
-    final lockIconColor = isDark ? AppColors.terracotta : AppColors.terracottaDeep;
+    final lockIconColor = isDark
+        ? AppColors.terracotta
+        : AppColors.terracottaDeep;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text('Choose your area'),
-      ),
+      appBar: AppBar(title: const Text('Choose your area')),
       body: Stack(
         children: [
           FlutterMap(
@@ -132,7 +132,9 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.terracotta.withValues(alpha: isDark ? 0.4 : 0.25),
+                              color: AppColors.terracotta.withValues(
+                                alpha: isDark ? 0.4 : 0.25,
+                              ),
                               blurRadius: 18,
                               offset: const Offset(0, 8),
                             ),
@@ -180,7 +182,9 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
                       "Tap the map. We'll turn this into a rough grid area instead of your exact location.",
                       style: TextStyle(
                         fontSize: 12.5,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
                         height: 1.35,
                       ),
                     ),
@@ -224,10 +228,7 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
                   ),
                   child: const Text(
                     'Use this area',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

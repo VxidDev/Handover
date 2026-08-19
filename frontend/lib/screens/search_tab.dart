@@ -103,12 +103,15 @@ class _SearchTabState extends State<SearchTab> {
     });
 
     try {
-      final res = await Api.get('/api/skills', query: {
-        'q': _query.text.trim(),
-        'radius_km': _radius.toStringAsFixed(1),
-        'lat': Api.demoLat.toString(),
-        'lng': Api.demoLng.toString(),
-      });
+      final res = await Api.get(
+        '/api/skills',
+        query: {
+          'q': _query.text.trim(),
+          'radius_km': _radius.toStringAsFixed(1),
+          'lat': Api.demoLat.toString(),
+          'lng': Api.demoLng.toString(),
+        },
+      );
 
       final items = (res as List)
           .map((e) => NeighborSkill.fromSearchResult(e as Map<String, dynamic>))
@@ -270,7 +273,9 @@ class _SearchTabState extends State<SearchTab> {
                         child: Icon(
                           Icons.close_rounded,
                           size: 16,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.35,
+                          ),
                         ),
                       ),
                 suffixIconConstraints: const BoxConstraints(
@@ -304,11 +309,7 @@ class _SearchTabState extends State<SearchTab> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 19,
-                    color: filterIconColor,
-                  ),
+                  Icon(Icons.tune_rounded, size: 19, color: filterIconColor),
                   if (_hasActiveFilters)
                     Positioned(
                       top: 8,
@@ -461,7 +462,10 @@ class _SearchTabState extends State<SearchTab> {
                   icon: const Icon(Icons.refresh_rounded, size: 17),
                   label: const Text('Try again'),
                   style: FilledButton.styleFrom(
-                    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -511,10 +515,7 @@ class _SearchTabState extends State<SearchTab> {
           begin: const Offset(0, 0.06),
           child: Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: SkillCard(
-              neighbor: n,
-              onRequest: () => _requestHelp(n),
-            ),
+            child: SkillCard(neighbor: n, onRequest: () => _requestHelp(n)),
           ),
         );
       }),
@@ -523,10 +524,7 @@ class _SearchTabState extends State<SearchTab> {
 }
 
 class _EmptyResults extends StatelessWidget {
-  const _EmptyResults({
-    required this.hasQuery,
-    required this.onClear,
-  });
+  const _EmptyResults({required this.hasQuery, required this.onClear});
 
   final bool hasQuery;
   final VoidCallback onClear;
@@ -589,7 +587,10 @@ class _EmptyResults extends StatelessWidget {
               icon: const Icon(Icons.clear_rounded, size: 16),
               label: const Text('Clear search'),
               style: TextButton.styleFrom(
-                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -646,7 +647,9 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.15,
+                      ),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -670,7 +673,9 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.55,
+                          ),
                         ),
                       ),
                     ),
@@ -708,7 +713,9 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                       '$_radiusLabel km',
                       style: TextStyle(
                         fontSize: 13,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.65,
+                        ),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -735,7 +742,10 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                     ),
                     child: const Text(
                       'Apply',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -765,7 +775,6 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
   String? _error;
 
   late final AnimationController _highFiveController;
-  late final Animation<double> _successScale;
   late final Animation<double> _successFade;
 
   @override
@@ -774,13 +783,6 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
     _highFiveController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
-    );
-
-    _successScale = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _highFiveController,
-        curve: const Interval(0.0, 0.3, curve: Curves.easeOutBack),
-      ),
     );
 
     _successFade = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -816,10 +818,10 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
     }
 
     try {
-      await Api.post('/api/requests', body: {
-        'skill_id': skillId,
-        'message': _message.text.trim(),
-      });
+      await Api.post(
+        '/api/requests',
+        body: {'skill_id': skillId, 'message': _message.text.trim()},
+      );
 
       if (!mounted) return;
 
@@ -928,8 +930,10 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final firstName = widget.neighbor.name.split(' ').first;
-    final avatarColor =
-        AppColors.avatarFor(widget.neighbor.name, isDark: isDark);
+    final avatarColor = AppColors.avatarFor(
+      widget.neighbor.name,
+      isDark: isDark,
+    );
 
     final avatarBorder = isDark
         ? AppColors.darkBorder.withValues(alpha: 0.5)
@@ -1037,8 +1041,11 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
             padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
             child: Row(
               children: [
-                const Icon(Icons.error_outline_rounded,
-                    size: 15, color: AppColors.error),
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 15,
+                  color: AppColors.error,
+                ),
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
@@ -1072,8 +1079,9 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                         style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
-                          color:
-                              theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.65,
+                          ),
                         ),
                       ),
                     ),
@@ -1095,8 +1103,9 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                       borderRadius: BorderRadius.circular(100),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.terracotta
-                              .withValues(alpha: isDark ? 0.3 : 0.2),
+                          color: AppColors.terracotta.withValues(
+                            alpha: isDark ? 0.3 : 0.2,
+                          ),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
                         ),
@@ -1115,8 +1124,11 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                           : const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.send_rounded,
-                                    size: 15, color: Colors.white),
+                                Icon(
+                                  Icons.send_rounded,
+                                  size: 15,
+                                  color: Colors.white,
+                                ),
                                 SizedBox(width: 7),
                                 Text(
                                   'Send request',
@@ -1228,8 +1240,9 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppColors.terracotta
-                          .withValues(alpha: rippleOpacity * 0.6),
+                      color: AppColors.terracotta.withValues(
+                        alpha: rippleOpacity * 0.6,
+                      ),
                       width: 4,
                     ),
                   ),
@@ -1242,14 +1255,16 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                   p.dy * particleProgress * 80 - (particleProgress * 25),
                 ),
                 child: Transform.scale(
-                  scale: (1 + particleProgress * 0.5) *
+                  scale:
+                      (1 + particleProgress * 0.5) *
                       (1 - particleProgress * 0.8),
                   child: Container(
                     width: p.size,
                     height: p.size,
                     decoration: BoxDecoration(
-                      color: p.color
-                          .withValues(alpha: (1 - particleProgress).clamp(0.0, 1.0)),
+                      color: p.color.withValues(
+                        alpha: (1 - particleProgress).clamp(0.0, 1.0),
+                      ),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -1269,8 +1284,9 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                       size: 64,
                       shadows: [
                         Shadow(
-                          color: Colors.black
-                              .withValues(alpha: isDark ? 0.25 : 0.15),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.25 : 0.15,
+                          ),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -1292,8 +1308,9 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
                     size: 64,
                     shadows: [
                       Shadow(
-                        color: Colors.black
-                            .withValues(alpha: isDark ? 0.25 : 0.15),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.25 : 0.15,
+                        ),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -1314,14 +1331,16 @@ class _HighFiveAnimationState extends State<_HighFiveAnimation> {
     for (int i = 0; i < 16; i++) {
       final angle = (i / 16) * math.pi * 2;
       final speed = 0.6 + random.nextDouble() * 0.4;
-      particles.add(_Particle(
-        dx: math.cos(angle) * speed,
-        dy: math.sin(angle) * speed,
-        size: 5 + random.nextDouble() * 6,
-        color: i % 2 == 0
-            ? AppColors.terracotta
-            : (isDark ? AppColors.gold : AppColors.goldTint),
-      ));
+      particles.add(
+        _Particle(
+          dx: math.cos(angle) * speed,
+          dy: math.sin(angle) * speed,
+          size: 5 + random.nextDouble() * 6,
+          color: i % 2 == 0
+              ? AppColors.terracotta
+              : (isDark ? AppColors.gold : AppColors.goldTint),
+        ),
+      );
     }
     return particles;
   }

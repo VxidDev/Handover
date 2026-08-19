@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import get_current_user
-from ..models import PrivateContact, Skill, User, SkillImage
+from ..models import PrivateContact, Skill, SkillImage, User
 from ..schemas import SkillCreateIn, SkillOut, UserMeOut, UserUpdateIn
 from ..security import decrypt_contact, encrypt_contact
 from .skills import invalidate_catalog
@@ -24,14 +24,20 @@ def me(user: User = Depends(get_current_user)):
 
 
 @router.patch("/me", response_model=UserMeOut)
-def update_me(payload: UserUpdateIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def update_me(
+    payload: UserUpdateIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     changes = payload.model_dump(exclude_unset=True)
     if "phone" in changes:
         phone = changes.pop("phone")
         phone = phone.strip() if phone is not None else ""
         if phone:
             if user.private_contact is None:
-                user.private_contact = PrivateContact(encrypted_phone=encrypt_contact(phone))
+                user.private_contact = PrivateContact(
+                    encrypted_phone=encrypt_contact(phone)
+                )
             else:
                 user.private_contact.encrypted_phone = encrypt_contact(phone)
         elif user.private_contact is not None:
@@ -51,7 +57,9 @@ def add_skill(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    skill = Skill(user_id=user.id, name=payload.name.strip(), blurb=payload.blurb.strip())
+    skill = Skill(
+        user_id=user.id, name=payload.name.strip(), blurb=payload.blurb.strip()
+    )
     db.add(skill)
     db.flush()  # Get skill.id
 
@@ -65,10 +73,14 @@ def add_skill(
 
 
 @router.delete("/me/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_skill(skill_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def delete_skill(
+    skill_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
     skill = db.get(Skill, skill_id)
     if skill is None or skill.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found"
+        )
     db.delete(skill)
     db.commit()
     invalidate_catalog()

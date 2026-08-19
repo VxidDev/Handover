@@ -50,7 +50,9 @@ def _user_from_credentials(
         ) from None
     user = db.get(User, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User no longer exists")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User no longer exists"
+        )
     return user
 
 

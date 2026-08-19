@@ -37,7 +37,8 @@ class _RadiusChipSelectorState extends State<RadiusChipSelector> {
   void didUpdateWidget(covariant RadiusChipSelector oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.value != widget.value || oldWidget.options != widget.options) {
+    if (oldWidget.value != widget.value ||
+        oldWidget.options != widget.options) {
       _syncKeys();
       _updateIndicator();
     }
@@ -90,10 +91,7 @@ class _RadiusChipSelectorState extends State<RadiusChipSelector> {
 
       if (chipBox == null || stackBox == null) return;
 
-      final chipOffset = chipBox.localToGlobal(
-        Offset.zero,
-        ancestor: stackBox,
-      );
+      final chipOffset = chipBox.localToGlobal(Offset.zero, ancestor: stackBox);
 
       final newLeft = chipOffset.dx;
       final newWidth = chipBox.size.width;

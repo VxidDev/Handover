@@ -15,14 +15,16 @@ class AvailabilityBadge extends StatelessWidget {
         : (isDark ? AppColors.darkInkFaint : AppColors.inkFaint);
 
     final bgColor = available
-        ? (isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight)
+        ? (isDark
+              ? AppColors.sage.withValues(alpha: 0.18)
+              : AppColors.sageLight)
         : (isDark ? AppColors.darkSand : AppColors.sand);
 
     final textColor = available
         ? (isDark ? AppColors.sage : AppColors.terracottaDeep)
         : (isDark ? AppColors.darkInkFaint : AppColors.inkFaint);
 
-    // In dark mode, we use lower alphas for the background and border 
+    // In dark mode, we use lower alphas for the background and border
     // so the badge feels like a subtle tint rather than a solid shape.
     final bgAlpha = isDark ? 0.25 : 0.6;
     final borderAlpha = isDark ? 0.4 : 0.8;

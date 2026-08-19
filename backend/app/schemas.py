@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
@@ -8,8 +7,8 @@ class SignupIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6, max_length=128)
     name: str = Field(min_length=1, max_length=100)
-    lat: Optional[float] = None
-    lng: Optional[float] = None
+    lat: float | None = None
+    lng: float | None = None
 
 
 class LoginIn(BaseModel):
@@ -42,13 +41,13 @@ class UserOut(BaseModel):
     name: str
     is_available: bool
     karma: int
-    grid: Optional[str] = None
+    grid: str | None = None
     created_at: datetime
 
 
 class UserMeOut(UserOut):
     skills: list[SkillOut] = []
-    phone: Optional[str] = None
+    phone: str | None = None
 
 
 class AuthOut(BaseModel):
@@ -57,12 +56,12 @@ class AuthOut(BaseModel):
 
 
 class UserUpdateIn(BaseModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    is_available: Optional[bool] = None
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    grid: Optional[str] = Field(default=None, max_length=20)
-    phone: Optional[str] = Field(default=None, max_length=50)
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    is_available: bool | None = None
+    lat: float | None = None
+    lng: float | None = None
+    grid: str | None = Field(default=None, max_length=20)
+    phone: str | None = Field(default=None, max_length=50)
 
 
 class SkillCreateIn(BaseModel):
@@ -77,8 +76,8 @@ class SkillSearchOut(BaseModel):
     blurb: str
     owner_id: int
     owner_name: str
-    grid: Optional[str] = None
-    distance_km: Optional[float] = None
+    grid: str | None = None
+    distance_km: float | None = None
     available: bool
     karma: int
     images: list[str] = []
@@ -86,7 +85,7 @@ class SkillSearchOut(BaseModel):
 
 class RequestCreateIn(BaseModel):
     skill_id: int
-    message: Optional[str] = Field(default=None, max_length=500)
+    message: str | None = Field(default=None, max_length=500)
 
 
 class RequestOut(BaseModel):
@@ -94,7 +93,7 @@ class RequestOut(BaseModel):
 
     id: int
     status: str
-    message: Optional[str] = None
+    message: str | None = None
     created_at: datetime
     updated_at: datetime
     requester_id: int
@@ -106,7 +105,7 @@ class RequestOut(BaseModel):
 
 class RequestUpdateIn(BaseModel):
     status: str = Field(pattern="^(accepted|declined)$")
-    share_phone: Optional[bool] = None
+    share_phone: bool | None = None
 
     @model_validator(mode="after")
     def require_acceptance_choice(self):

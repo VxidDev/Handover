@@ -2,7 +2,8 @@
 
 import threading
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 _MISS = object()
 
@@ -29,7 +30,9 @@ class TTLCache:
         with self._lock:
             self._data[key] = (time.monotonic() + ttl, value)
 
-    def get_or_set(self, key: str, producer: Callable[[], Any], ttl: float | None = None) -> Any:
+    def get_or_set(
+        self, key: str, producer: Callable[[], Any], ttl: float | None = None
+    ) -> Any:
         cached = self.get(key, _MISS)
         if cached is not _MISS:
             return cached

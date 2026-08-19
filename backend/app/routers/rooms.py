@@ -1,9 +1,17 @@
 import asyncio
 import json
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -19,11 +27,17 @@ router = APIRouter(prefix="/requests", tags=["request rooms"])
 
 def _accepted_participant(request: Request | None, user: User) -> Request:
     if request is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Request not found"
+        )
     if user.id not in (request.requester_id, request.provider_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a request participant")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not a request participant"
+        )
     if request.status != "accepted":
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Request is not accepted")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Request is not accepted"
+        )
     return request
 
 
@@ -45,7 +59,7 @@ def create_room_token(
     user: User = Depends(get_current_user),
 ):
     request = _accepted_participant(db.get(Request, request_id), user)
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=settings.ROOM_TOKEN_TTL_SECONDS)
+    expires_at = datetime.now(UTC) + timedelta(seconds=settings.ROOM_TOKEN_TTL_SECONDS)
     token = create_token(
         {
             "sub": str(user.id),
@@ -123,7 +137,7 @@ class ConnectionManager:
         for websocket in sockets:
             try:
                 await websocket.send_json(event)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 stale.append(websocket)
         for websocket in stale:
             await self.disconnect(request_id, websocket)
@@ -155,7 +169,9 @@ async def request_chat(
                 .order_by(ChatMessage.created_at, ChatMessage.id)
                 .all()
             )
-            history = [_message_out(message).model_dump(mode="json") for message in messages]
+            history = [
+                _message_out(message).model_dump(mode="json") for message in messages
+            ]
         await websocket.send_json({"type": "history", "messages": history})
 
         while True:
@@ -165,26 +181,40 @@ async def request_chat(
                 await websocket.send_json({"type": "error", "detail": "Invalid JSON"})
                 continue
             body = payload.get("body") if isinstance(payload, dict) else None
-            if not isinstance(payload, dict) or payload.get("type") != "message" or not isinstance(body, str):
-                await websocket.send_json({"type": "error", "detail": "Expected a message event"})
+            if (
+                not isinstance(payload, dict)
+                or payload.get("type") != "message"
+                or not isinstance(body, str)
+            ):
+                await websocket.send_json(
+                    {"type": "error", "detail": "Expected a message event"}
+                )
                 continue
             body = body.strip()
             if not body or len(body) > 2000:
-                await websocket.send_json({"type": "error", "detail": "Message must be 1 to 2000 characters"})
+                await websocket.send_json(
+                    {"type": "error", "detail": "Message must be 1 to 2000 characters"}
+                )
                 continue
 
             with SessionLocal() as db:
                 try:
                     user, _ = authenticate_room_token(token, request_id, db)
                 except ValueError:
-                    await websocket.close(code=1008, reason="Room access is no longer valid")
+                    await websocket.close(
+                        code=1008, reason="Room access is no longer valid"
+                    )
                     return
-                message = ChatMessage(request_id=request_id, sender_id=user_id, body=body)
+                message = ChatMessage(
+                    request_id=request_id, sender_id=user_id, body=body
+                )
                 db.add(message)
                 db.commit()
                 db.refresh(message)
                 event_message = _message_out(message).model_dump(mode="json")
-            await manager.broadcast(request_id, {"type": "message", "message": event_message})
+            await manager.broadcast(
+                request_id, {"type": "message", "message": event_message}
+            )
     except WebSocketDisconnect:
         pass
     finally:

@@ -4,9 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .config import settings, UPLOAD_DIR
+from .config import UPLOAD_DIR, settings
 from .database import Base, engine, run_startup_migrations
-from .routers import auth, requests, rooms, skills, users, uploads
+from .routers import auth, requests, rooms, skills, uploads, users
 from .seed import run as run_seed
 
 

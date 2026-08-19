@@ -17,7 +17,9 @@ def _to_me_out(user: User) -> UserMeOut:
 @router.post("/signup", response_model=AuthOut, status_code=status.HTTP_201_CREATED)
 def signup(payload: SignupIn, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email.lower()).first():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Email already registered"
+        )
     user = User(
         email=payload.email.lower(),
         password_hash=hash_password(payload.password),
@@ -35,5 +37,7 @@ def signup(payload: SignupIn, db: Session = Depends(get_db)):
 def login(payload: LoginIn, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     if user is None or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
+        )
     return AuthOut(token=create_token({"sub": str(user.id)}), user=_to_me_out(user))

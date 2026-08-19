@@ -35,11 +35,19 @@ def create_request(
 ):
     skill = db.get(Skill, payload.skill_id)
     if skill is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found"
+        )
     if skill.user_id == requester.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot request your own skill")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot request your own skill",
+        )
     if not skill.owner.is_available:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Neighbor is currently unavailable")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Neighbor is currently unavailable",
+        )
 
     request = Request(
         requester_id=requester.id,
@@ -78,7 +86,7 @@ def list_requests(
 
     if active_only:
         query = query.filter(Request.status != "cancelled")
-    
+
     requests = query.order_by(Request.created_at.desc()).limit(amount).all()
     valid_requests = [r for r in requests if r.skill is not None]
 
@@ -93,11 +101,18 @@ def cancel_request(
 ):
     req = db.get(Request, request_id)
     if req is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Request not found"
+        )
     if req.requester_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the requester can cancel this request")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the requester can cancel this request",
+        )
     if req.status != "pending":
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Request already answered")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Request already answered"
+        )
     req.status = "cancelled"
     db.commit()
     db.refresh(req)
@@ -113,11 +128,18 @@ def update_request(
 ):
     req = db.get(Request, request_id)
     if req is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Request not found"
+        )
     if req.provider_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the skill owner can respond")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the skill owner can respond",
+        )
     if req.status != "pending":
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Request already answered")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Request already answered"
+        )
     req.status = payload.status
     req.provider_share_phone = (
         payload.share_phone if payload.status == "accepted" else False

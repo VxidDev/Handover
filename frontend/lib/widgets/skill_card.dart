@@ -43,7 +43,7 @@ class SkillCard extends StatelessWidget {
           PageRouteBuilder(
             transitionDuration: const Duration(milliseconds: 340),
             reverseTransitionDuration: const Duration(milliseconds: 280),
-            pageBuilder: (_, animation, __) => SlideTransition(
+            pageBuilder: (_, animation, _) => SlideTransition(
               position:
                   Tween<Offset>(
                     begin: const Offset(0, 0.04),
@@ -204,7 +204,7 @@ class SkillCard extends StatelessWidget {
           child: Image.network(
             url, // Use the full URL instead of just the path
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => Container(
               color: isDark
                   ? AppColors.darkSand.withValues(alpha: 0.4)
                   : AppColors.sand.withValues(alpha: 0.4),

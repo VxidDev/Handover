@@ -49,22 +49,33 @@ class _LoginPageState extends State<LoginPage> {
     final email = _email.text.trim();
     final password = _password.text;
     final name = _name.text.trim();
-    if (email.isEmpty || password.isEmpty || (_mode == AuthMode.signUp && name.isEmpty)) {
-      _snack(_mode == AuthMode.signUp
-          ? 'Name, email and password required'
-          : 'Email and password required');
+    if (email.isEmpty ||
+        password.isEmpty ||
+        (_mode == AuthMode.signUp && name.isEmpty)) {
+      _snack(
+        _mode == AuthMode.signUp
+            ? 'Name, email and password required'
+            : 'Email and password required',
+      );
       return;
     }
     setState(() => _loading = true);
     try {
       final body = _mode == AuthMode.signUp
-          ? {'email': email, 'password': password, 'name': name, 'lat': Api.demoLat, 'lng': Api.demoLng}
+          ? {
+              'email': email,
+              'password': password,
+              'name': name,
+              'lat': Api.demoLat,
+              'lng': Api.demoLng,
+            }
           : {'email': email, 'password': password};
       final res = await Api.post(
         _mode == AuthMode.signUp ? '/api/auth/signup' : '/api/auth/login',
         body: body,
       );
-      final user = (res as Map<String, dynamic>)['user'] as Map<String, dynamic>;
+      final user =
+          (res as Map<String, dynamic>)['user'] as Map<String, dynamic>;
       await Api.storeSession(res['token'] as String, user['id'] as int);
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -93,10 +104,10 @@ class _LoginPageState extends State<LoginPage> {
       switchOutCurve: Curves.easeInCubic,
       transitionBuilder: (child, animation) {
         return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.2),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+          position: Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+              .animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
           child: FadeTransition(opacity: animation, child: child),
         );
       },
@@ -126,10 +137,15 @@ class _LoginPageState extends State<LoginPage> {
                 index: 0,
                 child: IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.arrow_back_rounded, color: theme.colorScheme.onSurface),
+                  icon: Icon(
+                    Icons.arrow_back_rounded,
+                    color: theme.colorScheme.onSurface,
+                  ),
                   style: IconButton.styleFrom(
                     backgroundColor: backButtonBg,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -159,7 +175,9 @@ class _LoginPageState extends State<LoginPage> {
                         : 'Sign in to see who nearby can lend a hand.',
                     key: ValueKey('subtitle-$_mode'),
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.65,
+                      ),
                       fontSize: 14.5,
                       height: 1.4,
                     ),
@@ -234,10 +252,16 @@ class _LoginPageState extends State<LoginPage> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
                           )
                         : _crossFade(
-                            Text(isSignup ? 'Create account' : 'Sign in', key: ValueKey('btn-$_mode')),
+                            Text(
+                              isSignup ? 'Create account' : 'Sign in',
+                              key: ValueKey('btn-$_mode'),
+                            ),
                           ),
                   ),
                 ),
@@ -249,10 +273,14 @@ class _LoginPageState extends State<LoginPage> {
                   onPressed: _loading ? null : _toggleMode,
                   child: _crossFade(
                     Text(
-                      isSignup ? 'I already have an account, sign in' : 'New here? Create an account',
+                      isSignup
+                          ? 'I already have an account, sign in'
+                          : 'New here? Create an account',
                       key: ValueKey('toggle-$_mode'),
                       style: TextStyle(
-                        color: isDark ? AppColors.terracotta : AppColors.terracottaDeep,
+                        color: isDark
+                            ? AppColors.terracotta
+                            : AppColors.terracottaDeep,
                       ),
                     ),
                   ),
@@ -337,15 +365,12 @@ class _AnimatedNameFieldState extends State<_AnimatedNameField>
   Widget build(BuildContext context) {
     return SizeTransition(
       sizeFactor: _size,
-      axisAlignment: -1.0,
+      alignment: const Alignment(-1.0, -1.0),
       child: IgnorePointer(
         ignoring: !widget.show,
         child: ExcludeSemantics(
           excluding: !widget.show,
-          child: FadeTransition(
-            opacity: _fade,
-            child: widget.child,
-          ),
+          child: FadeTransition(opacity: _fade, child: widget.child),
         ),
       ),
     );
@@ -412,7 +437,7 @@ class _GlassFieldState extends State<_GlassField> {
         keyboardType: widget.keyboardType,
         textCapitalization: widget.textCapitalization,
         style: TextStyle(
-          fontSize: 14.5, 
+          fontSize: 14.5,
           color: theme.colorScheme.onSurface,
           height: 1.2,
         ),
@@ -422,10 +447,16 @@ class _GlassFieldState extends State<_GlassField> {
             color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
             fontSize: 14.5,
           ),
-          
-          prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          suffixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          
+
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 48,
+            minHeight: 48,
+          ),
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 48,
+            minHeight: 48,
+          ),
+
           prefixIcon: Icon(
             widget.icon,
             color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
@@ -435,7 +466,9 @@ class _GlassFieldState extends State<_GlassField> {
           suffixIcon: widget.isPassword
               ? IconButton(
                   icon: Icon(
-                    _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    _obscureText
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     size: 20,
                   ),
@@ -446,9 +479,12 @@ class _GlassFieldState extends State<_GlassField> {
                   },
                 )
               : null,
-              
+
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
           border: InputBorder.none,
         ),
       ),

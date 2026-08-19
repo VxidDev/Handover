@@ -19,8 +19,16 @@ def room_data(tmp_path, monkeypatch):
     Base.metadata.create_all(engine)
     TestingSession = sessionmaker(bind=engine)
     with TestingSession() as db:
-        requester = User(email="requester@example.com", password_hash=hash_password("password"), name="Requester")
-        provider = User(email="provider@example.com", password_hash=hash_password("password"), name="Provider")
+        requester = User(
+            email="requester@example.com",
+            password_hash=hash_password("password"),
+            name="Requester",
+        )
+        provider = User(
+            email="provider@example.com",
+            password_hash=hash_password("password"),
+            name="Provider",
+        )
         db.add_all([requester, provider])
         db.flush()
         skill = Skill(user_id=provider.id, name="Repair", blurb="")

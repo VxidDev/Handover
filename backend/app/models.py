@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -7,7 +7,7 @@ from .database import Base
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class User(Base):
@@ -22,7 +22,9 @@ class User(Base):
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lng: Mapped[float | None] = mapped_column(Float, nullable=True)
     grid: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     skills: Mapped[list["Skill"]] = relationship(
         back_populates="owner",
@@ -65,7 +67,9 @@ class Skill(Base):
     )
     name: Mapped[str] = mapped_column(String(100))
     blurb: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     owner: Mapped["User"] = relationship(back_populates="skills")
 
@@ -80,6 +84,7 @@ class Skill(Base):
         order_by="SkillImage.order",
     )
 
+
 class SkillImage(Base):
     __tablename__ = "skill_images"
 
@@ -89,7 +94,9 @@ class SkillImage(Base):
     )
     path: Mapped[str] = mapped_column(String(500))
     order: Mapped[int] = mapped_column(default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     skill: Mapped["Skill"] = relationship(back_populates="images")
 
@@ -112,7 +119,9 @@ class Request(Base):
     provider_share_phone: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=false()
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -149,7 +158,9 @@ class DisclosureLog(Base):
     )
     field: Mapped[str] = mapped_column(String(50))
     reason: Mapped[str] = mapped_column(String(100))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     request: Mapped["Request"] = relationship(back_populates="disclosures")
 
@@ -165,7 +176,9 @@ class ChatMessage(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     body: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     request: Mapped["Request"] = relationship(back_populates="messages")
     sender: Mapped["User"] = relationship()

@@ -13,17 +13,14 @@ class GeoBounds {
   final double minLng;
   final double maxLng;
 
-  LatLng get center => LatLng(
-        (minLat + maxLat) / 2,
-        (minLng + maxLng) / 2,
-      );
+  LatLng get center => LatLng((minLat + maxLat) / 2, (minLng + maxLng) / 2);
 
   List<LatLng> toPolygonPoints() => [
-        LatLng(minLat, minLng),
-        LatLng(maxLat, minLng),
-        LatLng(maxLat, maxLng),
-        LatLng(minLat, maxLng),
-      ];
+    LatLng(minLat, minLng),
+    LatLng(maxLat, minLng),
+    LatLng(maxLat, maxLng),
+    LatLng(minLat, maxLng),
+  ];
 }
 
 class Geohash {

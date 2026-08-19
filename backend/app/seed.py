@@ -20,7 +20,9 @@ DEMO_USERS = [
         "skills": [
             {
                 "name": "Plumbing",
-                "blurb": "Happy to help with leaky faucets, clogged drains, toilet fixes.",
+                "blurb": (
+                    "Happy to help with leaky faucets, clogged drains, toilet fixes."
+                ),
             }
         ],
     },
@@ -33,7 +35,9 @@ DEMO_USERS = [
         "skills": [
             {
                 "name": "Spanish Tutoring",
-                "blurb": "Native speaker — translation or lessons for community events.",
+                "blurb": (
+                    "Native speaker — translation or lessons for community events."
+                ),
             }
         ],
     },
@@ -74,9 +78,7 @@ def run() -> None:
         for data in DEMO_USERS:
             skills = data.pop("skills")
             user = User(password_hash=hash_password(DEMO_PASSWORD), **data)
-            user.skills = [
-                Skill(name=s["name"], blurb=s["blurb"]) for s in skills
-            ]
+            user.skills = [Skill(name=s["name"], blurb=s["blurb"]) for s in skills]
             db.add(user)
         db.commit()
 
