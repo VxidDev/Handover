@@ -8,6 +8,7 @@ import '../models/chat_message.dart';
 import '../models/help_request.dart';
 import '../services/api.dart';
 import '../theme/colors.dart';
+import '../widgets/report_dialog.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({
@@ -284,6 +285,14 @@ class _ChatPageState extends State<ChatPage> {
       itemBuilder: (context, index) => _MessageBubble(
         message: messages[index],
         mine: messages[index].senderId == Api.currentUserId,
+        onReport: messages[index].senderId == Api.currentUserId
+            ? null
+            : () => showReportDialog(
+                context,
+                contentType: 'chat_message',
+                contentId: messages[index].id,
+                title: 'Chat message',
+              ),
       ),
     );
   }
@@ -366,10 +375,15 @@ class _ContactBanner extends StatelessWidget {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message, required this.mine});
+  const _MessageBubble({
+    required this.message,
+    required this.mine,
+    this.onReport,
+  });
 
   final ChatMessage message;
   final bool mine;
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -426,14 +440,36 @@ class _MessageBubble extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 3),
-            Text(
-              time,
-              style: TextStyle(
-                fontSize: 10,
-                color: mine
-                    ? Colors.white.withValues(alpha: 0.68)
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.42),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  time,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: mine
+                        ? Colors.white.withValues(alpha: 0.68)
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.42),
+                  ),
+                ),
+                if (!mine && onReport != null) ...[
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: onReport,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.flag_outlined,
+                        size: 12,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.35,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),

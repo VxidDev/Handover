@@ -7,6 +7,7 @@ import '../services/api.dart';
 import '../theme/colors.dart';
 import '../widgets/availability_badge.dart';
 import '../widgets/image_viewer.dart';
+import '../widgets/report_dialog.dart';
 
 class SkillDetailPage extends StatefulWidget {
   const SkillDetailPage({super.key, required this.neighbor, this.onRequest});
@@ -116,6 +117,50 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                     ),
                   ),
                 ),
+                actions: [
+                  if (neighbor.skillId != null)
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: GestureDetector(
+                        onTap: () => showReportDialog(
+                          context,
+                          contentType: 'skill',
+                          contentId: neighbor.skillId!,
+                          title: neighbor.skill,
+                        ),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? AppColors.darkPaper.withValues(alpha: 0.85)
+                                : Colors.white.withValues(alpha: 0.85),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark
+                                  ? AppColors.darkBorder.withValues(alpha: 0.6)
+                                  : Colors.white.withValues(alpha: 0.9),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.flag_outlined,
+                            size: 20,
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.7,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: hasImages
                       ? GestureDetector(

@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -53,7 +55,29 @@ def _user_from_credentials(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User no longer exists"
         )
+    check_ban(db, user)
     return user
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def check_ban(db: Session, user: User) -> None:
+    """Reject banned users, lifting the ban once it has expired."""
+    if user.banned_until is None:
+        return
+    if _as_utc(user.banned_until) > datetime.now(UTC):
+        until = user.banned_until.strftime("%Y-%m-%d %H:%M UTC")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Account temporarily banned until {until}",
+        )
+    user.banned_until = None
+    db.add(user)
+    db.commit()
 
 
 def authenticate_room_token(

@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import UPLOAD_DIR, settings
 from .database import Base, engine, run_startup_migrations
-from .routers import auth, requests, rooms, skills, uploads, users
+from .routers import auth, reports, requests, rooms, skills, uploads, users
 from .seed import run as run_seed
 
 
@@ -36,6 +36,7 @@ app.include_router(users.router, prefix=settings.API_PREFIX)
 app.include_router(skills.router, prefix=settings.API_PREFIX)
 app.include_router(requests.router, prefix=settings.API_PREFIX)
 app.include_router(rooms.router, prefix=settings.API_PREFIX)
+app.include_router(reports.router, prefix=settings.API_PREFIX)
 
 
 @app.get("/health", tags=["meta"])
