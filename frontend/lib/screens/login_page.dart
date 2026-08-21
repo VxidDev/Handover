@@ -5,6 +5,7 @@ import '../services/api.dart';
 import '../theme/colors.dart';
 import '../widgets/staggered_entrance.dart';
 import 'home_shell.dart';
+import 'legal_page.dart';
 
 enum AuthMode { signIn, signUp }
 
@@ -23,6 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   final _password = TextEditingController();
   final _name = TextEditingController();
   bool _loading = false;
+  bool _acceptedConsent = false;
 
   static const _crossFadeDuration = Duration(milliseconds: 280);
 
@@ -59,6 +61,10 @@ class _LoginPageState extends State<LoginPage> {
       );
       return;
     }
+    if (_mode == AuthMode.signUp && !_acceptedConsent) {
+      _snack('Please accept the Terms of Service and Privacy Policy to continue.');
+      return;
+    }
     setState(() => _loading = true);
     try {
       final body = _mode == AuthMode.signUp
@@ -68,6 +74,8 @@ class _LoginPageState extends State<LoginPage> {
               'name': name,
               'lat': Api.demoLat,
               'lng': Api.demoLng,
+              'accept_tos': true,
+              'accept_privacy': true,
             }
           : {'email': email, 'password': password};
       final res = await Api.post(
@@ -94,7 +102,15 @@ class _LoginPageState extends State<LoginPage> {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _mode = _mode == AuthMode.signIn ? AuthMode.signUp : AuthMode.signIn;
+      _acceptedConsent = false;
     });
+  }
+
+  void _openLegal(LegalDocument document) {
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => LegalPage(document: document)),
+    );
   }
 
   Widget _crossFade(Widget child) {
@@ -227,7 +243,15 @@ class _LoginPageState extends State<LoginPage> {
                   isPassword: true,
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 18),
+              _AnimatedConsentRow(
+                show: isSignup,
+                accepted: _acceptedConsent,
+                onChanged: (value) => setState(() => _acceptedConsent = value),
+                onOpenTerms: () => _openLegal(LegalDocument.terms),
+                onOpenPrivacy: () => _openLegal(LegalDocument.privacy),
+              ),
+              const SizedBox(height: 18),
               StaggeredItem(
                 index: 5,
                 child: SizedBox(
@@ -486,6 +510,191 @@ class _GlassFieldState extends State<_GlassField> {
             vertical: 16,
           ),
           border: InputBorder.none,
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedConsentRow extends StatefulWidget {
+  const _AnimatedConsentRow({
+    required this.show,
+    required this.accepted,
+    required this.onChanged,
+    required this.onOpenTerms,
+    required this.onOpenPrivacy,
+  });
+
+  final bool show;
+  final bool accepted;
+  final ValueChanged<bool> onChanged;
+  final VoidCallback onOpenTerms;
+  final VoidCallback onOpenPrivacy;
+
+  @override
+  State<_AnimatedConsentRow> createState() => _AnimatedConsentRowState();
+}
+
+class _AnimatedConsentRowState extends State<_AnimatedConsentRow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final CurvedAnimation _size;
+  late final CurvedAnimation _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 340),
+      value: widget.show ? 1.0 : 0.0,
+    );
+    _size = CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic);
+    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic);
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedConsentRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.show != oldWidget.show) {
+      if (widget.show) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _size.dispose();
+    _fade.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final consentColor = isDark ? AppColors.terracotta : AppColors.terracottaDeep;
+
+    return SizeTransition(
+      sizeFactor: _size,
+      alignment: const Alignment(-1.0, -1.0),
+      child: IgnorePointer(
+        ignoring: !widget.show,
+        child: ExcludeSemantics(
+          excluding: !widget.show,
+          child: FadeTransition(
+            opacity: _fade,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.darkSand.withValues(alpha: 0.5)
+                    : AppColors.sand.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      widget.onChanged(!widget.accepted);
+                    },
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      margin: const EdgeInsets.only(top: 1),
+                      decoration: BoxDecoration(
+                        color: widget.accepted
+                            ? AppColors.sage
+                            : (isDark
+                                  ? AppColors.darkSand
+                                  : Colors.white),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: widget.accepted
+                              ? AppColors.sage
+                              : theme.colorScheme.onSurface.withValues(alpha: 0.25),
+                          width: 1.4,
+                        ),
+                      ),
+                      child: widget.accepted
+                          ? const Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          height: 1.5,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.75,
+                          ),
+                        ),
+                        children: [
+                          const TextSpan(
+                            text: 'I\'m at least 16 and I agree to the ',
+                          ),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.baseline,
+                            baseline: TextBaseline.alphabetic,
+                            child: GestureDetector(
+                              onTap: widget.onOpenTerms,
+                              child: Text(
+                                'Terms of Service',
+                                style: TextStyle(
+                                  color: consentColor,
+                                  fontWeight: FontWeight.w700,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: consentColor.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const TextSpan(text: ' and '),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.baseline,
+                            baseline: TextBaseline.alphabetic,
+                            child: GestureDetector(
+                              onTap: widget.onOpenPrivacy,
+                              child: Text(
+                                'Privacy Policy',
+                                style: TextStyle(
+                                  color: consentColor,
+                                  fontWeight: FontWeight.w700,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: consentColor.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const TextSpan(
+                            text: '. Your data is never sold and stays in the EU.',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

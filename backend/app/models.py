@@ -25,6 +25,14 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
+    tos_accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    privacy_accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    tos_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    privacy_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     skills: Mapped[list["Skill"]] = relationship(
         back_populates="owner",

@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import User
+from ..legal import PRIVACY_VERSION, TOS_VERSION
+from ..models import User, utcnow
 from ..schemas import AuthOut, LoginIn, SignupIn, UserMeOut
 from ..security import create_token, hash_password, verify_password
 from .users import user_me_out
@@ -26,6 +27,10 @@ def signup(payload: SignupIn, db: Session = Depends(get_db)):
         name=payload.name.strip(),
         lat=payload.lat,
         lng=payload.lng,
+        tos_accepted_at=utcnow(),
+        privacy_accepted_at=utcnow(),
+        tos_version=TOS_VERSION,
+        privacy_version=PRIVACY_VERSION,
     )
     db.add(user)
     db.commit()

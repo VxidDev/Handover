@@ -9,6 +9,16 @@ class SignupIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     lat: float | None = None
     lng: float | None = None
+    accept_tos: bool = False
+    accept_privacy: bool = False
+
+    @model_validator(mode="after")
+    def require_consent(self):
+        if not self.accept_tos:
+            raise ValueError("You must accept the Terms of Service to continue")
+        if not self.accept_privacy:
+            raise ValueError("You must accept the Privacy Policy to continue")
+        return self
 
 
 class LoginIn(BaseModel):
@@ -48,6 +58,8 @@ class UserOut(BaseModel):
 class UserMeOut(UserOut):
     skills: list[SkillOut] = []
     phone: str | None = None
+    tos_accepted_at: datetime | None = None
+    privacy_accepted_at: datetime | None = None
 
 
 class AuthOut(BaseModel):

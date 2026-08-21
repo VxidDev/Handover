@@ -169,4 +169,18 @@ class Api {
 
   static Future<dynamic> delete(String path) =>
       _send(() => http.delete(_uri(path), headers: _headers));
+
+  static Future<Map<String, dynamic>> getLegal() async {
+    final res = await get('/api/legal');
+    return res as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> exportMyData() async {
+    final res = await get('/api/users/me/export');
+    return res as Map<String, dynamic>;
+  }
+
+  static Future<void> deleteAccount() async {
+    await delete('/api/users/me');
+  }
 }

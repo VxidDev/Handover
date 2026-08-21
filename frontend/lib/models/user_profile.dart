@@ -11,6 +11,8 @@ class UserProfile {
     required this.createdAt,
     this.grid,
     this.phone,
+    this.tosAcceptedAt,
+    this.privacyAcceptedAt,
   });
 
   final int id;
@@ -22,6 +24,8 @@ class UserProfile {
   final String? phone;
   final List<Skill> skills;
   final DateTime createdAt;
+  final DateTime? tosAcceptedAt;
+  final DateTime? privacyAcceptedAt;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
     id: json['id'] as int,
@@ -32,6 +36,12 @@ class UserProfile {
     grid: json['grid'] as String?,
     phone: json['phone'] as String?,
     createdAt: DateTime.parse(json['created_at'] as String),
+    tosAcceptedAt: json['tos_accepted_at'] != null
+        ? DateTime.tryParse(json['tos_accepted_at'] as String)
+        : null,
+    privacyAcceptedAt: json['privacy_accepted_at'] != null
+        ? DateTime.tryParse(json['privacy_accepted_at'] as String)
+        : null,
     skills: (json['skills'] as List<dynamic>? ?? [])
         .map((e) => Skill.fromJson(e as Map<String, dynamic>))
         .toList(),

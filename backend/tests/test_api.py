@@ -28,6 +28,8 @@ class TestAuth:
                 "name": "  New Person  ",
                 "lat": 37.5,
                 "lng": -122.4,
+                "accept_tos": True,
+                "accept_privacy": True,
             },
         )
         assert response.status_code == 201
@@ -41,6 +43,32 @@ class TestAuth:
         with api.session() as db:
             user = db.query(User).filter(User.email == "new@example.com").one()
             assert user.password_hash != "secret123"
+            assert user.tos_accepted_at is not None
+            assert user.privacy_accepted_at is not None
+            assert user.tos_version == "1.0.0"
+            assert user.privacy_version == "1.0.0"
+
+    def test_signup_rejects_missing_consent(self, api):
+        response = api.client.post(
+            "/api/auth/signup",
+            json={
+                "email": "noconsent@example.com",
+                "password": "secret123",
+                "name": "No Consent",
+                "accept_tos": True,
+            },
+        )
+        assert response.status_code == 422
+
+        response = api.client.post(
+            "/api/auth/signup",
+            json={
+                "email": "noconsent@example.com",
+                "password": "secret123",
+                "name": "No Consent",
+            },
+        )
+        assert response.status_code == 422
 
     def test_signup_rejects_duplicate_email(self, api):
         response = api.client.post(
@@ -49,6 +77,8 @@ class TestAuth:
                 "email": "provider@example.com",
                 "password": "secret123",
                 "name": "Duplicate",
+                "accept_tos": True,
+                "accept_privacy": True,
             },
         )
         assert response.status_code == 409
@@ -56,7 +86,13 @@ class TestAuth:
     def test_signup_rejects_short_password(self, api):
         response = api.client.post(
             "/api/auth/signup",
-            json={"email": "a@example.com", "password": "123", "name": "A"},
+            json={
+                "email": "a@example.com",
+                "password": "123",
+                "name": "A",
+                "accept_tos": True,
+                "accept_privacy": True,
+            },
         )
         assert response.status_code == 422
 

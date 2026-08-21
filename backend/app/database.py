@@ -43,6 +43,28 @@ def run_startup_migrations() -> None:
                 )
             )
 
+    if "users" in inspector.get_table_names():
+        user_columns = {
+            column["name"] for column in inspector.get_columns("users")
+        }
+        consent_columns = {
+            "tos_accepted_at": "DATETIME",
+            "privacy_accepted_at": "DATETIME",
+            "tos_version": "VARCHAR(20)",
+            "privacy_version": "VARCHAR(20)",
+        }
+        missing = {
+            name: ddl
+            for name, ddl in consent_columns.items()
+            if name not in user_columns
+        }
+        if missing:
+            with engine.begin() as connection:
+                for name, ddl in missing.items():
+                    connection.execute(
+                        text(f"ALTER TABLE users ADD COLUMN {name} {ddl}")
+                    )
+
 
 def get_db():
     db = SessionLocal()
