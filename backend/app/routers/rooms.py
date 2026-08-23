@@ -34,7 +34,7 @@ def _accepted_participant(request: Request | None, user: User) -> Request:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not a request participant"
         )
-    if request.status != "accepted":
+    if request.status not in ("accepted", "completed"):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Request is not accepted"
         )

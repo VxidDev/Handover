@@ -116,7 +116,7 @@ class RequestOut(BaseModel):
 
 
 class RequestUpdateIn(BaseModel):
-    status: str = Field(pattern="^(accepted|declined)$")
+    status: str = Field(pattern="^(accepted|declined|completed|cancelled)$")
     share_phone: bool | None = None
 
     @model_validator(mode="after")

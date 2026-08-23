@@ -9,7 +9,7 @@ from ..schemas import RequestCreateIn, RequestOut, RequestUpdateIn
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
-VALID_STATUSES = {"pending", "accepted", "declined", "cancelled"}
+VALID_STATUSES = {"pending", "accepted", "declined", "cancelled", "completed"}
 
 
 def _to_out(req: Request) -> RequestOut:
@@ -85,7 +85,7 @@ def list_requests(
         query = query.filter(Request.status == status_filter)
 
     if active_only:
-        query = query.filter(Request.status != "cancelled")
+        query = query.filter(Request.status.notin_(["cancelled", "completed"]))
 
     requests = query.order_by(Request.created_at.desc()).limit(amount).all()
     valid_requests = [r for r in requests if r.skill is not None]
@@ -131,19 +131,59 @@ def update_request(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Request not found"
         )
-    if req.provider_id != user.id:
+    if payload.status not in VALID_STATUSES:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the skill owner can respond",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status: {payload.status}",
         )
-    if req.status != "pending":
+
+    if payload.status in ("accepted", "declined"):
+        if req.provider_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the skill owner can respond",
+            )
+        if req.status != "pending":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Request already answered"
+            )
+        req.status = payload.status
+        req.provider_share_phone = (
+            payload.share_phone if payload.status == "accepted" else False
+        )
+    elif payload.status == "completed":
+        if req.status != "accepted":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Only accepted requests can be completed",
+            )
+        if user.id not in (req.requester_id, req.provider_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only request participants can complete it",
+            )
+        req.status = "completed"
+        req.requester.karma += 1
+        req.provider.karma += 1
+    elif payload.status == "cancelled":
+        if req.status != "accepted":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Only accepted requests can be withdrawn",
+            )
+        if user.id not in (req.requester_id, req.provider_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only request participants can withdraw",
+            )
+        req.status = "cancelled"
+        user.karma -= 1
+    else:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Request already answered"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot set status to {payload.status} via this endpoint",
         )
-    req.status = payload.status
-    req.provider_share_phone = (
-        payload.share_phone if payload.status == "accepted" else False
-    )
+
     db.commit()
     db.refresh(req)
     return _to_out(req)

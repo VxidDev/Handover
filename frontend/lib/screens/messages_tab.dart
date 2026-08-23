@@ -37,19 +37,19 @@ class _MessagesTabState extends State<MessagesTab> {
       _error = null;
     });
     try {
-      final response = await Api.get(
-        '/api/requests',
-        query: {'status': 'accepted'},
-      );
-      final requests =
-          (response as List<dynamic>)
-              .map((item) => HelpRequest.fromJson(item as Map<String, dynamic>))
-              .toList()
-            ..sort(
-              (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
-                a.createdAt ?? DateTime(0),
-              ),
-            );
+      final results = await Future.wait([
+        Api.get('/api/requests', query: {'status': 'accepted'}),
+        Api.get('/api/requests', query: {'status': 'completed'}),
+      ]);
+      final requests = [
+        for (final res in results)
+          ...(res as List<dynamic>)
+              .map((item) => HelpRequest.fromJson(item as Map<String, dynamic>)),
+      ]..sort(
+          (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
+            a.createdAt ?? DateTime(0),
+          ),
+        );
       if (!mounted) return;
       setState(() {
         _requests = requests;

@@ -108,8 +108,8 @@ class _SearchTabState extends State<SearchTab> {
         query: {
           'q': _query.text.trim(),
           'radius_km': _radius.toStringAsFixed(1),
-          'lat': Api.demoLat.toString(),
-          'lng': Api.demoLng.toString(),
+          'lat': (Api.currentLat ?? Api.demoLat).toString(),
+          'lng': (Api.currentLng ?? Api.demoLng).toString(),
         },
       );
 

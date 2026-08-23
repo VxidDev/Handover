@@ -361,6 +361,158 @@ class TestRequests:
             request = db.get(Request, created["id"])
             assert request.provider_share_phone is False
 
+    def test_complete_request_by_provider(self, api):
+        created = api.client.post(
+            "/api/requests",
+            headers=auth(api.requester_token),
+            json={"skill_id": api.ids["plumbing_id"]},
+        ).json()
+        api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.provider_token),
+            json={"status": "accepted", "share_phone": False},
+        )
+        completed = api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.provider_token),
+            json={"status": "completed"},
+        )
+        assert completed.status_code == 200
+        assert completed.json()["status"] == "completed"
+
+    def test_complete_request_by_requester(self, api):
+        created = api.client.post(
+            "/api/requests",
+            headers=auth(api.requester_token),
+            json={"skill_id": api.ids["plumbing_id"]},
+        ).json()
+        api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.provider_token),
+            json={"status": "accepted", "share_phone": False},
+        )
+        completed = api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.requester_token),
+            json={"status": "completed"},
+        )
+        assert completed.status_code == 200
+        assert completed.json()["status"] == "completed"
+
+    def test_cannot_complete_pending_request(self, api):
+        created = api.client.post(
+            "/api/requests",
+            headers=auth(api.requester_token),
+            json={"skill_id": api.ids["plumbing_id"]},
+        ).json()
+        response = api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.provider_token),
+            json={"status": "completed"},
+        )
+        assert response.status_code == 409
+
+    def test_only_participants_can_complete(self, api):
+        created = api.client.post(
+            "/api/requests",
+            headers=auth(api.requester_token),
+            json={"skill_id": api.ids["plumbing_id"]},
+        ).json()
+        api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.provider_token),
+            json={"status": "accepted", "share_phone": False},
+        )
+        response = api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.provider_token),
+            json={"status": "accepted", "share_phone": False},
+        )
+        assert response.status_code == 409
+
+    def test_complete_gives_karma_to_both_parties(self, api):
+        created = api.client.post(
+            "/api/requests",
+            headers=auth(api.requester_token),
+            json={"skill_id": api.ids["plumbing_id"]},
+        ).json()
+        api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.provider_token),
+            json={"status": "accepted", "share_phone": False},
+        )
+        api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.requester_token),
+            json={"status": "completed"},
+        )
+        with api.session() as db:
+            provider = db.get(User, api.ids["provider_id"])
+            requester = db.get(User, api.ids["requester_id"])
+            assert provider.karma == 4
+            assert requester.karma == 2
+
+    def test_withdraw_after_accept_by_requester(self, api):
+        created = api.client.post(
+            "/api/requests",
+            headers=auth(api.requester_token),
+            json={"skill_id": api.ids["plumbing_id"]},
+        ).json()
+        api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.provider_token),
+            json={"status": "accepted", "share_phone": False},
+        )
+        response = api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.requester_token),
+            json={"status": "cancelled"},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "cancelled"
+        with api.session() as db:
+            requester = db.get(User, api.ids["requester_id"])
+            provider = db.get(User, api.ids["provider_id"])
+            assert requester.karma == 0
+            assert provider.karma == 3
+
+    def test_withdraw_after_accept_by_provider(self, api):
+        created = api.client.post(
+            "/api/requests",
+            headers=auth(api.requester_token),
+            json={"skill_id": api.ids["plumbing_id"]},
+        ).json()
+        api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.provider_token),
+            json={"status": "accepted", "share_phone": False},
+        )
+        response = api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.provider_token),
+            json={"status": "cancelled"},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "cancelled"
+        with api.session() as db:
+            provider = db.get(User, api.ids["provider_id"])
+            requester = db.get(User, api.ids["requester_id"])
+            assert provider.karma == 2
+            assert requester.karma == 1
+
+    def test_cannot_withdraw_from_pending(self, api):
+        created = api.client.post(
+            "/api/requests",
+            headers=auth(api.requester_token),
+            json={"skill_id": api.ids["plumbing_id"]},
+        ).json()
+        response = api.client.patch(
+            f"/api/requests/{created['id']}",
+            headers=auth(api.requester_token),
+            json={"status": "cancelled"},
+        )
+        assert response.status_code == 409
+
 
 class TestUploads:
     def test_upload_image(self, api, tmp_path, monkeypatch):

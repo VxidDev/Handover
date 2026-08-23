@@ -66,6 +66,8 @@ class Api {
 
   static String? _token;
   static int? currentUserId;
+  static double? currentLat;
+  static double? currentLng;
 
   static bool get hasToken => _token != null;
 
@@ -77,16 +79,25 @@ class Api {
     if (_token == null) return;
     try {
       final me = await get('/api/users/me');
-      currentUserId = (me as Map<String, dynamic>)['id'] as int;
+      final data = me as Map<String, dynamic>;
+      currentUserId = data['id'] as int;
+      currentLat = (data['lat'] as num?)?.toDouble();
+      currentLng = (data['lng'] as num?)?.toDouble();
     } catch (_) {
       _token = null;
+      currentUserId = null;
+      currentLat = null;
+      currentLng = null;
       await prefs.remove(_tokenKey);
     }
   }
 
-  static Future<void> storeSession(String token, int userId) async {
+  static Future<void> storeSession(String token, int userId,
+      {double? lat, double? lng}) async {
     _token = token;
     currentUserId = userId;
+    currentLat = lat;
+    currentLng = lng;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
   }
@@ -94,6 +105,8 @@ class Api {
   static Future<void> clearSession() async {
     _token = null;
     currentUserId = null;
+    currentLat = null;
+    currentLng = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
   }

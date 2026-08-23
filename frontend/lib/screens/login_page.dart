@@ -84,7 +84,12 @@ class _LoginPageState extends State<LoginPage> {
       );
       final user =
           (res as Map<String, dynamic>)['user'] as Map<String, dynamic>;
-      await Api.storeSession(res['token'] as String, user['id'] as int);
+      await Api.storeSession(
+        res['token'] as String,
+        user['id'] as int,
+        lat: (user['lat'] as num?)?.toDouble(),
+        lng: (user['lng'] as num?)?.toDouble(),
+      );
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

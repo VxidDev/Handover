@@ -64,7 +64,7 @@ def authenticate_room_token(
     request = db.get(Request, request_id)
     if user is None or request is None:
         raise ValueError("Room or user no longer exists")
-    if request.status != "accepted":
+    if request.status not in ("accepted", "completed"):
         raise ValueError("Room is not active")
     if user.id not in (request.requester_id, request.provider_id):
         raise ValueError("User is not a room participant")

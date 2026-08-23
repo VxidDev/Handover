@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/help_request.dart';
 import '../services/api.dart';
 import '../theme/colors.dart';
+import 'chat_page.dart';
 
 class RequestsTab extends StatefulWidget {
   const RequestsTab({super.key, this.isActive = true});
@@ -26,12 +27,13 @@ class _RequestsTabState extends State<RequestsTab>
   int _currentTabIndex = 0;
 
   static const _tabs = [
-    (label: 'Sent', path: '/api/requests?role=sent&amount=20&active=true'),
+    (label: 'Sent', path: '/api/requests?role=sent&status=pending&amount=20'),
     (label: 'Cancelled', path: '/api/requests?status=cancelled&amount=50'),
     (
       label: 'Received',
-      path: '/api/requests?role=received&amount=20&active=true',
+      path: '/api/requests?role=received&active=true&amount=20',
     ),
+    (label: 'Completed', path: '/api/requests?status=completed&amount=50'),
   ];
 
   int get _totalCount =>
@@ -125,46 +127,226 @@ class _RequestsTabState extends State<RequestsTab>
   }
 
   Future<void> _accept(HelpRequest request) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final name = request.requesterName.split(' ').first;
+
     var sharePhone = false;
-    final choice = await showDialog<bool>(
+
+    final result = await showDialog<bool>(
       context: context,
+      barrierColor: isDark
+          ? Colors.black.withValues(alpha: 0.6)
+          : AppColors.ink.withValues(alpha: 0.4),
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Accept handover?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'A private chat with ${request.requesterName} will open in Messages.',
-              ),
-              const SizedBox(height: 16),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Share phone number for this exchange?'),
-                subtitle: const Text(
-                  'Off by default. Your number is revealed only in this accepted handover.',
-                ),
-                value: sharePhone,
-                onChanged: (value) => setDialogState(() => sharePhone = value),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
+        builder: (context, setDialogState) {
+          final dialogBg = isDark ? AppColors.darkPaper : AppColors.paper;
+          final dialogBorder = isDark
+              ? AppColors.darkBorder.withValues(alpha: 0.6)
+              : Colors.white.withValues(alpha: 0.8);
+
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 24,
             ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, sharePhone),
-              child: const Text('Accept'),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: dialogBg,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: dialogBorder, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+                    blurRadius: 40,
+                    offset: const Offset(0, 20),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon and title row
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: AppColors.sage.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.handshake_rounded,
+                          color: AppColors.sage,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          'Accept handover?',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.4,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Description
+                  Text(
+                    'A private chat with $name will open in Messages. You can coordinate the handover there.',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      fontSize: 14,
+                      height: 1.5,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Phone sharing option
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.darkSand.withValues(alpha: 0.5)
+                          : AppColors.sand.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: sharePhone
+                            ? AppColors.sage.withValues(alpha: 0.3)
+                            : Colors.transparent,
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: AppColors.sage.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.phone_outlined,
+                                size: 17,
+                                color: AppColors.sage,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Share phone number',
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurface,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    'Revealed only for this handover',
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.55),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Transform.scale(
+                              scale: 0.85,
+                              child: Switch(
+                                value: sharePhone,
+                                onChanged: (value) =>
+                                    setDialogState(() => sharePhone = value),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor:
+                                theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                            side: BorderSide(
+                              color: isDark
+                                  ? AppColors.darkBorder.withValues(alpha: 0.6)
+                                  : AppColors.inkSoft.withValues(alpha: 0.15),
+                              width: 1,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            textStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.sage,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            elevation: 0,
+                            textStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          child: const Text('Accept'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
-    if (choice == null || !mounted) return;
-    await _respond(request, 'accepted', sharePhone: choice);
+
+    if (result == null || !result || !mounted) return;
+    await _respond(request, 'accepted', sharePhone: sharePhone);
   }
 
   Future<bool> _showCancelDialog(HelpRequest request) async {
@@ -360,6 +542,20 @@ class _RequestsTabState extends State<RequestsTab>
         context,
       ).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
+  }
+
+  String _otherName(HelpRequest request) =>
+      request.requesterId == Api.currentUserId
+      ? request.providerName
+      : request.requesterName;
+
+  void _openChat(HelpRequest request) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            ChatPage(request: request, otherUserName: _otherName(request)),
+      ),
+    );
   }
 
   @override
@@ -702,12 +898,14 @@ class _RequestsTabState extends State<RequestsTab>
         ),
       ...requests.map((r) {
         final isRemoving = _removingIds.contains(r.id);
+        final canOpenChat = r.status == 'accepted' || r.status == 'completed';
         final card = _RequestCard(
           request: r,
           isReceived: tabIndex == 2,
           busy: _busyRequestId == r.id || isRemoving,
           onRespond: (s) => s == 'accepted' ? _accept(r) : _respond(r, s),
           onCancel: isSentTab ? () => _cancel(r) : null,
+          onTap: canOpenChat ? () => _openChat(r) : null,
         );
 
         if (isSentTab) {
@@ -889,6 +1087,7 @@ class _RequestCard extends StatelessWidget {
     required this.busy,
     required this.onRespond,
     this.onCancel,
+    this.onTap,
   });
 
   final HelpRequest request;
@@ -896,6 +1095,7 @@ class _RequestCard extends StatelessWidget {
   final bool busy;
   final void Function(String status) onRespond;
   final VoidCallback? onCancel;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -933,7 +1133,7 @@ class _RequestCard extends StatelessWidget {
         ? AppColors.darkSand.withValues(alpha: 0.6)
         : AppColors.sand.withValues(alpha: 0.5);
 
-    return Container(
+    final card = Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -1095,6 +1295,15 @@ class _RequestCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: card,
+      );
+    }
+    return card;
   }
 }
 
@@ -1111,6 +1320,11 @@ class StatusBadge extends StatelessWidget {
       'accepted' => (
         'Accepted',
         AppColors.success,
+        isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight,
+      ),
+      'completed' => (
+        'Completed',
+        AppColors.sage,
         isDark ? AppColors.sage.withValues(alpha: 0.18) : AppColors.sageLight,
       ),
       'declined' => (
@@ -1182,6 +1396,10 @@ class _EmptyState extends StatelessWidget {
       (
         'No received requests',
         "When neighbors ask you for help, their requests will appear here.",
+      ),
+      (
+        'No completed handovers',
+        "Handovers you've marked as completed will appear here.",
       ),
     ];
 
