@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 import '../models/skill.dart';
 import '../models/user_profile.dart';
@@ -98,9 +99,31 @@ class _ProfileTabState extends State<ProfileTab> {
     );
     if (image == null || !mounted) return;
 
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: image.path,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Photo',
+          toolbarColor: AppColors.terracotta,
+          toolbarWidgetColor: Colors.white,
+          activeControlsWidgetColor: AppColors.terracotta,
+          cropStyle: CropStyle.circle,
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(
+          title: 'Crop Photo',
+          cropStyle: CropStyle.circle,
+          aspectRatioLockEnabled: true,
+          aspectRatioPickerButtonHidden: true,
+          resetAspectRatioEnabled: false,
+        ),
+      ],
+    );
+    if (croppedFile == null || !mounted) return;
+
     setState(() => _uploadingImage = true);
     try {
-      final res = await Api.uploadFile('/api/uploads/images', File(image.path));
+      final res = await Api.uploadFile('/api/uploads/images', File(croppedFile.path));
       final path = res['path'] as String;
       final updateRes = await Api.patch(
         '/api/users/me',
