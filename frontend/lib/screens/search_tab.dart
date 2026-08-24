@@ -969,16 +969,35 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                   shape: BoxShape.circle,
                   border: Border.all(color: avatarBorder, width: 1.5),
                 ),
-                child: Text(
-                  widget.neighbor.name.isNotEmpty
-                      ? widget.neighbor.name[0].toUpperCase()
-                      : '?',
-                  style: TextStyle(
-                    color: avatarColor,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 19,
-                  ),
-                ),
+                child: widget.neighbor.ownerProfileImage != null
+                    ? ClipOval(
+                        child: Image.network(
+                          '${Api.baseUrl}${widget.neighbor.ownerProfileImage}',
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Text(
+                            widget.neighbor.name.isNotEmpty
+                                ? widget.neighbor.name[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              color: avatarColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 19,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Text(
+                        widget.neighbor.name.isNotEmpty
+                            ? widget.neighbor.name[0].toUpperCase()
+                            : '?',
+                        style: TextStyle(
+                          color: avatarColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 19,
+                        ),
+                      ),
               ),
               const SizedBox(height: 14),
               Text(

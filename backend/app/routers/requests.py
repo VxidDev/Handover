@@ -21,8 +21,10 @@ def _to_out(req: Request) -> RequestOut:
         updated_at=req.updated_at,
         requester_id=req.requester_id,
         requester_name=req.requester.name,
+        requester_profile_image=req.requester.profile_image,
         provider_id=req.provider_id,
         provider_name=req.provider.name,
+        provider_profile_image=req.provider.profile_image,
         skill_name=req.skill.name,
     )
 

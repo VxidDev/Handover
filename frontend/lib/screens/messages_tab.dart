@@ -220,6 +220,12 @@ class _ConversationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isMe = request.requesterId == Api.currentUserId;
+    final profileImage = isMe
+        ? request.providerProfileImage
+        : request.requesterProfileImage;
+    final avatarColor = AppColors.avatarFor(otherUserName, isDark: isDark);
+
     return Material(
       color: isDark ? AppColors.darkPaper : AppColors.paper,
       borderRadius: BorderRadius.circular(20),
@@ -237,17 +243,22 @@ class _ConversationCard extends StatelessWidget {
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: AppColors.avatarFor(
-                  otherUserName,
-                  isDark: isDark,
-                ).withValues(alpha: 0.18),
-                foregroundColor: AppColors.avatarFor(
-                  otherUserName,
-                  isDark: isDark,
-                ),
-                child: Text(
-                  otherUserName.isEmpty ? '?' : otherUserName[0].toUpperCase(),
-                ),
+                radius: 22,
+                backgroundColor: avatarColor.withValues(alpha: 0.18),
+                foregroundImage: profileImage != null
+                    ? NetworkImage('${Api.baseUrl}$profileImage')
+                    : null,
+                child: profileImage == null
+                    ? Text(
+                        otherUserName.isEmpty
+                            ? '?'
+                            : otherUserName[0].toUpperCase(),
+                        style: TextStyle(
+                          color: avatarColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(

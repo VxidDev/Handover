@@ -1104,6 +1104,9 @@ class _RequestCard extends StatelessWidget {
     final pending = request.status == 'pending';
     final name = isReceived ? request.requesterName : request.providerName;
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final profileImage = isReceived
+        ? request.requesterProfileImage
+        : request.providerProfileImage;
 
     final avatarBg = isReceived
         ? (isDark
@@ -1163,14 +1166,31 @@ class _RequestCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: cardBorder, width: 1),
                 ),
-                child: Text(
-                  initial,
-                  style: TextStyle(
-                    color: avatarFg,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
+                child: profileImage != null
+                    ? ClipOval(
+                        child: Image.network(
+                          '${Api.baseUrl}$profileImage',
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Text(
+                            initial,
+                            style: TextStyle(
+                              color: avatarFg,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Text(
+                        initial,
+                        style: TextStyle(
+                          color: avatarFg,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(

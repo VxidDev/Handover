@@ -4,8 +4,10 @@ class HelpRequest {
     required this.status,
     required this.requesterId,
     required this.requesterName,
+    this.requesterProfileImage,
     required this.providerId,
     required this.providerName,
+    this.providerProfileImage,
     required this.skillName,
     this.message,
     this.createdAt,
@@ -15,8 +17,10 @@ class HelpRequest {
   final String status;
   final int requesterId;
   final String requesterName;
+  final String? requesterProfileImage;
   final int providerId;
   final String providerName;
+  final String? providerProfileImage;
   final String skillName;
   final String? message;
   final DateTime? createdAt;
@@ -26,8 +30,10 @@ class HelpRequest {
     status: json['status'] as String,
     requesterId: json['requester_id'] as int,
     requesterName: json['requester_name'] as String,
+    requesterProfileImage: json['requester_profile_image'] as String?,
     providerId: json['provider_id'] as int,
     providerName: json['provider_name'] as String,
+    providerProfileImage: json['provider_profile_image'] as String?,
     skillName: json['skill_name'] as String,
     message: json['message'] as String?,
     createdAt: json['created_at'] != null

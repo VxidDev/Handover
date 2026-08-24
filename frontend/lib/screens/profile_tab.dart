@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/skill.dart';
 import '../models/user_profile.dart';
@@ -20,6 +23,7 @@ class _ProfileTabState extends State<ProfileTab> {
   bool _loading = true;
   String? _error;
   final Set<int> _removingSkillIds = {};
+  bool _uploadingImage = false;
 
   @override
   void initState() {
@@ -81,6 +85,131 @@ class _ProfileTabState extends State<ProfileTab> {
     HapticFeedback.lightImpact();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SettingsPage()),
+    );
+  }
+
+  Future<void> _pickProfileImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (image == null || !mounted) return;
+
+    setState(() => _uploadingImage = true);
+    try {
+      final res = await Api.uploadFile('/api/uploads/images', File(image.path));
+      final path = res['path'] as String;
+      final updateRes = await Api.patch(
+        '/api/users/me',
+        body: {'profile_image': path},
+      );
+      if (!mounted) return;
+      final profile = UserProfile.fromJson(updateRes as Map<String, dynamic>);
+      setState(() {
+        _profile = profile;
+        _uploadingImage = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingImage = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
+  Future<void> _removeProfileImage() async {
+    setState(() => _uploadingImage = true);
+    try {
+      final res = await Api.patch(
+        '/api/users/me',
+        body: {'profile_image': null},
+      );
+      if (!mounted) return;
+      final profile = UserProfile.fromJson(res as Map<String, dynamic>);
+      setState(() {
+        _profile = profile;
+        _uploadingImage = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingImage = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
+  void _showImageOptions() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkPaper : AppColors.paper,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? AppColors.darkBorder.withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.9),
+            width: 1,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('Take new photo'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickProfileImage();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Choose from gallery'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickProfileImage();
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.error,
+                ),
+                title: Text(
+                  'Remove photo',
+                  style: TextStyle(color: AppColors.error),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _removeProfileImage();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -190,7 +319,14 @@ class _ProfileTabState extends State<ProfileTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _HeroCard(profile: p, onSettings: _openSettings),
+        _HeroCard(
+          profile: p,
+          onSettings: _openSettings,
+          onPickImage: _pickProfileImage,
+          onRemoveImage: _removeProfileImage,
+          onShowImageOptions: _showImageOptions,
+          uploadingImage: _uploadingImage,
+        ),
         const SizedBox(height: 16),
         _StatsRow(profile: p),
         const SizedBox(height: 28),
@@ -211,10 +347,21 @@ class _ProfileTabState extends State<ProfileTab> {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.profile, required this.onSettings});
+  const _HeroCard({
+    required this.profile,
+    required this.onSettings,
+    required this.onPickImage,
+    required this.onRemoveImage,
+    required this.onShowImageOptions,
+    required this.uploadingImage,
+  });
 
   final UserProfile profile;
   final VoidCallback onSettings;
+  final VoidCallback onPickImage;
+  final VoidCallback onRemoveImage;
+  final VoidCallback onShowImageOptions;
+  final bool uploadingImage;
 
   @override
   Widget build(BuildContext context) {
@@ -276,57 +423,117 @@ class _HeroCard extends StatelessWidget {
 
             Row(
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: avatarColor.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isDark
-                              ? AppColors.darkBorder.withValues(alpha: 0.4)
-                              : Colors.white.withValues(alpha: 0.9),
-                          width: 2,
-                        ),
-                      ),
-                      child: Text(
-                        profile.name.isNotEmpty
-                            ? profile.name[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          color: avatarColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 22,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: -1,
-                      bottom: -1,
-                      child: Container(
-                        width: 14,
-                        height: 14,
+                GestureDetector(
+                  onTap: uploadingImage ? null : onPickImage,
+                  onLongPress: profile.profileImage != null
+                      ? () => onShowImageOptions()
+                      : null,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: profile.isAvailable
-                              ? AppColors.success
-                              : (isDark
-                                    ? AppColors.darkInkFaint
-                                    : AppColors.inkFaint),
+                          color: avatarColor.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: isDark
-                                ? AppColors.darkPaper
-                                : AppColors.paper,
-                            width: 2.5,
+                                ? AppColors.darkBorder.withValues(alpha: 0.4)
+                                : Colors.white.withValues(alpha: 0.9),
+                            width: 2,
+                          ),
+                        ),
+                        child: uploadingImage
+                            ? SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: avatarColor,
+                                ),
+                              )
+                            : profile.profileImage != null
+                                ? ClipOval(
+                                    child: Image.network(
+                                      '${Api.baseUrl}${profile.profileImage}',
+                                      width: 52,
+                                      height: 52,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Text(
+                                        profile.name.isNotEmpty
+                                            ? profile.name[0].toUpperCase()
+                                            : '?',
+                                        style: TextStyle(
+                                          color: avatarColor,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 22,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    profile.name.isNotEmpty
+                                        ? profile.name[0].toUpperCase()
+                                        : '?',
+                                    style: TextStyle(
+                                      color: avatarColor,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 22,
+                                    ),
+                                  ),
+                      ),
+                      Positioned(
+                        right: -1,
+                        bottom: -1,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: profile.isAvailable
+                                ? AppColors.success
+                                : (isDark
+                                      ? AppColors.darkInkFaint
+                                      : AppColors.inkFaint),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark
+                                  ? AppColors.darkPaper
+                                  : AppColors.paper,
+                              width: 2.5,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      if (!uploadingImage)
+                        Positioned(
+                          right: -4,
+                          top: -4,
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: AppColors.terracotta,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark
+                                    ? AppColors.darkPaper
+                                    : AppColors.paper,
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(
+                              profile.profileImage != null
+                                  ? Icons.edit_rounded
+                                  : Icons.camera_alt_rounded,
+                              size: 10,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

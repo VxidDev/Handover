@@ -97,6 +97,14 @@ class TestDeleteAccount:
         image_file = tmp_path / "fake.jpg"
         image_file.write_bytes(b"fake-image")
 
+        profile_image_file = tmp_path / "profile.jpg"
+        profile_image_file.write_bytes(b"fake-profile-image")
+        api.client.patch(
+            "/api/users/me",
+            headers=auth(api.provider_token),
+            json={"profile_image": "/uploads/profile.jpg"},
+        )
+
         created = _set_up_request(api)
         _add_message(
             api, created["id"], api.ids["requester_id"], "See you Saturday."
@@ -124,6 +132,7 @@ class TestDeleteAccount:
             )
 
         assert not image_file.exists()
+        assert not profile_image_file.exists()
         catalog_ids = {
             s["skill_id"] for s in api.client.get("/api/skills").json()
         }

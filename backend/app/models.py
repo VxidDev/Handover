@@ -22,6 +22,7 @@ class User(Base):
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lng: Mapped[float | None] = mapped_column(Float, nullable=True)
     grid: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    profile_image: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )

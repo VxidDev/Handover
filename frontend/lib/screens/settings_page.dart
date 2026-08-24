@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/user_profile.dart';
 import '../services/api.dart';
@@ -27,6 +28,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _savingAvailability = false;
   bool _savingLocation = false;
   bool _savingPhone = false;
+  bool _uploadingImage = false;
   bool _deleting = false;
   final _phoneController = TextEditingController();
 
@@ -151,6 +153,57 @@ class _SettingsPageState extends State<SettingsPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
+  }
+
+  Future<void> _pickProfileImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (image == null || !mounted) return;
+
+    setState(() => _uploadingImage = true);
+    try {
+      final res = await Api.uploadFile('/api/uploads/images', File(image.path));
+      final path = res['path'] as String;
+      final updateRes = await Api.patch(
+        '/api/users/me',
+        body: {'profile_image': path},
+      );
+      if (!mounted) return;
+      final profile = UserProfile.fromJson(updateRes as Map<String, dynamic>);
+      setState(() {
+        _profile = profile;
+        _uploadingImage = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingImage = false);
+      _snack(describeError(e));
+    }
+  }
+
+  Future<void> _removeProfileImage() async {
+    setState(() => _uploadingImage = true);
+    try {
+      final res = await Api.patch(
+        '/api/users/me',
+        body: {'profile_image': null},
+      );
+      if (!mounted) return;
+      final profile = UserProfile.fromJson(res as Map<String, dynamic>);
+      setState(() {
+        _profile = profile;
+        _uploadingImage = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingImage = false);
+      _snack(describeError(e));
+    }
   }
 
   void _openLegal(LegalDocument document) {
@@ -578,6 +631,13 @@ class _SettingsPageState extends State<SettingsPage> {
         _SettingsSection(
           title: 'Appearance',
           children: [
+            _ProfilePhotoTile(
+              profile: p,
+              uploading: _uploadingImage,
+              onPickImage: _pickProfileImage,
+              onRemoveImage: _removeProfileImage,
+            ),
+            _SettingsTileDivider(isDark: isDark),
             _ThemeSelector(
               current: ThemeController.instance.mode,
               onChanged: (mode) => ThemeController.instance.setMode(mode),
@@ -961,6 +1021,114 @@ class _ThemeOption extends StatelessWidget {
                       ? AppColors.terracotta
                       : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfilePhotoTile extends StatelessWidget {
+  const _ProfilePhotoTile({
+    required this.profile,
+    required this.uploading,
+    required this.onPickImage,
+    required this.onRemoveImage,
+  });
+
+  final UserProfile profile;
+  final bool uploading;
+  final VoidCallback onPickImage;
+  final VoidCallback onRemoveImage;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final avatarColor = AppColors.avatarFor(profile.name, isDark: isDark);
+    final hasImage = profile.profileImage != null;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: uploading ? null : onPickImage,
+        onLongPress: hasImage ? onRemoveImage : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: avatarColor.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: uploading
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: avatarColor,
+                        ),
+                      )
+                    : hasImage
+                        ? ClipOval(
+                            child: Image.network(
+                              '${Api.baseUrl}${profile.profileImage}',
+                              width: 34,
+                              height: 34,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Icon(
+                                Icons.person_outline_rounded,
+                                size: 17,
+                                color: avatarColor,
+                              ),
+                            ),
+                          )
+                        : Icon(
+                            Icons.camera_alt_outlined,
+                            size: 17,
+                            color: avatarColor,
+                          ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Profile photo',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      hasImage ? 'Tap to change · hold to remove' : 'Add a photo',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconTheme(
+                data: IconThemeData(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                  size: 18,
+                ),
+                child: const Icon(Icons.chevron_right_rounded, size: 20),
               ),
             ],
           ),

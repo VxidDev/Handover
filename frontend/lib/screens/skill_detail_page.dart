@@ -240,6 +240,7 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                         avatarColor: avatarColor,
                         initial: neighbor.initial,
                         metaParts: metaParts,
+                        profileImage: neighbor.ownerProfileImage,
                       ),
 
                       // Description
@@ -361,12 +362,14 @@ class _OwnerCard extends StatelessWidget {
     required this.avatarColor,
     required this.initial,
     required this.metaParts,
+    this.profileImage,
   });
 
   final String name;
   final Color avatarColor;
   final String initial;
   final List<String> metaParts;
+  final String? profileImage;
 
   @override
   Widget build(BuildContext context) {
@@ -403,14 +406,31 @@ class _OwnerCard extends StatelessWidget {
                 width: 1,
               ),
             ),
-            child: Text(
-              initial,
-              style: TextStyle(
-                color: avatarColor,
-                fontWeight: FontWeight.w700,
-                fontSize: 17,
-              ),
-            ),
+            child: profileImage != null
+                ? ClipOval(
+                    child: Image.network(
+                      '${Api.baseUrl}$profileImage',
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Text(
+                        initial,
+                        style: TextStyle(
+                          color: avatarColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 17,
+                        ),
+                      ),
+                    ),
+                  )
+                : Text(
+                    initial,
+                    style: TextStyle(
+                      color: avatarColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                    ),
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(

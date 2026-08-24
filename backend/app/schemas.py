@@ -52,6 +52,7 @@ class UserOut(BaseModel):
     is_available: bool
     karma: int
     grid: str | None = None
+    profile_image: str | None = None
     created_at: datetime
 
 
@@ -74,6 +75,7 @@ class UserUpdateIn(BaseModel):
     lng: float | None = None
     grid: str | None = Field(default=None, max_length=20)
     phone: str | None = Field(default=None, max_length=50)
+    profile_image: str | None = Field(default=None, max_length=500)
 
 
 class SkillCreateIn(BaseModel):
@@ -88,6 +90,7 @@ class SkillSearchOut(BaseModel):
     blurb: str
     owner_id: int
     owner_name: str
+    owner_profile_image: str | None = None
     grid: str | None = None
     distance_km: float | None = None
     available: bool
@@ -110,8 +113,10 @@ class RequestOut(BaseModel):
     updated_at: datetime
     requester_id: int
     requester_name: str
+    requester_profile_image: str | None = None
     provider_id: int
     provider_name: str
+    provider_profile_image: str | None = None
     skill_name: str
 
 

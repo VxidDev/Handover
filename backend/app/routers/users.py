@@ -57,6 +57,11 @@ def update_me(
         elif user.private_contact is not None:
             db.delete(user.private_contact)
             user.private_contact = None
+    if "profile_image" in changes:
+        old_image = user.profile_image
+        new_image = changes["profile_image"]
+        if old_image and old_image != new_image:
+            _remove_uploaded_file(old_image)
     for field, value in changes.items():
         setattr(user, field, value)
     db.commit()
@@ -104,6 +109,13 @@ def _skill_image_paths(user: User) -> list[str]:
     return [image.path for skill in user.skills for image in skill.images]
 
 
+def _all_uploaded_paths(user: User) -> list[str]:
+    paths = _skill_image_paths(user)
+    if user.profile_image:
+        paths.append(user.profile_image)
+    return paths
+
+
 def _remove_uploaded_file(path: str) -> None:
     if not path.startswith("/uploads/"):
         return
@@ -119,7 +131,7 @@ def delete_me(
     user: User = Depends(get_current_user),
 ):
     """Erase the account and all associated personal data (GDPR erasure)."""
-    image_paths = _skill_image_paths(user)
+    image_paths = _all_uploaded_paths(user)
     db.delete(user)
     db.commit()
     invalidate_catalog()
@@ -175,6 +187,7 @@ def export_me(
             "lat": user.lat,
             "lng": user.lng,
             "phone": phone,
+            "profile_image": user.profile_image,
             "created_at": user.created_at.isoformat(),
             "tos_accepted_at": (
                 user.tos_accepted_at.isoformat() if user.tos_accepted_at else None

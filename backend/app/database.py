@@ -65,6 +65,12 @@ def run_startup_migrations() -> None:
                         text(f"ALTER TABLE users ADD COLUMN {name} {ddl}")
                     )
 
+        if "profile_image" not in user_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text("ALTER TABLE users ADD COLUMN profile_image VARCHAR(500)")
+                )
+
 
 def get_db():
     db = SessionLocal()

@@ -125,14 +125,31 @@ class SkillCard extends StatelessWidget {
                           color: avatarColor.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: Text(
-                          neighbor.initial,
-                          style: TextStyle(
-                            color: avatarColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 10,
-                          ),
-                        ),
+                        child: neighbor.ownerProfileImage != null
+                            ? ClipOval(
+                                child: Image.network(
+                                  '${Api.baseUrl}${neighbor.ownerProfileImage}',
+                                  width: 22,
+                                  height: 22,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Text(
+                                    neighbor.initial,
+                                    style: TextStyle(
+                                      color: avatarColor,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                neighbor.initial,
+                                style: TextStyle(
+                                  color: avatarColor,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                ),
+                              ),
                       ),
                       const SizedBox(width: 6),
                       Expanded(

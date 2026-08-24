@@ -11,6 +11,7 @@ class UserProfile {
     required this.createdAt,
     this.grid,
     this.phone,
+    this.profileImage,
     this.tosAcceptedAt,
     this.privacyAcceptedAt,
   });
@@ -22,6 +23,7 @@ class UserProfile {
   final int karma;
   final String? grid;
   final String? phone;
+  final String? profileImage;
   final List<Skill> skills;
   final DateTime createdAt;
   final DateTime? tosAcceptedAt;
@@ -35,6 +37,7 @@ class UserProfile {
     karma: json['karma'] as int? ?? 0,
     grid: json['grid'] as String?,
     phone: json['phone'] as String?,
+    profileImage: json['profile_image'] as String?,
     createdAt: DateTime.parse(json['created_at'] as String),
     tosAcceptedAt: json['tos_accepted_at'] != null
         ? DateTime.tryParse(json['tos_accepted_at'] as String)
