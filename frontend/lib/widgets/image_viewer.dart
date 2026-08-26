@@ -77,16 +77,20 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
             Positioned(
               top: MediaQuery.of(context).padding.top + 12,
               left: 16,
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    shape: BoxShape.circle,
+              child: Semantics(
+                button: true,
+                label: 'Close image viewer',
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white, size: 22),
                   ),
-                  child: const Icon(Icons.close, color: Colors.white, size: 22),
                 ),
               ),
             ),

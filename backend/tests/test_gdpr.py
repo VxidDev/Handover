@@ -32,7 +32,7 @@ class TestLegal:
         assert body["tos"]["version"] == "1.0.0"
         assert "Terms of Service" in body["tos"]["content"]
         assert body["privacy"]["version"] == "1.0.0"
-        assert "Privacy Policy" in body["privacy"]["content"]
+        assert "Who We Are" in body["privacy"]["content"]
         assert body["controller"]["email"]
 
 
@@ -63,9 +63,7 @@ class TestExport:
         assert response.status_code == 200
         body = response.json()
         assert any(r["id"] == created["id"] for r in body["requests"])
-        assert any(
-            "Thursday" in m["body"] for m in body["chat_messages"]
-        )
+        assert any("Thursday" in m["body"] for m in body["chat_messages"])
 
     def test_export_includes_encrypted_phone_decrypted(self, api):
         api.client.patch(
@@ -106,13 +104,9 @@ class TestDeleteAccount:
         )
 
         created = _set_up_request(api)
-        _add_message(
-            api, created["id"], api.ids["requester_id"], "See you Saturday."
-        )
+        _add_message(api, created["id"], api.ids["requester_id"], "See you Saturday.")
 
-        response = api.client.delete(
-            "/api/users/me", headers=auth(api.provider_token)
-        )
+        response = api.client.delete("/api/users/me", headers=auth(api.provider_token))
         assert response.status_code == 204
 
         with api.session() as db:
@@ -133,9 +127,7 @@ class TestDeleteAccount:
 
         assert not image_file.exists()
         assert not profile_image_file.exists()
-        catalog_ids = {
-            s["skill_id"] for s in api.client.get("/api/skills").json()
-        }
+        catalog_ids = {s["skill_id"] for s in api.client.get("/api/skills").json()}
         assert skill["id"] not in catalog_ids
 
     def test_delete_returns_401_afterwards(self, api):

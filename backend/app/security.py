@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import logging
 import secrets
 import time
 from typing import Any
@@ -11,6 +12,8 @@ from argon2.exceptions import InvalidHash, VerificationError
 from cryptography.fernet import Fernet, InvalidToken
 
 from .config import settings
+
+logger = logging.getLogger("handover.security")
 
 _ITERATIONS = 260_000
 
@@ -76,9 +79,9 @@ def decode_room_token(token: str, request_id: int) -> int:
 def _contact_fernet() -> Fernet:
     key = settings.CONTACT_ENCRYPTION_KEY
     if key is None:
-        print("[WARNING] CONTACT_ENCRYPTION_KEY is None, randomizing...")
-        digest = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
-        key = base64.urlsafe_b64encode(digest).decode()
+        raise RuntimeError(
+            "CONTACT_ENCRYPTION_KEY is not set. Phone number encryption cannot proceed."
+        )
     try:
         return Fernet(key.encode())
     except (TypeError, ValueError):

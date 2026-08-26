@@ -2,7 +2,11 @@
 
 Coordinates are fictional, roughly centered on a neighborhood so the
 haversine distance in the search results is believable.
+
+Seeding is disabled unless SEED_DEMO_DATA=true is set in the environment.
 """
+
+import os
 
 from .database import SessionLocal
 from .models import Skill, User
@@ -72,6 +76,8 @@ DEMO_USERS = [
 
 
 def run() -> None:
+    if os.getenv("SEED_DEMO_DATA", "false").lower() != "true":
+        return
     with SessionLocal() as db:
         if db.query(User).first() is not None:
             return

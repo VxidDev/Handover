@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../models/chat_message.dart';
@@ -40,6 +42,9 @@ class _ChatPageState extends State<ChatPage> {
   int _connectionGeneration = 0;
   String _status = 'accepted';
   bool _completing = false;
+  bool _otherTyping = false;
+  Timer? _otherTypingTimer;
+  Timer? _sendTypingTimer;
 
   List<ChatMessage> get _messages =>
       _messagesById.values.toList()
@@ -87,6 +92,7 @@ class _ChatPageState extends State<ChatPage> {
         onDone: () => _socketEnded(generation),
         cancelOnError: true,
       );
+      _reconnectAttempts = 0;
     } catch (error) {
       if (_disposed || generation != _connectionGeneration) return;
       if (mounted) {
@@ -120,6 +126,15 @@ class _ChatPageState extends State<ChatPage> {
         _addMessages([
           ChatMessage.fromJson(payload['message'] as Map<String, dynamic>),
         ]);
+      } else if (type == 'typing') {
+        final typingUserId = payload['user_id'] as int?;
+        if (typingUserId != null && typingUserId != Api.currentUserId) {
+          setState(() => _otherTyping = true);
+          _otherTypingTimer?.cancel();
+          _otherTypingTimer = Timer(const Duration(seconds: 5), () {
+            if (mounted) setState(() => _otherTyping = false);
+          });
+        }
       }
     } catch (_) {
       if (mounted) setState(() => _error = 'A chat update could not be read.');
@@ -149,10 +164,16 @@ class _ChatPageState extends State<ChatPage> {
     _scheduleReconnect(generation);
   }
 
+  int _reconnectAttempts = 0;
+
   void _scheduleReconnect(int generation) {
     if (_disposed || generation != _connectionGeneration) return;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 3), _connect);
+    final delay = Duration(
+      seconds: (3 * (1 << _reconnectAttempts.clamp(0, 5))).toInt(),
+    );
+    _reconnectTimer = Timer(delay, _connect);
+    _reconnectAttempts++;
   }
 
   Future<void> _loadFallbackHistory() async {
@@ -177,21 +198,59 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void _send() {
-    final body = _composer.text.trim();
-    if (body.isEmpty || body.length > 2000 || _channel == null || _sending) {
+  void _send({String? body, String? imageUrl}) {
+    final text = body ?? _composer.text.trim();
+    if ((text.isEmpty && imageUrl == null) || text.length > 2000 || _channel == null || _sending) {
       return;
     }
     setState(() => _sending = true);
     try {
-      _channel!.sink.add(jsonEncode({'type': 'message', 'body': body}));
-      _composer.clear();
+      final msg = <String, dynamic>{'type': 'message', 'body': text};
+      if (imageUrl != null) msg['image_url'] = imageUrl;
+      _channel!.sink.add(jsonEncode(msg));
+      if (body == null) _composer.clear();
       setState(() => _sending = false);
     } catch (_) {
       setState(() {
         _sending = false;
         _error = 'Message not sent. Wait for the chat to reconnect.';
       });
+    }
+  }
+
+  void _sendTyping() {
+    if (_channel == null) return;
+    try {
+      _channel!.sink.add(jsonEncode({'type': 'typing'}));
+    } catch (_) {}
+  }
+
+  void _onComposerTextChanged() {
+    if (_sendTypingTimer?.isActive ?? false) return;
+    _sendTyping();
+    _sendTypingTimer = Timer(const Duration(seconds: 2), () {});
+  }
+
+  Future<void> _pickAndSendImage() async {
+    if (_channel == null || _sending) return;
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null || !mounted) return;
+    setState(() => _sending = true);
+    try {
+      final file = File(picked.path);
+      final result = await Api.uploadFile('/api/upload', file);
+      final imageUrl = result['url'] as String? ?? result['path'] as String?;
+      if (imageUrl != null && mounted) {
+        _send(body: '', imageUrl: imageUrl);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _sending = false;
+          _error = 'Image could not be sent.';
+        });
+      }
     }
   }
 
@@ -394,6 +453,7 @@ class _ChatPageState extends State<ChatPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Handover marked as completed.')),
         );
+        _showRatingDialog();
       }
     } catch (e) {
       if (mounted) {
@@ -404,6 +464,15 @@ class _ChatPageState extends State<ChatPage> {
     } finally {
       if (mounted) setState(() => _completing = false);
     }
+  }
+
+  void _showRatingDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _RatingSheet(requestId: widget.request.id),
+    );
   }
 
   Future<void> _withdrawHandover() async {
@@ -622,6 +691,8 @@ class _ChatPageState extends State<ChatPage> {
     _disposed = true;
     _connectionGeneration++;
     _reconnectTimer?.cancel();
+    _otherTypingTimer?.cancel();
+    _sendTypingTimer?.cancel();
     _socketSubscription?.cancel();
     _channel?.sink.close();
     _composer.dispose();
@@ -703,11 +774,40 @@ class _ChatPageState extends State<ChatPage> {
                   _ContactBanner(phone: _phone!, name: widget.otherUserName),
                 _SafetyNotice(connecting: _connecting, error: _error),
                 Expanded(child: _messageList()),
+                if (_otherTyping)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${widget.otherUserName.split(' ').first} is typing',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          width: 16,
+                          height: 12,
+                          child: _TypingDots(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 _Composer(
                   controller: _composer,
                   enabled: !_connecting && _channel != null && isAccepted,
                   sending: _sending,
-                  onSend: _send,
+                  onSend: () => _send(),
+                  onPickImage: _pickAndSendImage,
+                  onTextChanged: _onComposerTextChanged,
                 ),
               ],
             ),
@@ -736,14 +836,29 @@ class _ChatPageState extends State<ChatPage> {
         ),
       );
     }
+
+    final List<Widget> items = [];
+    DateTime? prevDate;
+    for (var i = 0; i < messages.length; i++) {
+      final msg = messages[i];
+      final msgDate = DateTime(msg.createdAt.year, msg.createdAt.month, msg.createdAt.day);
+      if (prevDate == null || msgDate != prevDate) {
+        items.add(_DateSeparator(date: msg.createdAt));
+        prevDate = msgDate;
+      }
+      items.add(
+        _MessageBubble(
+          message: msg,
+          mine: msg.senderId == Api.currentUserId,
+        ),
+      );
+    }
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-      itemCount: messages.length,
-      itemBuilder: (context, index) => _MessageBubble(
-        message: messages[index],
-        mine: messages[index].senderId == Api.currentUserId,
-      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) => items[index],
     );
   }
 }
@@ -824,6 +939,108 @@ class _ContactBanner extends StatelessWidget {
   }
 }
 
+class _DateSeparator extends StatelessWidget {
+  const _DateSeparator({required this.date});
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDay = DateTime(date.year, date.month, date.day);
+    String label;
+    if (messageDay == today) {
+      label = 'Today';
+    } else if (messageDay == today.subtract(const Duration(days: 1))) {
+      label = 'Yesterday';
+    } else {
+      label = '${date.month}/${date.day}/${date.year}';
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          const Expanded(child: Divider()),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
+          const Expanded(child: Divider()),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypingDots extends StatefulWidget {
+  const _TypingDots({required this.color});
+  final Color color;
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            final offset = i * 0.33;
+            final value = ((_controller.value - offset) % 1.0);
+            final opacity = value < 0.5
+                ? (value * 2).clamp(0.3, 1.0)
+                : ((1.0 - value) * 2).clamp(0.3, 1.0);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1.5),
+              child: Opacity(
+                opacity: opacity.toDouble(),
+                child: Text(
+                  '.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: widget.color,
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({required this.message, required this.mine});
 
@@ -876,14 +1093,33 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 ),
               ),
-            Text(
-              message.body,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.35,
-                color: mine ? Colors.white : theme.colorScheme.onSurface,
+            if (message.imageUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  '${Api.baseUrl}${message.imageUrl}',
+                  width: 240,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    padding: const EdgeInsets.all(12),
+                    child: Icon(
+                      Icons.broken_image_rounded,
+                      color: mine
+                          ? Colors.white.withValues(alpha: 0.6)
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
               ),
-            ),
+            if (message.body.isNotEmpty)
+              Text(
+                message.body,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.35,
+                  color: mine ? Colors.white : theme.colorScheme.onSurface,
+                ),
+              ),
             const SizedBox(height: 3),
             Text(
               time,
@@ -907,12 +1143,16 @@ class _Composer extends StatefulWidget {
     required this.enabled,
     required this.sending,
     required this.onSend,
+    this.onPickImage,
+    this.onTextChanged,
   });
 
   final TextEditingController controller;
   final bool enabled;
   final bool sending;
   final VoidCallback onSend;
+  final VoidCallback? onPickImage;
+  final VoidCallback? onTextChanged;
 
   @override
   State<_Composer> createState() => _ComposerState();
@@ -934,7 +1174,10 @@ class _ComposerState extends State<_Composer> {
     }
   }
 
-  void _changed() => setState(() {});
+  void _changed() {
+    setState(() {});
+    widget.onTextChanged?.call();
+  }
 
   @override
   void dispose() {
@@ -973,7 +1216,15 @@ class _ComposerState extends State<_Composer> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
+              if (widget.onPickImage != null)
+                IconButton(
+                  onPressed: widget.enabled ? widget.onPickImage : null,
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  tooltip: 'Send image',
+                  visualDensity: VisualDensity.compact,
+                ),
+              const SizedBox(width: 4),
               IconButton.filled(
                 onPressed: canSend ? widget.onSend : null,
                 icon: const Icon(Icons.arrow_upward_rounded),
@@ -983,6 +1234,298 @@ class _ComposerState extends State<_Composer> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RatingSheet extends StatefulWidget {
+  const _RatingSheet({required this.requestId});
+
+  final int requestId;
+
+  @override
+  State<_RatingSheet> createState() => _RatingSheetState();
+}
+
+class _RatingSheetState extends State<_RatingSheet> {
+  int _stars = 0;
+  final _review = TextEditingController();
+  bool _submitting = false;
+  bool _submitted = false;
+
+  @override
+  void dispose() {
+    _review.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_stars == 0 || _submitting) return;
+    setState(() => _submitting = true);
+    try {
+      await Api.post(
+        '/api/requests/${widget.requestId}/rate',
+        body: {
+          'stars': _stars,
+          'review': _review.text.trim(),
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitted = true;
+      });
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (mounted) Navigator.of(context).pop();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    final dialogBg = isDark ? AppColors.darkPaper : AppColors.paper;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: Container(
+        decoration: BoxDecoration(
+          color: dialogBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: _submitted ? _buildSuccess(theme) : _buildForm(theme, isDark),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuccess(ThemeData theme) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        Container(
+          width: 56,
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.gold.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.star_rounded,
+            color: AppColors.gold,
+            size: 28,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          'Thanks for your feedback!',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: theme.colorScheme.onSurface,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildForm(ThemeData theme, bool isDark) {
+    final cancelBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : AppColors.inkSoft.withValues(alpha: 0.2);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        Container(
+          width: 56,
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.gold.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.star_rounded,
+            color: AppColors.gold,
+            size: 28,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          'Rate your experience',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: theme.colorScheme.onSurface,
+            letterSpacing: -0.3,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(5, (i) {
+            final index = i + 1;
+            final filled = index <= _stars;
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() => _stars = index);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Icon(
+                  filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                  size: 40,
+                  color: filled
+                      ? AppColors.gold
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.25),
+                ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 20),
+        Container(
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.darkSand.withValues(alpha: 0.9)
+                : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: 0.7)
+                  : AppColors.inkSoft.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
+          child: TextField(
+            controller: _review,
+            maxLines: 3,
+            style: TextStyle(
+              fontSize: 13.5,
+              color: theme.colorScheme.onSurface,
+              height: 1.4,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Leave a review (optional)',
+              hintStyle: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+                fontSize: 13.5,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.all(14),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(100),
+                    border: Border.all(color: cancelBorder, width: 1),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Skip',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: GestureDetector(
+                onTap: _stars == 0 ? null : _submit,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: _stars == 0
+                        ? AppColors.gold.withValues(alpha: 0.4)
+                        : AppColors.gold,
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: _stars > 0
+                        ? [
+                            BoxShadow(
+                              color: AppColors.gold.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Submit',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

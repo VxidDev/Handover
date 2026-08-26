@@ -63,11 +63,13 @@ def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 
 
 @router.get("", response_model=list[SkillSearchOut])
-def search_skills(
+def search_skills(  # noqa: C901
     q: str = Query(default="", max_length=100),
     radius_km: float | None = Query(default=None, ge=0),
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
+    available: bool | None = Query(default=None),
+    sort: str = Query(default="distance", pattern="^(distance|karma|name)$"),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -82,6 +84,8 @@ def search_skills(
             ).lower()
             if keyword not in haystack:
                 continue
+        if available is not None and entry["available"] != available:
+            continue
         distance = None
         if (
             lat is not None
@@ -109,4 +113,12 @@ def search_skills(
                 images=entry["images"],
             )
         )
+
+    if sort == "distance":
+        results.sort(key=lambda r: (r.distance_km is None, r.distance_km or 0))
+    elif sort == "karma":
+        results.sort(key=lambda r: r.karma, reverse=True)
+    elif sort == "name":
+        results.sort(key=lambda r: r.skill_name.lower())
+
     return results

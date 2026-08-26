@@ -9,6 +9,7 @@ import 'search_tab.dart';
 import 'messages_tab.dart';
 import 'create_post_sheet.dart';
 import '../theme/colors.dart';
+import '../widgets/connectivity_banner.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -105,43 +106,45 @@ class _HomeShellState extends State<HomeShell>
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: _AnimatedTabStack(
-              index: _index,
-              children: [
-                const SearchTab(),
-                RequestsTab(isActive: _index == 1),
-                MessagesTab(isActive: _index == 2),
-                const ProfileTab(),
-              ],
+      body: ConnectivityBanner(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: _AnimatedTabStack(
+                index: _index,
+                children: [
+                  const SearchTab(),
+                  RequestsTab(isActive: _index == 1),
+                  MessagesTab(isActive: _index == 2),
+                  const ProfileTab(),
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: bottomSafe + 16,
-            child: SlideTransition(
-              position: _navSlide,
-              child: FadeTransition(
-                opacity: _navFade,
-                child: SizedBox(
-                  height: 68,
-                  child: _FloatingNavBar(
-                    index: _index,
-                    onTap: _selectTab,
-                    onPlus: _openCreatePost,
-                    pillScale: _pillScale,
-                    pillFade: _pillFade,
-                    plusScale: _plusScale,
-                    plusFade: _plusFade,
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: bottomSafe + 16,
+              child: SlideTransition(
+                position: _navSlide,
+                child: FadeTransition(
+                  opacity: _navFade,
+                  child: SizedBox(
+                    height: 68,
+                    child: _FloatingNavBar(
+                      index: _index,
+                      onTap: _selectTab,
+                      onPlus: _openCreatePost,
+                      pillScale: _pillScale,
+                      pillFade: _pillFade,
+                      plusScale: _plusScale,
+                      plusFade: _plusFade,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -322,29 +325,33 @@ class _FloatingNavBar extends StatelessWidget {
                               opacity: plusFade,
                               child: ScaleTransition(
                                 scale: plusScale,
-                                child: GestureDetector(
-                                  onTap: onPlus,
-                                  child: Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.terracotta,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppColors.terracotta
-                                              .withValues(
-                                                alpha: isDark ? 0.4 : 0.3,
-                                              ),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.add_rounded,
-                                      color: Colors.white,
-                                      size: 26,
+                                child: Semantics(
+                                  button: true,
+                                  label: 'Create new post',
+                                  child: GestureDetector(
+                                    onTap: onPlus,
+                                    child: Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.terracotta,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.terracotta
+                                                .withValues(
+                                                  alpha: isDark ? 0.4 : 0.3,
+                                                ),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.add_rounded,
+                                        color: Colors.white,
+                                        size: 26,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -412,39 +419,45 @@ class _NavItem extends StatelessWidget {
 
     final currentColor = isSelected ? selectedColor : unselectedColor;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        color: Colors.transparent,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: Icon(
-                isSelected ? selectedIcon : icon,
-                key: ValueKey(isSelected),
-                size: 22,
-                color: currentColor,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '$label tab',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          color: Colors.transparent,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: Icon(
+                  isSelected ? selectedIcon : icon,
+                  key: ValueKey(isSelected),
+                  size: 22,
+                  color: currentColor,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOutQuart,
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                letterSpacing: 0.1,
-                color: currentColor,
+              const SizedBox(height: 2),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeOutQuart,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  letterSpacing: 0.1,
+                  color: currentColor,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(label, maxLines: 1),
+                ),
               ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(label, maxLines: 1),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

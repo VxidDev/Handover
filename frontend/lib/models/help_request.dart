@@ -11,6 +11,9 @@ class HelpRequest {
     required this.skillName,
     this.message,
     this.createdAt,
+    this.updatedAt,
+    this.unreadCount,
+    this.lastMessage,
   });
 
   final int id;
@@ -24,6 +27,9 @@ class HelpRequest {
   final String skillName;
   final String? message;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final int? unreadCount;
+  final String? lastMessage;
 
   factory HelpRequest.fromJson(Map<String, dynamic> json) => HelpRequest(
     id: json['id'] as int,
@@ -39,5 +45,10 @@ class HelpRequest {
     createdAt: json['created_at'] != null
         ? DateTime.tryParse(json['created_at'] as String)
         : null,
+    updatedAt: json['updated_at'] != null
+        ? DateTime.tryParse(json['updated_at'] as String)
+        : null,
+    unreadCount: json['unread_count'] as int?,
+    lastMessage: json['last_message'] as String?,
   );
 }

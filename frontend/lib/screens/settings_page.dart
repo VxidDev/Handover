@@ -31,6 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _savingPhone = false;
   bool _uploadingImage = false;
   bool _deleting = false;
+  bool _savingName = false;
   final _phoneController = TextEditingController();
 
   @override
@@ -94,8 +95,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final selection = await Navigator.of(context).push<GridSelection>(
       MaterialPageRoute(
         builder: (_) => LocationGridPickerPage(
-          initialLat: Api.demoLat,
-          initialLng: Api.demoLng,
+          initialLat: Api.currentLat ?? 52.23,
+          initialLng: Api.currentLng ?? 21.01,
         ),
       ),
     );
@@ -123,6 +124,10 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _savePhone({bool clear = false}) async {
     final phone = clear ? null : _phoneController.text.trim();
     if (!clear && (phone == null || phone.isEmpty)) return;
+    if (!clear && phone!.length > 50) {
+      _snack('Phone number must be 50 characters or less');
+      return;
+    }
 
     setState(() => _savingPhone = true);
     try {
@@ -233,6 +238,132 @@ class _SettingsPageState extends State<SettingsPage> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => LegalPage(document: document)),
     );
+  }
+
+  Future<void> _editDisplayName() async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final nameController = TextEditingController(text: _profile?.name ?? '');
+
+    final newName = await showDialog<String>(
+      context: context,
+      barrierColor: isDark
+          ? Colors.black.withValues(alpha: 0.5)
+          : AppColors.ink.withValues(alpha: 0.3),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 380),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkPaper : AppColors.paper,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: 0.6)
+                  : Colors.white.withValues(alpha: 0.8),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Edit display name',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.4,
+                  fontSize: 20,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.darkSand.withValues(alpha: 0.9)
+                      : Colors.white.withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isDark
+                        ? AppColors.darkBorder.withValues(alpha: 0.7)
+                        : Colors.white.withValues(alpha: 0.9),
+                    width: 1,
+                  ),
+                ),
+                child: TextField(
+                  controller: nameController,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    color: theme.colorScheme.onSurface,
+                    height: 1.2,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Your name',
+                    hintStyle: TextStyle(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                      fontSize: 14.5,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.terracotta,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      elevation: 0,
+                    ),
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (newName == null || newName.isEmpty || newName == _profile?.name || !mounted) return;
+
+    setState(() => _savingName = true);
+    try {
+      final res = await Api.patch('/api/users/me', body: {'name': newName});
+      if (!mounted) return;
+      final profile = UserProfile.fromJson(res as Map<String, dynamic>);
+      setState(() {
+        _profile = profile;
+        _savingName = false;
+      });
+      _snack('Name updated', isError: false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _savingName = false);
+      _snack(describeError(e));
+    }
   }
 
   Future<void> _downloadData() async {
@@ -356,6 +487,19 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          await Clipboard.setData(ClipboardData(text: pretty));
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          _snack('Copied! Paste into any app to save.', isError: false);
+                        },
+                        icon: const Icon(Icons.share_rounded, size: 17),
+                        label: const Text('Share'),
+                      ),
                     ),
                   ],
                 ),
@@ -654,6 +798,21 @@ class _SettingsPageState extends State<SettingsPage> {
         _SettingsSection(
           title: 'Appearance',
           children: [
+            _SettingsTile(
+              icon: Icons.badge_outlined,
+              iconColor: AppColors.terracotta,
+              title: 'Display name',
+              subtitle: p.name,
+              trailing: _savingName
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.chevron_right_rounded, size: 20),
+              onTap: _editDisplayName,
+            ),
+            _SettingsTileDivider(isDark: isDark),
             _ProfilePhotoTile(
               profile: p,
               uploading: _uploadingImage,
@@ -1077,7 +1236,59 @@ class _ProfilePhotoTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: uploading ? null : onPickImage,
-        onLongPress: hasImage ? onRemoveImage : null,
+        onLongPress: hasImage
+            ? () async {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  barrierColor: isDark
+                      ? Colors.black.withValues(alpha: 0.6)
+                      : AppColors.ink.withValues(alpha: 0.4),
+                  builder: (dCtx) => Dialog(
+                    backgroundColor: Colors.transparent,
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 340),
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkPaper : AppColors.paper,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 28),
+                          const SizedBox(height: 14),
+                          const Text(
+                            'Remove profile photo?',
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => Navigator.pop(dCtx, false),
+                                  child: const Text('Cancel'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: FilledButton(
+                                  onPressed: () => Navigator.pop(dCtx, true),
+                                  style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                                  child: const Text('Remove'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+                if (confirmed == true) onRemoveImage();
+              }
+            : null,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
@@ -1106,7 +1317,7 @@ class _ProfilePhotoTile extends StatelessWidget {
                               width: 34,
                               height: 34,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(
+                              errorBuilder: (_, _, _) => Icon(
                                 Icons.person_outline_rounded,
                                 size: 17,
                                 color: avatarColor,

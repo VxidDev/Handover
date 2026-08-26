@@ -60,6 +60,114 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Future<void> _deleteSkill(Skill skill) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: isDark
+          ? Colors.black.withValues(alpha: 0.6)
+          : AppColors.ink.withValues(alpha: 0.4),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 380),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkPaper : AppColors.paper,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: 0.6)
+                  : Colors.white.withValues(alpha: 0.8),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.error,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Delete "${skill.name}"?',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: -0.2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'This skill will be removed from your profile and neighbors won\'t see it anymore.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        side: BorderSide(
+                          color: isDark
+                              ? AppColors.darkBorder.withValues(alpha: 0.6)
+                              : AppColors.inkSoft.withValues(alpha: 0.15),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                      ),
+                      child: const Text('Delete'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+
     setState(() => _removingSkillIds.add(skill.id));
     await Future.delayed(const Duration(milliseconds: 500));
 
@@ -200,14 +308,6 @@ class _ProfileTabState extends State<ProfileTab> {
               ),
               const SizedBox(height: 16),
               ListTile(
-                leading: const Icon(Icons.camera_alt_rounded),
-                title: const Text('Take new photo'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _pickProfileImage();
-                },
-              ),
-              ListTile(
                 leading: const Icon(Icons.photo_library_rounded),
                 title: const Text('Choose from gallery'),
                 onTap: () {
@@ -224,9 +324,66 @@ class _ProfileTabState extends State<ProfileTab> {
                   'Remove photo',
                   style: TextStyle(color: AppColors.error),
                 ),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(ctx);
-                  _removeProfileImage();
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  final removeConfirmed = await showDialog<bool>(
+                    context: context,
+                    barrierColor: isDark
+                        ? Colors.black.withValues(alpha: 0.6)
+                        : AppColors.ink.withValues(alpha: 0.4),
+                    builder: (dCtx) => Dialog(
+                      backgroundColor: Colors.transparent,
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 340),
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkPaper : AppColors.paper,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.delete_outline_rounded,
+                              color: AppColors.error,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Remove profile photo?',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => Navigator.pop(dCtx, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: FilledButton(
+                                    onPressed: () => Navigator.pop(dCtx, true),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                    child: const Text('Remove'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                  if (removeConfirmed == true) _removeProfileImage();
                 },
               ),
             ],
@@ -484,7 +641,7 @@ class _HeroCard extends StatelessWidget {
                                       width: 52,
                                       height: 52,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Text(
+                                      errorBuilder: (_, _, _) => Text(
                                         profile.name.isNotEmpty
                                             ? profile.name[0].toUpperCase()
                                             : '?',
@@ -531,27 +688,46 @@ class _HeroCard extends StatelessWidget {
                       ),
                       if (!uploadingImage)
                         Positioned(
-                          right: -4,
-                          top: -4,
-                          child: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: AppColors.terracotta,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDark
-                                    ? AppColors.darkPaper
-                                    : AppColors.paper,
-                                width: 2,
+                          right: -14,
+                          top: -14,
+                          child: Semantics(
+                            button: true,
+                            label: profile.profileImage != null
+                                ? 'Edit profile photo'
+                                : 'Add profile photo',
+                            child: GestureDetector(
+                              onTap: onPickImage,
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.terracotta,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isDark
+                                            ? AppColors.darkPaper
+                                            : AppColors.paper,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      profile.profileImage != null
+                                          ? Icons.edit_rounded
+                                          : Icons.camera_alt_rounded,
+                                      size: 10,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Icon(
-                              profile.profileImage != null
-                                  ? Icons.edit_rounded
-                                  : Icons.camera_alt_rounded,
-                              size: 10,
-                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -1227,9 +1403,11 @@ class _SkillCard extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: onDelete,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.all(6),
+                    width: 48,
+                    height: 48,
+                    padding: const EdgeInsets.all(14),
                     child: Icon(
                       Icons.delete_outline_rounded,
                       size: 18,

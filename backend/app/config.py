@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 from pathlib import Path
@@ -18,6 +19,8 @@ DATA_DIR.mkdir(exist_ok=True)
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+logger = logging.getLogger("handover.config")
+
 
 def _fail_startup(message: str) -> None:
     print(f"[FATAL] {message}", file=sys.stderr)
@@ -34,8 +37,25 @@ class Settings:
     TOKEN_TTL_SECONDS = int(os.getenv("TOKEN_TTL_SECONDS", str(60 * 60 * 24 * 7)))
     ROOM_TOKEN_TTL_SECONDS = int(os.getenv("ROOM_TOKEN_TTL_SECONDS", "900"))
     CONTACT_ENCRYPTION_KEY = os.getenv("CONTACT_ENCRYPTION_KEY")
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+    SMTP_HOST = os.getenv("SMTP_HOST", "")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM = os.getenv("SMTP_FROM", "noreply@handover.app")
+    SMTP_TLS = os.getenv("SMTP_TLS", "true").lower() == "true"
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+    CORS_ORIGINS: list[str] = []
 
     def __init__(self) -> None:
+        raw_origins = os.getenv("CORS_ORIGINS", "*")
+        if raw_origins == "*":
+            self.CORS_ORIGINS = ["*"]
+        else:
+            self.CORS_ORIGINS = [o.strip() for o in raw_origins.split(",") if o.strip()]
+
         if not self.SECRET_KEY:
             _fail_startup(
                 "SECRET_KEY is not set. Generate one with:\n"
@@ -52,6 +72,12 @@ class Settings:
                 "Then set it in your .env or environment.\n"
                 "This key is used to encrypt phone numbers — "
                 "losing it makes stored data unrecoverable."
+            )
+
+        if self.ENVIRONMENT == "production" and self.CORS_ORIGINS == ["*"]:
+            _fail_startup(
+                "CORS_ORIGINS must not be '*' in production.\n"
+                "Set it to your frontend domain, e.g. CORS_ORIGINS=https://handover.app"
             )
 
         self._validate_fernet_key()

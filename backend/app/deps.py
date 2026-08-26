@@ -3,7 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import Request, User
+from .models import BlockedToken, Request, User
 from .security import decode_room_token, decode_token
 
 _bearer = HTTPBearer(auto_error=False)
@@ -41,6 +41,9 @@ def _user_from_credentials(
         payload = decode_token(credentials.credentials)
         if payload.get("scope") is not None:
             raise ValueError("Scoped token cannot be used for API authentication")
+        jti = payload.get("jti")
+        if jti and db.query(BlockedToken).filter(BlockedToken.jti == jti).first():
+            raise ValueError("Token has been revoked")
         user_id = int(payload["sub"])
     except (ValueError, KeyError):
         raise HTTPException(

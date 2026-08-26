@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -10,15 +11,18 @@ from ..models import (
     ChatMessage,
     DisclosureLog,
     PrivateContact,
+    Rating,
     Request,
     Skill,
     SkillImage,
     User,
     utcnow,
 )
-from ..schemas import SkillCreateIn, SkillOut, UserMeOut, UserUpdateIn
+from ..schemas import RatingOut, SkillCreateIn, SkillOut, UserMeOut, UserUpdateIn
 from ..security import decrypt_contact, encrypt_contact
 from .skills import invalidate_catalog
+
+logger = logging.getLogger("handover.users")
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -28,7 +32,10 @@ UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads"
 def user_me_out(user: User) -> UserMeOut:
     result = UserMeOut.model_validate(user)
     if user.private_contact is not None:
-        result.phone = decrypt_contact(user.private_contact.encrypted_phone)
+        try:
+            result.phone = decrypt_contact(user.private_contact.encrypted_phone)
+        except Exception:
+            logger.exception("Failed to decrypt phone for user %d", user.id)
     return result
 
 
@@ -121,8 +128,8 @@ def _remove_uploaded_file(path: str) -> None:
         return
     try:
         (UPLOAD_DIR / path.removeprefix("/uploads/")).unlink(missing_ok=True)
-    except OSError:
-        pass
+    except OSError as exc:
+        logger.warning("Failed to remove uploaded file %s: %s", path, exc)
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
@@ -173,7 +180,12 @@ def export_me(
 
     phone = None
     if user.private_contact is not None:
-        phone = decrypt_contact(user.private_contact.encrypted_phone)
+        try:
+            phone = decrypt_contact(user.private_contact.encrypted_phone)
+        except Exception:
+            logger.exception(
+                "Failed to decrypt phone during export for user %d", user.id
+            )
 
     return {
         "generated_at": utcnow().isoformat(),
@@ -246,3 +258,37 @@ def export_me(
             for log in disclosure_rows
         ],
     }
+
+
+@router.get("/{user_id}/ratings", response_model=list[RatingOut])
+def get_user_ratings(
+    user_id: int,
+    db: Session = Depends(get_db),
+):
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    ratings = (
+        db.query(Rating)
+        .filter(Rating.rated_id == user_id)
+        .order_by(Rating.created_at.desc())
+        .all()
+    )
+    result = []
+    for rating in ratings:
+        rater = db.get(User, rating.rater_id)
+        result.append(
+            RatingOut(
+                id=rating.id,
+                request_id=rating.request_id,
+                rater_id=rating.rater_id,
+                rater_name=rater.name if rater else "Unknown",
+                rated_id=rating.rated_id,
+                stars=rating.stars,
+                review=rating.review,
+                created_at=rating.created_at,
+            )
+        )
+    return result

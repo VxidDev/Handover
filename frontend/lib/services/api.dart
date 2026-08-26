@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -28,7 +29,6 @@ String describeError(Object error) {
       if (errorList != null && errorList.isNotEmpty) {
         final messages = errorList.map((err) {
           String msg = err['msg']?.toString() ?? 'Invalid value';
-          // Clean up standard Pydantic prefix if present
           if (msg.startsWith('Value error, ')) {
             msg = msg.replaceFirst('Value error, ', '');
           }
@@ -41,14 +41,12 @@ String describeError(Object error) {
       if (decoded is Map && decoded['detail'] is String) {
         return decoded['detail'];
       }
-    } catch (_) {
-      // Message wasn't JSON, return raw message as fallback
-    }
+    } catch (_) {}
 
     return error.message;
   }
 
-  return 'Can\'t reach the server at ${Api.baseUrl}. Is the backend running?';
+  return 'Can\'t reach the server. Check your connection and try again.';
 }
 
 class Api {
@@ -59,10 +57,9 @@ class Api {
     defaultValue: 'http://127.0.0.1:9000',
   );
 
-  static const String _tokenKey = 'handover_token';
+  static final Uri _parsedBaseUrl = Uri.parse(baseUrl);
 
-  static const double demoLat = 37.7749;
-  static const double demoLng = -122.4195;
+  static const String _tokenKey = 'handover_token';
 
   static String? _token;
   static int? currentUserId;
@@ -71,8 +68,6 @@ class Api {
 
   static bool get hasToken => _token != null;
 
-  /// Restores a stored token and validates it against the backend. Invalid or
-  /// expired tokens are dropped.
   static Future<void> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(_tokenKey);
@@ -83,12 +78,14 @@ class Api {
       currentUserId = data['id'] as int;
       currentLat = (data['lat'] as num?)?.toDouble();
       currentLng = (data['lng'] as num?)?.toDouble();
-    } catch (_) {
-      _token = null;
-      currentUserId = null;
-      currentLat = null;
-      currentLng = null;
-      await prefs.remove(_tokenKey);
+    } catch (e) {
+      if (e is ApiException && e.statusCode == 401) {
+        _token = null;
+        currentUserId = null;
+        currentLat = null;
+        currentLng = null;
+        await prefs.remove(_tokenKey);
+      }
     }
   }
 
@@ -103,6 +100,9 @@ class Api {
   }
 
   static Future<void> clearSession() async {
+    try {
+      await post('/api/auth/logout');
+    } catch (_) {}
     _token = null;
     currentUserId = null;
     currentLat = null;
@@ -132,6 +132,20 @@ class Api {
     );
   }
 
+  static Future<bool> get isConnected async {
+    try {
+      final socket = await Socket.connect(
+        _parsedBaseUrl.host,
+        _parsedBaseUrl.port,
+        timeout: const Duration(seconds: 3),
+      );
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<dynamic> _send(Future<http.Response> Function() request) async {
     final res = await request();
     dynamic body;
@@ -145,8 +159,14 @@ class Api {
     if (body is Map && body['detail'] != null) {
       final d = body['detail'];
       detail = d is String ? d : jsonEncode(d);
+    } else if (res.statusCode == 401) {
+      detail = 'Session expired. Please sign in again.';
+    } else if (res.statusCode == 404) {
+      detail = 'Resource not found.';
+    } else if (res.statusCode >= 500) {
+      detail = 'Something went wrong on our end. Please try again later.';
     } else {
-      detail = 'Request failed (${res.statusCode})';
+      detail = 'Something went wrong. Please try again.';
     }
     throw ApiException(detail, statusCode: res.statusCode);
   }
@@ -161,7 +181,16 @@ class Api {
     final response = await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode >= 400) {
-      throw Exception(response.body);
+      String detail;
+      try {
+        final body = jsonDecode(response.body);
+        detail = body is Map && body['detail'] is String
+            ? body['detail']
+            : 'Upload failed. Please try again.';
+      } catch (_) {
+        detail = 'Upload failed. Please try again.';
+      }
+      throw ApiException(detail, statusCode: response.statusCode);
     }
 
     return json.decode(response.body) as Map<String, dynamic>;

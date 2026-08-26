@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/geohash.dart';
+import '../services/location.dart';
 
 import '../theme/colors.dart';
 
@@ -36,8 +37,11 @@ class LocationGridPickerPage extends StatefulWidget {
 class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
   static const int _gridPrecision = 6;
 
+  final _mapController = MapController();
   String? _cellId;
   GeoBounds? _cellBounds;
+  bool _locating = false;
+  bool _mapReady = false;
 
   void _selectPoint(LatLng point) {
     final cellId = Geohash.encode(
@@ -69,6 +73,113 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
     );
   }
 
+  Future<void> _useMyLocation() async {
+    if (_locating) return;
+    setState(() => _locating = true);
+
+    final position = await LocationService.getCurrentPosition();
+
+    if (!mounted) return;
+
+    if (position == null) {
+      setState(() => _locating = false);
+
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+
+      final openSettings = await showModalBottomSheet<bool>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkPaper : AppColors.paper,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Icon(
+                  Icons.location_off_outlined,
+                  size: 40,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Location access needed',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    'Enable location permissions in your device settings to use GPS, or tap the map to choose manually.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('OK'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.terracotta,
+                          ),
+                          child: const Text('Open settings'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      if (openSettings == true) {
+        await LocationService.openSettings();
+      }
+      return;
+    }
+
+    _selectPoint(position);
+    if (_mapReady) {
+      _mapController.move(position, 14);
+    }
+    setState(() => _locating = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -97,15 +208,17 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
       body: Stack(
         children: [
           FlutterMap(
+            mapController: _mapController,
             options: MapOptions(
               initialCenter: LatLng(widget.initialLat, widget.initialLng),
               initialZoom: 14,
               onTap: (tapPosition, point) => _selectPoint(point),
+              onMapReady: () => _mapReady = true,
             ),
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.handover',
+                userAgentPackageName: 'dev.vxiddev.handover',
               ),
               if (_cellBounds != null)
                 PolygonLayer(
@@ -179,7 +292,7 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      "Tap the map. We'll turn this into a rough grid area instead of your exact location.",
+                      "Tap the map or use GPS. We'll turn this into a rough grid area instead of your exact location.",
                       style: TextStyle(
                         fontSize: 12.5,
                         color: theme.colorScheme.onSurface.withValues(
@@ -190,6 +303,31 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+          Positioned(
+            right: 16,
+            bottom: _cellId != null ? 170 : 100,
+            child: Semantics(
+              button: true,
+              label: 'Use my GPS location',
+              child: FloatingActionButton(
+                onPressed: _locating ? null : _useMyLocation,
+                backgroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                foregroundColor: AppColors.terracotta,
+                elevation: 3,
+                shape: const CircleBorder(),
+                child: _locating
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: AppColors.terracotta,
+                        ),
+                      )
+                    : const Icon(Icons.my_location_rounded, size: 22),
               ),
             ),
           ),

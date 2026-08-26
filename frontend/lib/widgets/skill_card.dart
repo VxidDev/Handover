@@ -1,4 +1,3 @@
-// lib/widgets/skill_card.dart
 import 'package:flutter/material.dart';
 
 import '../models/neighbor_skill.dart';
@@ -37,7 +36,10 @@ class SkillCard extends StatelessWidget {
         neighbor.grid!,
     ];
 
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      label: '${neighbor.skill} by ${neighbor.name}${neighbor.available ? ", available" : ""}',
+      child: GestureDetector(
       onTap: () {
         Navigator.of(context).push(
           PageRouteBuilder(
@@ -132,7 +134,7 @@ class SkillCard extends StatelessWidget {
                                   width: 22,
                                   height: 22,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Text(
+                                  errorBuilder: (_, _, _) => Text(
                                     neighbor.initial,
                                     style: TextStyle(
                                       color: avatarColor,
@@ -202,6 +204,7 @@ class SkillCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
@@ -17,10 +18,12 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..database import SessionLocal, get_db
 from ..deps import authenticate_room_token, get_current_user
-from ..models import ChatMessage, DisclosureLog, Request, User
-from ..schemas import ChatMessageOut, RoomTokenOut
+from ..models import ChatMessage, DisclosureLog, MessageReadCursor, Request, User
+from ..schemas import ChatMessageOut, RoomTokenOut, UnreadCountsOut
 from ..security import create_token, decrypt_contact
 from .requests import _to_out
+
+logger = logging.getLogger("handover.rooms")
 
 router = APIRouter(prefix="/requests", tags=["request rooms"])
 
@@ -49,6 +52,7 @@ def _message_out(message: ChatMessage) -> ChatMessageOut:
         sender_name=message.sender.name,
         body=message.body,
         created_at=message.created_at,
+        image_url=message.image_url,
     )
 
 
@@ -74,9 +78,14 @@ def create_room_token(
         and request.provider_share_phone
         and request.provider.private_contact is not None
     ):
-        contact_info["phone"] = decrypt_contact(
-            request.provider.private_contact.encrypted_phone
-        )
+        try:
+            contact_info["phone"] = decrypt_contact(
+                request.provider.private_contact.encrypted_phone
+            )
+        except Exception:
+            logger.exception(
+                "Failed to decrypt phone for room token (request %d)", request_id
+            )
         db.add(
             DisclosureLog(
                 request_id=request.id,
@@ -109,6 +118,79 @@ def message_history(
         .all()
     )
     return [_message_out(message) for message in messages]
+
+
+@router.post("/{request_id}/read")
+def mark_read(
+    request_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _accepted_participant(db.get(Request, request_id), user)
+    latest = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.request_id == request_id)
+        .order_by(ChatMessage.id.desc())
+        .first()
+    )
+    last_id = latest.id if latest else 0
+    cursor = (
+        db.query(MessageReadCursor)
+        .filter(
+            MessageReadCursor.user_id == user.id,
+            MessageReadCursor.request_id == request_id,
+        )
+        .first()
+    )
+    if cursor is None:
+        cursor = MessageReadCursor(
+            user_id=user.id,
+            request_id=request_id,
+            last_read_message_id=last_id,
+        )
+        db.add(cursor)
+    else:
+        cursor.last_read_message_id = last_id
+    db.commit()
+    return {"last_read_message_id": last_id}
+
+
+@router.get("/unread-counts", response_model=UnreadCountsOut)
+def unread_counts(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    requests = (
+        db.query(Request)
+        .filter(
+            (Request.requester_id == user.id) | (Request.provider_id == user.id),
+            Request.status.in_(["accepted", "completed"]),
+        )
+        .all()
+    )
+    counts: dict[str, int] = {}
+    for req in requests:
+        cursor = (
+            db.query(MessageReadCursor)
+            .filter(
+                MessageReadCursor.user_id == user.id,
+                MessageReadCursor.request_id == req.id,
+            )
+            .first()
+        )
+        last_read = cursor.last_read_message_id if cursor else 0
+        unread = (
+            db.query(ChatMessage)
+            .filter(
+                ChatMessage.request_id == req.id,
+                ChatMessage.id > last_read,
+                ChatMessage.sender_id != user.id,
+            )
+            .count()
+        )
+        if unread > 0:
+            counts[str(req.id)] = unread
+    return UnreadCountsOut(counts=counts)
 
 
 class ConnectionManager:
@@ -147,7 +229,7 @@ manager = ConnectionManager()
 
 
 @router.websocket("/{request_id}/chat")
-async def request_chat(
+async def request_chat(  # noqa: C901
     websocket: WebSocket,
     request_id: int,
     token: str = Query(...),
@@ -180,20 +262,43 @@ async def request_chat(
             except json.JSONDecodeError:
                 await websocket.send_json({"type": "error", "detail": "Invalid JSON"})
                 continue
-            body = payload.get("body") if isinstance(payload, dict) else None
-            if (
-                not isinstance(payload, dict)
-                or payload.get("type") != "message"
-                or not isinstance(body, str)
-            ):
+
+            if not isinstance(payload, dict):
+                await websocket.send_json(
+                    {"type": "error", "detail": "Expected a JSON object"}
+                )
+                continue
+
+            event_type = payload.get("type")
+
+            if event_type == "typing":
+                await manager.broadcast(
+                    request_id,
+                    {"type": "typing", "user_id": user_id},
+                )
+                continue
+
+            if event_type != "message":
                 await websocket.send_json(
                     {"type": "error", "detail": "Expected a message event"}
                 )
                 continue
-            body = body.strip()
-            if not body or len(body) > 2000:
+
+            body = (payload.get("body") or "").strip()
+            image_url = payload.get("image_url")
+            if not body and not image_url:
+                await websocket.send_json(
+                    {"type": "error", "detail": "Message must have body or image_url"}
+                )
+                continue
+            if body and len(body) > 2000:
                 await websocket.send_json(
                     {"type": "error", "detail": "Message must be 1 to 2000 characters"}
+                )
+                continue
+            if image_url and len(image_url) > 500:
+                await websocket.send_json(
+                    {"type": "error", "detail": "image_url too long"}
                 )
                 continue
 
@@ -206,7 +311,10 @@ async def request_chat(
                     )
                     return
                 message = ChatMessage(
-                    request_id=request_id, sender_id=user_id, body=body
+                    request_id=request_id,
+                    sender_id=user_id,
+                    body=body,
+                    image_url=image_url,
                 )
                 db.add(message)
                 db.commit()
@@ -217,5 +325,7 @@ async def request_chat(
             )
     except WebSocketDisconnect:
         pass
+    except Exception:
+        logger.exception("Unexpected error in WebSocket for request %d", request_id)
     finally:
         await manager.disconnect(request_id, websocket)

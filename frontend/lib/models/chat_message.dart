@@ -6,6 +6,7 @@ class ChatMessage {
     required this.senderName,
     required this.body,
     required this.createdAt,
+    this.imageUrl,
   });
 
   final int id;
@@ -14,6 +15,7 @@ class ChatMessage {
   final String senderName;
   final String body;
   final DateTime createdAt;
+  final String? imageUrl;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
     id: json['id'] as int,
@@ -21,6 +23,7 @@ class ChatMessage {
     senderId: json['sender_id'] as int,
     senderName: json['sender_name'] as String,
     body: json['body'] as String,
-    createdAt: DateTime.parse(json['created_at'] as String),
+    createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime(2024),
+    imageUrl: json['image_url'] as String?,
   );
 }

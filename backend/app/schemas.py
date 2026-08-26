@@ -118,6 +118,8 @@ class RequestOut(BaseModel):
     provider_name: str
     provider_profile_image: str | None = None
     skill_name: str
+    last_message: "ChatMessageOut | None" = None
+    unread_count: int = 0
 
 
 class RequestUpdateIn(BaseModel):
@@ -138,6 +140,7 @@ class ChatMessageOut(BaseModel):
     sender_name: str
     body: str
     created_at: datetime
+    image_url: str | None = None
 
 
 class RoomTokenOut(BaseModel):
@@ -145,3 +148,47 @@ class RoomTokenOut(BaseModel):
     expires_at: datetime
     request: RequestOut
     contact_info: dict[str, str]
+
+
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    new_password: str = Field(min_length=6, max_length=128)
+
+
+class ReportIn(BaseModel):
+    reported_id: int
+    reason: str = Field(min_length=1, max_length=50)
+    details: str | None = Field(default=None, max_length=1000)
+
+
+class BlockIn(BaseModel):
+    blocked_id: int
+
+
+class RatingIn(BaseModel):
+    stars: int = Field(ge=1, le=5)
+    review: str | None = Field(default=None, max_length=500)
+
+
+class RatingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    request_id: int
+    rater_id: int
+    rater_name: str
+    rated_id: int
+    stars: int
+    review: str | None = None
+    created_at: datetime
+
+
+class UnreadCountsOut(BaseModel):
+    counts: dict[str, int]
+
+
+RequestOut.model_rebuild()

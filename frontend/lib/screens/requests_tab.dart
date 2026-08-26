@@ -27,11 +27,11 @@ class _RequestsTabState extends State<RequestsTab>
   int _currentTabIndex = 0;
 
   static const _tabs = [
-    (label: 'Sent', path: '/api/requests?role=sent&status=pending&amount=20'),
+    (label: 'Sent', path: '/api/requests?role=sent&status=pending&amount=50'),
     (label: 'Cancelled', path: '/api/requests?status=cancelled&amount=50'),
     (
       label: 'Received',
-      path: '/api/requests?role=received&active=true&amount=20',
+      path: '/api/requests?role=received&active=true&amount=50',
     ),
     (label: 'Completed', path: '/api/requests?status=completed&amount=50'),
   ];
@@ -549,6 +549,29 @@ class _RequestsTabState extends State<RequestsTab>
       ? request.providerName
       : request.requesterName;
 
+  Future<void> _complete(HelpRequest request) async {
+    setState(() => _busyRequestId = request.id);
+    try {
+      await Api.patch(
+        '/api/requests/${request.id}',
+        body: {'status': 'completed'},
+      );
+      _loadAll();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Handover marked as completed.')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
+    } finally {
+      if (mounted) setState(() => _busyRequestId = null);
+    }
+  }
+
   void _openChat(HelpRequest request) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -906,6 +929,7 @@ class _RequestsTabState extends State<RequestsTab>
           onRespond: (s) => s == 'accepted' ? _accept(r) : _respond(r, s),
           onCancel: isSentTab ? () => _cancel(r) : null,
           onTap: canOpenChat ? () => _openChat(r) : null,
+          onComplete: (!isSentTab || r.status != 'accepted') ? null : () => _complete(r),
         );
 
         if (isSentTab) {
@@ -1088,6 +1112,7 @@ class _RequestCard extends StatelessWidget {
     required this.onRespond,
     this.onCancel,
     this.onTap,
+    this.onComplete,
   });
 
   final HelpRequest request;
@@ -1096,6 +1121,17 @@ class _RequestCard extends StatelessWidget {
   final void Function(String status) onRespond;
   final VoidCallback? onCancel;
   final VoidCallback? onTap;
+  final VoidCallback? onComplete;
+
+  String _timeAgo(DateTime? date) {
+    if (date == null) return '';
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours < 24) return '${diff.inHours}h';
+    if (diff.inDays < 30) return '${diff.inDays}d';
+    return '${date.month}/${date.day}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1173,7 +1209,7 @@ class _RequestCard extends StatelessWidget {
                           width: 44,
                           height: 44,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Text(
+                          errorBuilder: (_, _, _) => Text(
                             initial,
                             style: TextStyle(
                               color: avatarFg,
@@ -1217,6 +1253,18 @@ class _RequestCard extends StatelessWidget {
                         height: 1.3,
                       ),
                     ),
+                    if (_timeAgo(request.createdAt).isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        _timeAgo(request.createdAt),
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.45,
+                          ),
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1308,6 +1356,26 @@ class _RequestCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(100),
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+          if (!isReceived && request.status == 'accepted' && onComplete != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: busy ? null : onComplete,
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                label: const Text('Mark as completed'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.sage,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  elevation: 0,
                 ),
               ),
             ),

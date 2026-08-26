@@ -1,4 +1,3 @@
-// lib/screens/skill_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -87,8 +86,8 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                   child: GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
                     child: Container(
-                      width: 40,
-                      height: 40,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.darkPaper.withValues(alpha: 0.85)
@@ -413,7 +412,7 @@ class _OwnerCard extends StatelessWidget {
                       width: 44,
                       height: 44,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Text(
+                      errorBuilder: (_, _, _) => Text(
                         initial,
                         style: TextStyle(
                           color: avatarColor,
