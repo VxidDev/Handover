@@ -11,7 +11,6 @@ import '../models/chat_message.dart';
 import '../models/help_request.dart';
 import '../services/api.dart';
 import '../theme/colors.dart';
-import '../widgets/report_dialog.dart';
 import '../widgets/report_user_sheet.dart';
 
 class ChatPage extends StatefulWidget {

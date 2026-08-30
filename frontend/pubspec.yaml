@@ -1,5 +1,5 @@
 name: handover
-description: "A new Flutter project."
+description: "Neighbors helping neighbors, skill by skill. A community-powered platform for exchanging skills and support."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -17,10 +17,13 @@ dependencies:
 
   flutter_map: ^6.1.0
   latlong2: ^0.9.0
+  geolocator: ^13.0.2
 
   cupertino_icons: ^1.0.8
+  flutter_markdown: ^0.7.3
 
   image_picker:
+  image_cropper: ^8.0.2
 
   qr_flutter: ^4.1.0
 

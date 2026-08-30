@@ -34,7 +34,7 @@ Future<void> main() async {
   }
 
   await Api.bootstrap();
-await ThemeController.instance.bootstrap();
+  await ThemeController.instance.bootstrap();
 
   await RevenueCatService.init();
   if (Api.hasToken) {
@@ -54,13 +54,18 @@ class HandoverApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Handover',
-      debugShowCheckedModeBanner: false,
-      darkTheme: AppTheme.dark,
-      theme: AppTheme.light,
-      themeMode: ThemeMode.system,
-      home: Api.hasToken ? const HomeShell() : const IntroPage(),
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Handover',
+          debugShowCheckedModeBanner: false,
+          darkTheme: AppTheme.dark,
+          theme: AppTheme.light,
+          themeMode: ThemeController.instance.mode,
+          home: Api.hasToken ? const HomeShell() : const IntroPage(),
+        );
+      },
     );
   }
 }

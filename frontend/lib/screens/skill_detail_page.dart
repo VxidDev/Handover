@@ -1,4 +1,3 @@
-// lib/screens/skill_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -7,7 +6,6 @@ import '../services/api.dart';
 import '../theme/colors.dart';
 import '../widgets/availability_badge.dart';
 import '../widgets/image_viewer.dart';
-import '../widgets/report_dialog.dart';
 import '../widgets/report_user_sheet.dart';
 import '../widgets/tip_sheet.dart';
 
@@ -251,8 +249,8 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                   child: GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
                     child: Container(
-                      width: 40,
-                      height: 40,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.darkPaper.withValues(alpha: 0.85)
@@ -281,18 +279,7 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                   ),
                 ),
                 actions: [
-                  if (neighbor.skillId != null)
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: GestureDetector(
-                        onTap: () => showReportDialog(
-                          context,
-                          contentType: 'skill',
-                          contentId: neighbor.skillId!,
-                          title: neighbor.skill,
-                        ),
-                        child: Container(
-if (widget.neighbor.ownerId != Api.currentUserId)
+                  if (widget.neighbor.ownerId != Api.currentUserId)
                     Padding(
                       padding: const EdgeInsets.all(8),
                       child: PopupMenuButton<String>(
@@ -312,7 +299,6 @@ if (widget.neighbor.ownerId != Api.currentUserId)
                               color: isDark
                                   ? AppColors.darkBorder.withValues(alpha: 0.6)
                                   : Colors.white.withValues(alpha: 0.9),
-                              width: 1,
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -323,13 +309,6 @@ if (widget.neighbor.ownerId != Api.currentUserId)
                             ],
                           ),
                           child: Icon(
-                            Icons.flag_outlined,
-                            size: 20,
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.7,
-                            ),
-                          ),
-                        ),
                             Icons.more_vert_rounded,
                             size: 18,
                             color: theme.colorScheme.onSurface,
@@ -501,6 +480,7 @@ if (widget.neighbor.ownerId != Api.currentUserId)
                         avatarColor: avatarColor,
                         initial: neighbor.initial,
                         metaParts: metaParts,
+                        profileImage: neighbor.ownerProfileImage,
                       ),
 
                       // Description
@@ -622,12 +602,14 @@ class _OwnerCard extends StatelessWidget {
     required this.avatarColor,
     required this.initial,
     required this.metaParts,
+    this.profileImage,
   });
 
   final String name;
   final Color avatarColor;
   final String initial;
   final List<String> metaParts;
+  final String? profileImage;
 
   @override
   Widget build(BuildContext context) {
@@ -664,14 +646,31 @@ class _OwnerCard extends StatelessWidget {
                 width: 1,
               ),
             ),
-            child: Text(
-              initial,
-              style: TextStyle(
-                color: avatarColor,
-                fontWeight: FontWeight.w700,
-                fontSize: 17,
-              ),
-            ),
+            child: profileImage != null
+                ? ClipOval(
+                    child: Image.network(
+                      '${Api.baseUrl}$profileImage',
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Text(
+                        initial,
+                        style: TextStyle(
+                          color: avatarColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 17,
+                        ),
+                      ),
+                    ),
+                  )
+                : Text(
+                    initial,
+                    style: TextStyle(
+                      color: avatarColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                    ),
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(

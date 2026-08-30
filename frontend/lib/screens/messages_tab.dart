@@ -5,6 +5,23 @@ import '../services/api.dart';
 import '../theme/colors.dart';
 import 'chat_page.dart';
 
+String _formatRelativeTime(DateTime? dateTime) {
+  if (dateTime == null) return '';
+  final diff = DateTime.now().difference(dateTime);
+  if (diff.inSeconds < 60) return 'now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+  if (diff.inHours < 24) return '${diff.inHours}h';
+  if (diff.inDays < 7) return '${diff.inDays}d';
+  if (dateTime.year == DateTime.now().year) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[dateTime.month - 1]} ${dateTime.day}';
+  }
+  return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
+}
+
 class MessagesTab extends StatefulWidget {
   const MessagesTab({super.key, this.isActive = true});
 
@@ -39,20 +56,7 @@ class _MessagesTabState extends State<MessagesTab> {
       _error = null;
     });
     try {
-      final response = await Api.get(
-        '/api/requests',
-        query: {'status': 'accepted'},
-      );
-      final requests =
-          (response as List<dynamic>)
-              .map((item) => HelpRequest.fromJson(item as Map<String, dynamic>))
-              .toList()
-            ..sort(
-              (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
-                a.createdAt ?? DateTime(0),
-              ),
-            );
-final results = await Future.wait([
+      final results = await Future.wait([
         Api.get('/api/requests', query: {'status': 'accepted'}),
         Api.get('/api/requests', query: {'status': 'completed'}),
         Api.get('/api/requests', query: {'hidden': 'true'}),
@@ -353,6 +357,17 @@ class _ConversationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isMe = request.requesterId == Api.currentUserId;
+    final profileImage = isMe
+        ? request.providerProfileImage
+        : request.requesterProfileImage;
+    final avatarColor = AppColors.avatarFor(otherUserName, isDark: isDark);
+    final unread = request.unreadCount ?? 0;
+    final subtitle = request.lastMessage ?? request.skillName;
+    final timeStr = _formatRelativeTime(
+      request.updatedAt ?? request.createdAt,
+    );
+
     return Material(
       color: isDark ? AppColors.darkPaper : AppColors.paper,
       borderRadius: BorderRadius.circular(20),
@@ -371,17 +386,22 @@ class _ConversationCard extends StatelessWidget {
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: AppColors.avatarFor(
-                  otherUserName,
-                  isDark: isDark,
-                ).withValues(alpha: 0.18),
-                foregroundColor: AppColors.avatarFor(
-                  otherUserName,
-                  isDark: isDark,
-                ),
-                child: Text(
-                  otherUserName.isEmpty ? '?' : otherUserName[0].toUpperCase(),
-                ),
+                radius: 22,
+                backgroundColor: avatarColor.withValues(alpha: 0.18),
+                foregroundImage: profileImage != null
+                    ? NetworkImage('${Api.baseUrl}$profileImage')
+                    : null,
+                child: profileImage == null
+                    ? Text(
+                        otherUserName.isEmpty
+                            ? '?'
+                            : otherUserName[0].toUpperCase(),
+                        style: TextStyle(
+                          color: avatarColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -395,16 +415,58 @@ class _ConversationCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      request.skillName,
+                      subtitle,
                       style: theme.textTheme.bodyMedium,
                       overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (timeStr.isNotEmpty)
+                    Text(
+                      timeStr,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.45,
+                        ),
+                      ),
+                    ),
+                  if (unread > 0) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.terracotta,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Center(
+                        child: Text(
+                          unread > 99 ? '99+' : '$unread',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

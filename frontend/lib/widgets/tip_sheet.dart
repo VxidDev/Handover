@@ -134,7 +134,8 @@ class _TipSheetState extends State<TipSheet> {
       await Api.post('/api/tips', body: {
         'recipient_id': widget.recipientId,
         'amount_cents': cents,
-        if (productId != null) 'product_id': productId,
+        // ignore: use_null_aware_elements
+        if (productId case final pid?) 'product_id': pid,
       });
 
       if (!mounted) return;

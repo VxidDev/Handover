@@ -4,6 +4,7 @@ class NeighborSkill {
   final String skill;
   final String blurb;
   final String name;
+  final String? ownerProfileImage;
   final double? km;
   final String? grid;
   final bool available;
@@ -16,6 +17,7 @@ class NeighborSkill {
     required this.skill,
     required this.blurb,
     required this.name,
+    this.ownerProfileImage,
     this.km,
     this.grid,
     required this.available,
@@ -32,6 +34,7 @@ class NeighborSkill {
       skill: json['skill_name'] as String,
       blurb: json['blurb'] as String? ?? '',
       name: json['owner_name'] as String,
+      ownerProfileImage: json['owner_profile_image'] as String?,
       km: (json['distance_km'] as num?)?.toDouble(),
       grid: json['grid'] as String?,
       available: json['available'] as bool? ?? true,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -30,7 +31,6 @@ String describeError(Object error) {
       if (errorList != null && errorList.isNotEmpty) {
         final messages = errorList.map((err) {
           String msg = err['msg']?.toString() ?? 'Invalid value';
-          // Clean up standard Pydantic prefix if present
           if (msg.startsWith('Value error, ')) {
             msg = msg.replaceFirst('Value error, ', '');
           }
@@ -43,14 +43,12 @@ String describeError(Object error) {
       if (decoded is Map && decoded['detail'] is String) {
         return decoded['detail'];
       }
-    } catch (_) {
-      // Message wasn't JSON, return raw message as fallback
-    }
+    } catch (_) {}
 
     return error.message;
   }
 
-  return 'Can\'t reach the server at ${Api.baseUrl}. Is the backend running?';
+  return 'Can\'t reach the server. Check your connection and try again.';
 }
 
 class Api {
@@ -61,35 +59,44 @@ class Api {
     defaultValue: 'http://127.0.0.1:9000',
   );
 
-  static const String _tokenKey = 'handover_token';
+  static final Uri _parsedBaseUrl = Uri.parse(baseUrl);
 
-  static const double demoLat = 37.7749;
-  static const double demoLng = -122.4195;
+  static const String _tokenKey = 'handover_token';
 
   static String? _token;
   static int? currentUserId;
-  static final Uri _parsedBaseUrl = Uri.parse(baseUrl);
+  static double? currentLat;
+  static double? currentLng;
 
   static bool get hasToken => _token != null;
 
-  /// Restores a stored token and validates it against the backend. Invalid or
-  /// expired tokens are dropped.
   static Future<void> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(_tokenKey);
     if (_token == null) return;
     try {
       final me = await get('/api/users/me');
-      currentUserId = (me as Map<String, dynamic>)['id'] as int;
-    } catch (_) {
-      _token = null;
-      await prefs.remove(_tokenKey);
+      final data = me as Map<String, dynamic>;
+      currentUserId = data['id'] as int;
+      currentLat = (data['lat'] as num?)?.toDouble();
+      currentLng = (data['lng'] as num?)?.toDouble();
+    } catch (e) {
+      if (e is ApiException && e.statusCode == 401) {
+        _token = null;
+        currentUserId = null;
+        currentLat = null;
+        currentLng = null;
+        await prefs.remove(_tokenKey);
+      }
     }
   }
 
-  static Future<void> storeSession(String token, int userId) async {
+  static Future<void> storeSession(String token, int userId,
+      {double? lat, double? lng}) async {
     _token = token;
     currentUserId = userId;
+    currentLat = lat;
+    currentLng = lng;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
     try {
@@ -98,8 +105,13 @@ class Api {
   }
 
   static Future<void> clearSession() async {
+    try {
+      await post('/api/auth/logout');
+    } catch (_) {}
     _token = null;
     currentUserId = null;
+    currentLat = null;
+    currentLng = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     try {
@@ -166,8 +178,14 @@ class Api {
     if (body is Map && body['detail'] != null) {
       final d = body['detail'];
       detail = d is String ? d : jsonEncode(d);
+    } else if (res.statusCode == 401) {
+      detail = 'Session expired. Please sign in again.';
+    } else if (res.statusCode == 404) {
+      detail = 'Resource not found.';
+    } else if (res.statusCode >= 500) {
+      detail = 'Something went wrong on our end. Please try again later.';
     } else {
-      detail = 'Request failed (${res.statusCode})';
+      detail = 'Something went wrong. Please try again.';
     }
     throw ApiException(detail, statusCode: res.statusCode);
   }
@@ -182,7 +200,16 @@ class Api {
     final response = await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode >= 400) {
-      throw Exception(response.body);
+      String detail;
+      try {
+        final body = jsonDecode(response.body);
+        detail = body is Map && body['detail'] is String
+            ? body['detail']
+            : 'Upload failed. Please try again.';
+      } catch (_) {
+        detail = 'Upload failed. Please try again.';
+      }
+      throw ApiException(detail, statusCode: response.statusCode);
     }
 
     return json.decode(response.body) as Map<String, dynamic>;
@@ -203,4 +230,18 @@ class Api {
 
   static Future<dynamic> delete(String path) =>
       _send(() => http.delete(_uri(path), headers: _headers));
+
+  static Future<Map<String, dynamic>> getLegal() async {
+    final res = await get('/api/legal');
+    return res as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> exportMyData() async {
+    final res = await get('/api/users/me/export');
+    return res as Map<String, dynamic>;
+  }
+
+  static Future<void> deleteAccount() async {
+    await delete('/api/users/me');
+  }
 }

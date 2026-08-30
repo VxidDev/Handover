@@ -11,7 +11,9 @@ class UserProfile {
     required this.createdAt,
     this.grid,
     this.phone,
-    this.bannedUntil,
+    this.profileImage,
+    this.tosAcceptedAt,
+    this.privacyAcceptedAt,
   });
 
   final int id;
@@ -21,11 +23,11 @@ class UserProfile {
   final int karma;
   final String? grid;
   final String? phone;
-  final DateTime? bannedUntil;
+  final String? profileImage;
   final List<Skill> skills;
   final DateTime createdAt;
-
-  bool get isBanned => bannedUntil != null && bannedUntil!.isAfter(DateTime.now());
+  final DateTime? tosAcceptedAt;
+  final DateTime? privacyAcceptedAt;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
     id: json['id'] as int,
@@ -35,10 +37,14 @@ class UserProfile {
     karma: json['karma'] as int? ?? 0,
     grid: json['grid'] as String?,
     phone: json['phone'] as String?,
-    bannedUntil: json['banned_until'] != null
-        ? DateTime.parse(json['banned_until'] as String)
+    profileImage: json['profile_image'] as String?,
+    createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime(0),
+    tosAcceptedAt: json['tos_accepted_at'] != null
+        ? DateTime.tryParse(json['tos_accepted_at'] as String)
         : null,
-    createdAt: DateTime.parse(json['created_at'] as String),
+    privacyAcceptedAt: json['privacy_accepted_at'] != null
+        ? DateTime.tryParse(json['privacy_accepted_at'] as String)
+        : null,
     skills: (json['skills'] as List<dynamic>? ?? [])
         .map((e) => Skill.fromJson(e as Map<String, dynamic>))
         .toList(),

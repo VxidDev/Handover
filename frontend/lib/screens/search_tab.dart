@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'map_picker.dart';
-
 import '../models/neighbor_skill.dart';
 import '../services/api.dart';
 import '../theme/colors.dart';
@@ -28,6 +27,9 @@ class _SearchTabState extends State<SearchTab> {
   List<NeighborSkill> _results = [];
   bool _loading = true;
   String? _error;
+
+  bool _availableOnly = false;
+  String _sortBy = 'distance';
 
   static const _defaultRadius = 2.0;
 
@@ -59,7 +61,8 @@ class _SearchTabState extends State<SearchTab> {
     return _radius.toStringAsFixed(1);
   }
 
-  bool get _hasActiveFilters => _radius != _defaultRadius;
+  bool get _hasActiveFilters =>
+      _radius != _defaultRadius || _availableOnly || _sortBy != 'distance';
 
   void _onQueryChanged(String value) {
     setState(() {});
@@ -85,16 +88,31 @@ class _SearchTabState extends State<SearchTab> {
   }
 
   Future<void> _openFilters() async {
-    final result = await showModalBottomSheet<double>(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _FiltersBottomSheet(initialRadius: _radius),
+      builder: (ctx) => _FiltersBottomSheet(
+        initialRadius: _radius,
+        initialAvailableOnly: _availableOnly,
+        initialSortBy: _sortBy,
+      ),
     );
 
-    if (result != null && result != _radius) {
-      setState(() => _radius = result);
-      _scheduleSearch();
+    if (result != null) {
+      final newRadius = result['radius'] as double;
+      final newAvailableOnly = result['available_only'] as bool;
+      final newSortBy = result['sort_by'] as String;
+      if (newRadius != _radius ||
+          newAvailableOnly != _availableOnly ||
+          newSortBy != _sortBy) {
+        setState(() {
+          _radius = newRadius;
+          _availableOnly = newAvailableOnly;
+          _sortBy = newSortBy;
+        });
+        _scheduleSearch();
+      }
     }
   }
 
@@ -110,8 +128,10 @@ class _SearchTabState extends State<SearchTab> {
         query: {
           'q': _query.text.trim(),
           'radius_km': _radius.toStringAsFixed(1),
-          'lat': Api.demoLat.toString(),
-          'lng': Api.demoLng.toString(),
+          'lat': (Api.currentLat ?? 0.0).toString(),
+          'lng': (Api.currentLng ?? 0.0).toString(),
+          if (_availableOnly) 'available': 'true',
+          'sort': _sortBy,
         },
       );
 
@@ -161,18 +181,26 @@ class _SearchTabState extends State<SearchTab> {
           onRefresh: _load,
           child: StaggeredEntrance(
             duration: const Duration(milliseconds: 1000),
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
-              children: [
-                StaggeredItem(index: 0, child: _header(context)),
-                const SizedBox(height: 16),
-                StaggeredItem(index: 1, child: _searchBar(context)),
-                const SizedBox(height: 20),
-                StaggeredItem(index: 2, child: _resultsHeader(context)),
-                const SizedBox(height: 10),
-                ..._buildResults(context, startIndex: 3),
-              ],
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollStartNotification) {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                }
+                return false;
+              },
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+                children: [
+                  StaggeredItem(index: 0, child: _header(context)),
+                  const SizedBox(height: 16),
+                  StaggeredItem(index: 1, child: _searchBar(context)),
+                  const SizedBox(height: 20),
+                  StaggeredItem(index: 2, child: _resultsHeader(context)),
+                  const SizedBox(height: 10),
+                  ..._buildResults(context, startIndex: 3),
+                ],
+              ),
             ),
           ),
         ),
@@ -281,8 +309,8 @@ class _SearchTabState extends State<SearchTab> {
                         ),
                       ),
                 suffixIconConstraints: const BoxConstraints(
-                  minWidth: 36,
-                  minHeight: 36,
+                  minWidth: 48,
+                  minHeight: 48,
                 ),
                 border: InputBorder.none,
                 isDense: true,
@@ -484,17 +512,10 @@ class _SearchTabState extends State<SearchTab> {
       return [
         StaggeredItem(
           index: startIndex,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 56),
-            child: Center(
-              child: SizedBox(
-                width: 26,
-                height: 26,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: AppColors.terracotta,
-                ),
-              ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 56),
+            child: Column(
+              children: List.generate(3, (_) => _SkeletonCard(isDark: isDark)),
             ),
           ),
         ),
@@ -694,9 +715,15 @@ class _EmptyResults extends StatelessWidget {
 }
 
 class _FiltersBottomSheet extends StatefulWidget {
-  const _FiltersBottomSheet({required this.initialRadius});
+  const _FiltersBottomSheet({
+    required this.initialRadius,
+    required this.initialAvailableOnly,
+    required this.initialSortBy,
+  });
 
   final double initialRadius;
+  final bool initialAvailableOnly;
+  final String initialSortBy;
 
   @override
   State<_FiltersBottomSheet> createState() => _FiltersBottomSheetState();
@@ -704,6 +731,8 @@ class _FiltersBottomSheet extends StatefulWidget {
 
 class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
   late double _radius = widget.initialRadius;
+  late bool _availableOnly = widget.initialAvailableOnly;
+  late String _sortBy = widget.initialSortBy;
 
   String get _radiusLabel {
     if (_radius == _radius.roundToDouble()) {
@@ -760,7 +789,11 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => setState(() => _radius = 2.0),
+                      onTap: () => setState(() {
+                        _radius = 2.0;
+                        _availableOnly = false;
+                        _sortBy = 'distance';
+                      }),
                       child: Text(
                         'Reset',
                         style: TextStyle(
@@ -819,11 +852,99 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                   value: _radius,
                   onChanged: (v) => setState(() => _radius = v),
                 ),
+                const SizedBox(height: 16),
+                // Available only toggle
+                GestureDetector(
+                  onTap: () => setState(() => _availableOnly = !_availableOnly),
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 18,
+                          color: _availableOnly
+                              ? AppColors.sage
+                              : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Available only',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                        Transform.scale(
+                          scale: 0.85,
+                          child: Switch(
+                            value: _availableOnly,
+                            onChanged: (v) => setState(() => _availableOnly = v),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Sort by
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.sort_rounded,
+                      size: 15,
+                      color: AppColors.terracotta,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      'Sort by',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _SortChip(
+                      label: 'Distance',
+                      icon: Icons.near_me_rounded,
+                      selected: _sortBy == 'distance',
+                      onTap: () => setState(() => _sortBy = 'distance'),
+                    ),
+                    _SortChip(
+                      label: 'Karma',
+                      icon: Icons.eco_outlined,
+                      selected: _sortBy == 'karma',
+                      onTap: () => setState(() => _sortBy = 'karma'),
+                    ),
+                    _SortChip(
+                      label: 'Name',
+                      icon: Icons.person_outline_rounded,
+                      selected: _sortBy == 'name',
+                      onTap: () => setState(() => _sortBy = 'name'),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 22),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(_radius),
+                    onPressed: () => Navigator.of(context).pop({
+                      'radius': _radius,
+                      'available_only': _availableOnly,
+                      'sort_by': _sortBy,
+                    }),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.terracotta,
                       foregroundColor: Colors.white,
@@ -845,6 +966,69 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SortChip extends StatelessWidget {
+  const _SortChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.terracotta.withValues(alpha: 0.12)
+              : (isDark ? AppColors.darkSand : AppColors.sand),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(
+            color: selected
+                ? AppColors.terracotta.withValues(alpha: 0.3)
+                : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: selected
+                  ? (isDark ? AppColors.terracotta : AppColors.terracottaDeep)
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected
+                    ? (isDark ? AppColors.terracotta : AppColors.terracottaDeep)
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1062,16 +1246,35 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                   shape: BoxShape.circle,
                   border: Border.all(color: avatarBorder, width: 1.5),
                 ),
-                child: Text(
-                  widget.neighbor.name.isNotEmpty
-                      ? widget.neighbor.name[0].toUpperCase()
-                      : '?',
-                  style: TextStyle(
-                    color: avatarColor,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 19,
-                  ),
-                ),
+                child: widget.neighbor.ownerProfileImage != null
+                    ? ClipOval(
+                        child: Image.network(
+                          '${Api.baseUrl}${widget.neighbor.ownerProfileImage}',
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Text(
+                            widget.neighbor.name.isNotEmpty
+                                ? widget.neighbor.name[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              color: avatarColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 19,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Text(
+                        widget.neighbor.name.isNotEmpty
+                            ? widget.neighbor.name[0].toUpperCase()
+                            : '?',
+                        style: TextStyle(
+                          color: avatarColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 19,
+                        ),
+                      ),
               ),
               const SizedBox(height: 14),
               Text(
@@ -1451,4 +1654,128 @@ class _Particle {
     required this.size,
     required this.color,
   });
+}
+
+class _SkeletonCard extends StatefulWidget {
+  const _SkeletonCard({required this.isDark});
+  final bool isDark;
+
+  @override
+  State<_SkeletonCard> createState() => _SkeletonCardState();
+}
+
+class _SkeletonCardState extends State<_SkeletonCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _opacity = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+
+    final cardBg = isDark
+        ? AppColors.darkPaper.withValues(alpha: 0.88)
+        : AppColors.paper.withValues(alpha: 0.9);
+    final cardBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.5)
+        : Colors.white.withValues(alpha: 0.8);
+    final shimmerColor = isDark
+        ? AppColors.darkSand.withValues(alpha: 0.7)
+        : AppColors.sand.withValues(alpha: 0.8);
+
+    return AnimatedBuilder(
+      animation: _opacity,
+      builder: (context, _) {
+        return Opacity(
+          opacity: _opacity.value,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: cardBorder, width: 1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: shimmerColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 48,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: shimmerColor,
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: shimmerColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 80,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: shimmerColor,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 40,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: shimmerColor,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

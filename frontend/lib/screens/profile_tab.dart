@@ -1,14 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
-import '../models/app_warning.dart';
 import '../models/skill.dart';
 import '../models/user_profile.dart';
 import '../services/api.dart';
 import '../theme/app_theme.dart';
 import '../theme/colors.dart';
-import 'intro_page.dart';
-import 'map_picker.dart';
+import 'settings_page.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
@@ -19,14 +21,10 @@ class ProfileTab extends StatefulWidget {
 
 class _ProfileTabState extends State<ProfileTab> {
   UserProfile? _profile;
-  List<AppWarning> _warnings = [];
   bool _loading = true;
   String? _error;
-  bool _savingAvailability = false;
-  bool _savingLocation = false;
-  bool _savingPhone = false;
-  final _phoneController = TextEditingController();
   final Set<int> _removingSkillIds = {};
+  bool _uploadingImage = false;
 
   @override
   void initState() {
@@ -49,11 +47,8 @@ class _ProfileTabState extends State<ProfileTab> {
 
       setState(() {
         _profile = profile;
-        _phoneController.text = profile.phone ?? '';
         _loading = false;
       });
-
-      _loadWarnings();
     } catch (e) {
       if (!mounted) return;
 
@@ -64,31 +59,115 @@ class _ProfileTabState extends State<ProfileTab> {
     }
   }
 
-  Future<void> _loadWarnings() async {
-    try {
-      final res = await Api.get('/api/reports/warnings');
-      if (!mounted) return;
-      final warnings = (res is List<dynamic>)
-          ? res
-                .map(
-                  (e) =>
-                      AppWarning.fromJson(e as Map<String, dynamic>),
-                )
-                .toList()
-          : <AppWarning>[];
-      setState(() => _warnings = warnings);
-    } catch (_) {
-      // Warnings are non-critical; ignore failures.
-    }
-  }
-
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    super.dispose();
-  }
-
   Future<void> _deleteSkill(Skill skill) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: isDark
+          ? Colors.black.withValues(alpha: 0.6)
+          : AppColors.ink.withValues(alpha: 0.4),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 380),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkPaper : AppColors.paper,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: 0.6)
+                  : Colors.white.withValues(alpha: 0.8),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.error,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Delete "${skill.name}"?',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: -0.2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'This skill will be removed from your profile and neighbors won\'t see it anymore.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        side: BorderSide(
+                          color: isDark
+                              ? AppColors.darkBorder.withValues(alpha: 0.6)
+                              : AppColors.inkSoft.withValues(alpha: 0.15),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                      ),
+                      child: const Text('Delete'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+
     setState(() => _removingSkillIds.add(skill.id));
     await Future.delayed(const Duration(milliseconds: 500));
 
@@ -112,264 +191,200 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   void _openSettings() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) {
-          void syncState(VoidCallback fn) {
-            setSheetState(fn);
-            if (mounted) setState(fn);
-          }
-
-          Future<void> handleToggleAvailability(bool value) async {
-            syncState(() => _savingAvailability = true);
-            try {
-              final res = await Api.patch(
-                '/api/users/me',
-                body: {'is_available': value},
-              );
-              if (!mounted) return;
-              final profile = UserProfile.fromJson(res as Map<String, dynamic>);
-              syncState(() {
-                _profile = profile;
-                _savingAvailability = false;
-              });
-            } catch (e) {
-              if (!mounted || !sheetContext.mounted) return;
-              syncState(() => _savingAvailability = false);
-              ScaffoldMessenger.of(
-                sheetContext,
-              ).showSnackBar(SnackBar(content: Text(describeError(e))));
-            }
-          }
-
-          Future<void> handleChooseLocation() async {
-            final selection = await Navigator.of(sheetContext)
-                .push<GridSelection>(
-                  MaterialPageRoute(
-                    builder: (_) => LocationGridPickerPage(
-                      initialLat: Api.demoLat,
-                      initialLng: Api.demoLng,
-                    ),
-                  ),
-                );
-
-            if (selection == null || !mounted) return;
-
-            syncState(() => _savingLocation = true);
-
-            try {
-              final res = await Api.patch(
-                '/api/users/me',
-                body: {'grid': selection.cellId},
-              );
-
-              if (!mounted || !sheetContext.mounted) return;
-
-              final profile = UserProfile.fromJson(res as Map<String, dynamic>);
-              syncState(() {
-                _profile = profile;
-                _savingLocation = false;
-              });
-
-              ScaffoldMessenger.of(sheetContext).showSnackBar(
-                const SnackBar(content: Text('Your area has been updated.')),
-              );
-            } catch (e) {
-              if (!mounted || !sheetContext.mounted) return;
-              syncState(() => _savingLocation = false);
-              ScaffoldMessenger.of(
-                sheetContext,
-              ).showSnackBar(SnackBar(content: Text(describeError(e))));
-            }
-          }
-
-          Future<void> handleSavePhone({bool clear = false}) async {
-            final phone = clear ? null : _phoneController.text.trim();
-            if (!clear && phone!.isEmpty) return;
-
-            syncState(() => _savingPhone = true);
-            try {
-              final res = await Api.patch(
-                '/api/users/me',
-                body: {'phone': phone},
-              );
-              if (!mounted || !sheetContext.mounted) return;
-              final profile = UserProfile.fromJson(res as Map<String, dynamic>);
-              syncState(() {
-                _profile = profile;
-                _phoneController.text = profile.phone ?? '';
-                _savingPhone = false;
-              });
-              ScaffoldMessenger.of(sheetContext).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    clear
-                        ? 'Phone number cleared.'
-                        : 'Phone number saved privately.',
-                  ),
-                ),
-              );
-            } catch (e) {
-              if (!mounted || !sheetContext.mounted) return;
-              syncState(() => _savingPhone = false);
-              ScaffoldMessenger.of(
-                sheetContext,
-              ).showSnackBar(SnackBar(content: Text(describeError(e))));
-            }
-          }
-
-          return _SettingsSheet(
-            profile: _profile!,
-            phoneController: _phoneController,
-            savingAvailability: _savingAvailability,
-            savingLocation: _savingLocation,
-            savingPhone: _savingPhone,
-            onToggleAvailability: handleToggleAvailability,
-            onChooseLocation: handleChooseLocation,
-            onSavePhone: handleSavePhone,
-            onSignOut: _confirmSignOut,
-          );
-        },
-      ),
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsPage()),
     );
   }
 
-  void _confirmSignOut() {
+  Future<void> _pickProfileImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (image == null || !mounted) return;
+
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: image.path,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Photo',
+          toolbarColor: AppColors.terracotta,
+          toolbarWidgetColor: Colors.white,
+          activeControlsWidgetColor: AppColors.terracotta,
+          cropStyle: CropStyle.circle,
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(
+          title: 'Crop Photo',
+          cropStyle: CropStyle.circle,
+          aspectRatioLockEnabled: true,
+          aspectRatioPickerButtonHidden: true,
+          resetAspectRatioEnabled: false,
+        ),
+      ],
+    );
+    if (croppedFile == null || !mounted) return;
+
+    setState(() => _uploadingImage = true);
+    try {
+      final res = await Api.uploadFile('/api/uploads/images', File(croppedFile.path));
+      final path = res['path'] as String;
+      final updateRes = await Api.patch(
+        '/api/users/me',
+        body: {'profile_image': path},
+      );
+      if (!mounted) return;
+      final profile = UserProfile.fromJson(updateRes as Map<String, dynamic>);
+      setState(() {
+        _profile = profile;
+        _uploadingImage = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingImage = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
+  Future<void> _removeProfileImage() async {
+    setState(() => _uploadingImage = true);
+    try {
+      final res = await Api.patch(
+        '/api/users/me',
+        body: {'profile_image': null},
+      );
+      if (!mounted) return;
+      final profile = UserProfile.fromJson(res as Map<String, dynamic>);
+      setState(() {
+        _profile = profile;
+        _uploadingImage = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingImage = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
+  void _showImageOptions() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      barrierColor: isDark
-          ? Colors.black.withValues(alpha: 0.6)
-          : AppColors.ink.withValues(alpha: 0.4),
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 380),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkPaper : AppColors.paper,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: isDark
-                  ? AppColors.darkBorder.withValues(alpha: 0.6)
-                  : Colors.white.withValues(alpha: 0.8),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
-                blurRadius: 40,
-                offset: const Offset(0, 20),
-              ),
-            ],
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkPaper : AppColors.paper,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? AppColors.darkBorder.withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.9),
+            width: 1,
           ),
-          padding: const EdgeInsets.all(28),
+        ),
+        child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppColors.error.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.logout_rounded,
-                      color: AppColors.error,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      'Sign out?',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.4,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'You\'ll need to sign back in to see nearby requests and manage your skills.',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontSize: 14,
-                  height: 1.5,
-                  letterSpacing: -0.1,
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 28),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.7,
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Choose from gallery'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickProfileImage();
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.error,
+                ),
+                title: Text(
+                  'Remove photo',
+                  style: TextStyle(color: AppColors.error),
+                ),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  final removeConfirmed = await showDialog<bool>(
+                    context: context,
+                    barrierColor: isDark
+                        ? Colors.black.withValues(alpha: 0.6)
+                        : AppColors.ink.withValues(alpha: 0.4),
+                    builder: (dCtx) => Dialog(
+                      backgroundColor: Colors.transparent,
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 340),
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkPaper : AppColors.paper,
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                        side: BorderSide(
-                          color: isDark
-                              ? AppColors.darkBorder.withValues(alpha: 0.6)
-                              : AppColors.inkSoft.withValues(alpha: 0.15),
-                          width: 1,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        textStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.delete_outline_rounded,
+                              color: AppColors.error,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Remove profile photo?',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => Navigator.pop(dCtx, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: FilledButton(
+                                    onPressed: () => Navigator.pop(dCtx, true),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                    child: const Text('Remove'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      child: const Text('Cancel'),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () async {
-                        Navigator.pop(ctx);
-                        await Api.clearSession();
-
-                        if (!mounted) return;
-
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(builder: (_) => const IntroPage()),
-                          (_) => false,
-                        );
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.error,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
-                        textStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      child: const Text('Sign out'),
-                    ),
-                  ),
-                ],
+                  );
+                  if (removeConfirmed == true) _removeProfileImage();
+                },
               ),
             ],
           ),
@@ -484,15 +499,14 @@ class _ProfileTabState extends State<ProfileTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (p.isBanned) ...[
-          _BanBanner(until: p.bannedUntil!),
-          const SizedBox(height: 16),
-        ],
-        if (_warnings.isNotEmpty) ...[
-          _WarningsBanner(warnings: _warnings),
-          const SizedBox(height: 16),
-        ],
-        _HeroCard(profile: p, onSettings: _openSettings),
+        _HeroCard(
+          profile: p,
+          onSettings: _openSettings,
+          onPickImage: _pickProfileImage,
+          onRemoveImage: _removeProfileImage,
+          onShowImageOptions: _showImageOptions,
+          uploadingImage: _uploadingImage,
+        ),
         const SizedBox(height: 16),
         _StatsRow(profile: p),
         const SizedBox(height: 28),
@@ -513,10 +527,21 @@ class _ProfileTabState extends State<ProfileTab> {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.profile, required this.onSettings});
+  const _HeroCard({
+    required this.profile,
+    required this.onSettings,
+    required this.onPickImage,
+    required this.onRemoveImage,
+    required this.onShowImageOptions,
+    required this.uploadingImage,
+  });
 
   final UserProfile profile;
   final VoidCallback onSettings;
+  final VoidCallback onPickImage;
+  final VoidCallback onRemoveImage;
+  final VoidCallback onShowImageOptions;
+  final bool uploadingImage;
 
   @override
   Widget build(BuildContext context) {
@@ -578,57 +603,136 @@ class _HeroCard extends StatelessWidget {
 
             Row(
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: avatarColor.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isDark
-                              ? AppColors.darkBorder.withValues(alpha: 0.4)
-                              : Colors.white.withValues(alpha: 0.9),
-                          width: 2,
-                        ),
-                      ),
-                      child: Text(
-                        profile.name.isNotEmpty
-                            ? profile.name[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          color: avatarColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 22,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: -1,
-                      bottom: -1,
-                      child: Container(
-                        width: 14,
-                        height: 14,
+                GestureDetector(
+                  onTap: uploadingImage ? null : onPickImage,
+                  onLongPress: profile.profileImage != null
+                      ? () => onShowImageOptions()
+                      : null,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: profile.isAvailable
-                              ? AppColors.success
-                              : (isDark
-                                    ? AppColors.darkInkFaint
-                                    : AppColors.inkFaint),
+                          color: avatarColor.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: isDark
-                                ? AppColors.darkPaper
-                                : AppColors.paper,
-                            width: 2.5,
+                                ? AppColors.darkBorder.withValues(alpha: 0.4)
+                                : Colors.white.withValues(alpha: 0.9),
+                            width: 2,
+                          ),
+                        ),
+                        child: uploadingImage
+                            ? SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: avatarColor,
+                                ),
+                              )
+                            : profile.profileImage != null
+                                ? ClipOval(
+                                    child: Image.network(
+                                      '${Api.baseUrl}${profile.profileImage}',
+                                      width: 52,
+                                      height: 52,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Text(
+                                        profile.name.isNotEmpty
+                                            ? profile.name[0].toUpperCase()
+                                            : '?',
+                                        style: TextStyle(
+                                          color: avatarColor,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 22,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    profile.name.isNotEmpty
+                                        ? profile.name[0].toUpperCase()
+                                        : '?',
+                                    style: TextStyle(
+                                      color: avatarColor,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 22,
+                                    ),
+                                  ),
+                      ),
+                      Positioned(
+                        right: -1,
+                        bottom: -1,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: profile.isAvailable
+                                ? AppColors.success
+                                : (isDark
+                                      ? AppColors.darkInkFaint
+                                      : AppColors.inkFaint),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark
+                                  ? AppColors.darkPaper
+                                  : AppColors.paper,
+                              width: 2.5,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      if (!uploadingImage)
+                        Positioned(
+                          right: -14,
+                          top: -14,
+                          child: Semantics(
+                            button: true,
+                            label: profile.profileImage != null
+                                ? 'Edit profile photo'
+                                : 'Add profile photo',
+                            child: GestureDetector(
+                              onTap: onPickImage,
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.terracotta,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isDark
+                                            ? AppColors.darkPaper
+                                            : AppColors.paper,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      profile.profileImage != null
+                                          ? Icons.edit_rounded
+                                          : Icons.camera_alt_rounded,
+                                      size: 10,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -1299,9 +1403,11 @@ class _SkillCard extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: onDelete,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.all(6),
+                    width: 48,
+                    height: 48,
+                    padding: const EdgeInsets.all(14),
                     child: Icon(
                       Icons.delete_outline_rounded,
                       size: 18,
@@ -1368,869 +1474,3 @@ class _EmptySkillsState extends StatelessWidget {
   }
 }
 
-class _SettingsSheet extends StatelessWidget {
-  const _SettingsSheet({
-    required this.profile,
-    required this.phoneController,
-    required this.savingAvailability,
-    required this.savingLocation,
-    required this.savingPhone,
-    required this.onToggleAvailability,
-    required this.onChooseLocation,
-    required this.onSavePhone,
-    required this.onSignOut,
-  });
-
-  final UserProfile profile;
-  final TextEditingController phoneController;
-  final bool savingAvailability;
-  final bool savingLocation;
-  final bool savingPhone;
-  final ValueChanged<bool> onToggleAvailability;
-  final VoidCallback onChooseLocation;
-  final Future<void> Function({bool clear}) onSavePhone;
-  final VoidCallback onSignOut;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-
-    final dialogBg = isDark ? AppColors.darkPaper : AppColors.paper;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomPadding),
-      child: Container(
-        decoration: BoxDecoration(
-          color: dialogBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Text(
-                  'Settings',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                _SettingsSection(
-                  title: 'Availability',
-                  children: [
-                    _SettingsTile(
-                      icon: profile.isAvailable
-                          ? Icons.check_circle_outline_rounded
-                          : Icons.pause_circle_outline_rounded,
-                      iconColor: profile.isAvailable
-                          ? AppColors.sage
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                      title: 'Available to help',
-                      subtitle: profile.isAvailable
-                          ? 'Neighbors can see you in searches'
-                          : 'You\'re hidden from searches',
-                      trailing: _AnimatedAvailabilitySwitch(
-                        value: profile.isAvailable,
-                        onChanged: onToggleAvailability,
-                        isLoading: savingAvailability,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                _SettingsSection(
-                  title: 'Privacy',
-                  children: [
-                    _SettingsTile(
-                      icon: Icons.map_outlined,
-                      iconColor: AppColors.terracotta,
-                      title: 'Privacy area',
-                      subtitle: profile.grid ?? 'Not set',
-                      subtitleMuted: profile.grid == null,
-                      trailing: savingLocation
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.chevron_right_rounded, size: 20),
-                      onTap: onChooseLocation,
-                    ),
-                    _SettingsTileDivider(isDark: isDark),
-                    _PhoneSettingsTile(
-                      profile: profile,
-                      phoneController: phoneController,
-                      savingPhone: savingPhone,
-                      onSavePhone: onSavePhone,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                _SignOutButton(onTap: onSignOut),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({required this.title, required this.children});
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkPaper : AppColors.paper,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark
-                  ? AppColors.darkBorder.withValues(alpha: 0.5)
-                  : Colors.white.withValues(alpha: 0.8),
-              width: 1,
-            ),
-            boxShadow: isDark ? AppTheme.darkCardShadow : AppTheme.cardShadow,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(children: children),
-        ),
-      ],
-    );
-  }
-}
-
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    this.onTap,
-    this.subtitleMuted = false,
-    this.trailing,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final bool subtitleMuted;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 17, color: iconColor),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: subtitleMuted
-                            ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
-                            : theme.colorScheme.onSurface.withValues(
-                                alpha: 0.6,
-                              ),
-                        fontSize: 12,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconTheme(
-                data: IconThemeData(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
-                  size: 18,
-                ),
-                child: trailing ?? const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AnimatedAvailabilitySwitch extends StatefulWidget {
-  const _AnimatedAvailabilitySwitch({
-    required this.value,
-    required this.onChanged,
-    required this.isLoading,
-  });
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  final bool isLoading;
-
-  @override
-  State<_AnimatedAvailabilitySwitch> createState() =>
-      _AnimatedAvailabilitySwitchState();
-}
-
-class _AnimatedAvailabilitySwitchState
-    extends State<_AnimatedAvailabilitySwitch>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _bounceController;
-  late final Animation<double> _bounce;
-
-  static const double _trackWidth = 56;
-  static const double _trackHeight = 32;
-  static const double _trackPadding = 3;
-  static const double _thumbSize = 26;
-
-  static const double _thumbLeftOff = _trackPadding;
-  static const double _thumbLeftOn =
-      _trackWidth - _trackPadding - _thumbSize; // 56 - 3 - 26 = 27
-
-  @override
-  void initState() {
-    super.initState();
-    _bounceController = AnimationController(
-      duration: const Duration(milliseconds: 220),
-      vsync: this,
-    );
-    _bounce = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 1.0,
-          end: 0.92,
-        ).chain(CurveTween(curve: Curves.easeOutCubic)),
-        weight: 50,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 0.92,
-          end: 1.0,
-        ).chain(CurveTween(curve: Curves.easeOutBack)),
-        weight: 50,
-      ),
-    ]).animate(_bounceController);
-  }
-
-  @override
-  void didUpdateWidget(_AnimatedAvailabilitySwitch oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.value != oldWidget.value && !widget.isLoading) {
-      _bounceController.forward(from: 0);
-      HapticFeedback.selectionClick();
-    }
-  }
-
-  @override
-  void dispose() {
-    _bounceController.dispose();
-    super.dispose();
-  }
-
-  void _handleTap() {
-    if (widget.isLoading) return;
-    HapticFeedback.lightImpact();
-    widget.onChanged(!widget.value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final isOn = widget.value;
-
-    final trackColor = isOn
-        ? AppColors.sage
-        : (isDark ? AppColors.darkSand : AppColors.sand.withValues(alpha: 0.9));
-
-    final trackBorderColor = isDark
-        ? AppColors.darkBorder.withValues(alpha: 0.5)
-        : Colors.white.withValues(alpha: 0.8);
-
-    final thumbIconColor = isOn ? AppColors.sage : AppColors.inkSoft;
-
-    return GestureDetector(
-      onTap: _handleTap,
-      child: AnimatedBuilder(
-        animation: _bounceController,
-        builder: (context, _) {
-          return Transform.scale(
-            scale: _bounce.value,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutCubic,
-              width: _trackWidth,
-              height: _trackHeight,
-              decoration: BoxDecoration(
-                color: trackColor,
-                borderRadius: BorderRadius.circular(_trackHeight / 2),
-                border: Border.all(color: trackBorderColor, width: 1),
-              ),
-              child: Stack(
-                children: [
-                  if (widget.isLoading)
-                    Positioned.fill(
-                      child: Center(
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: isOn
-                                ? Colors.white
-                                : theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.5,
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 280),
-                    curve: Curves.easeOutCubic,
-                    top: _trackPadding,
-                    left: isOn ? _thumbLeftOn : _thumbLeftOff,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 150),
-                      opacity: widget.isLoading ? 0.0 : 1.0,
-                      child: Container(
-                        width: _thumbSize,
-                        height: _thumbSize,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.18),
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          switchInCurve: Curves.easeOut,
-                          switchOutCurve: Curves.easeIn,
-                          transitionBuilder: (child, anim) {
-                            return ScaleTransition(
-                              scale: anim,
-                              child: FadeTransition(
-                                opacity: anim,
-                                child: child,
-                              ),
-                            );
-                          },
-                          child: Icon(
-                            isOn ? Icons.check_rounded : Icons.close_rounded,
-                            key: ValueKey(isOn),
-                            size: 15,
-                            color: thumbIconColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _PhoneSettingsTile extends StatefulWidget {
-  const _PhoneSettingsTile({
-    required this.profile,
-    required this.phoneController,
-    required this.savingPhone,
-    required this.onSavePhone,
-  });
-
-  final UserProfile profile;
-  final TextEditingController phoneController;
-  final bool savingPhone;
-  final Future<void> Function({bool clear}) onSavePhone;
-
-  @override
-  State<_PhoneSettingsTile> createState() => _PhoneSettingsTileState();
-}
-
-class _PhoneSettingsTileState extends State<_PhoneSettingsTile> {
-  bool _editing = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final hasPhone =
-        widget.profile.phone != null && widget.profile.phone!.isNotEmpty;
-
-    if (!_editing) {
-      return _SettingsTile(
-        icon: Icons.lock_outline_rounded,
-        iconColor: AppColors.sage,
-        title: 'Phone number',
-        subtitle: hasPhone ? widget.profile.phone! : 'Not set',
-        subtitleMuted: !hasPhone,
-        trailing: widget.savingPhone
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.chevron_right_rounded, size: 20),
-        onTap: () => setState(() => _editing = true),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Phone number',
-            style: TextStyle(
-              color: theme.colorScheme.onSurface,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Encrypted at rest. Only shared when you choose.',
-            style: TextStyle(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-              fontSize: 11.5,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.darkSand.withValues(alpha: 0.5)
-                  : AppColors.sand.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TextField(
-              controller: widget.phoneController,
-              autofocus: true,
-              keyboardType: TextInputType.phone,
-              autofillHints: const [AutofillHints.telephoneNumber],
-              maxLength: 40,
-              style: TextStyle(
-                fontSize: 14,
-                color: theme.colorScheme.onSurface,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Phone number',
-                counterText: '',
-                prefixIcon: Icon(
-                  Icons.phone_outlined,
-                  size: 17,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
-                ),
-                prefixIconConstraints: const BoxConstraints(
-                  minWidth: 40,
-                  minHeight: 40,
-                ),
-                isDense: true,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              if (hasPhone) ...[
-                TextButton(
-                  onPressed: widget.savingPhone
-                      ? null
-                      : () async {
-                          await widget.onSavePhone(clear: true);
-                          if (mounted) setState(() => _editing = false);
-                        },
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  child: const Text('Clear'),
-                ),
-                const Spacer(),
-              ] else
-                const Spacer(),
-              TextButton(
-                onPressed: widget.savingPhone
-                    ? null
-                    : () => setState(() => _editing = false),
-                style: TextButton.styleFrom(
-                  foregroundColor: theme.colorScheme.onSurface.withValues(
-                    alpha: 0.7,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 6),
-              FilledButton(
-                onPressed: widget.savingPhone
-                    ? null
-                    : () async {
-                        await widget.onSavePhone();
-                        if (mounted) setState(() => _editing = false);
-                      },
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.terracotta,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  elevation: 0,
-                ),
-                child: widget.savingPhone
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Save'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsTileDivider extends StatelessWidget {
-  const _SettingsTileDivider({required this.isDark});
-
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 60),
-      child: Container(
-        height: 1,
-        color: isDark
-            ? AppColors.darkBorder.withValues(alpha: 0.4)
-            : AppColors.inkSoft.withValues(alpha: 0.08),
-      ),
-    );
-  }
-}
-
-class _SignOutButton extends StatelessWidget {
-  const _SignOutButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: isDark
-              ? AppColors.darkSand.withValues(alpha: 0.4)
-              : Colors.white.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark
-                ? AppColors.darkBorder.withValues(alpha: 0.5)
-                : Colors.white.withValues(alpha: 0.8),
-            width: 1,
-          ),
-          boxShadow: isDark
-              ? null
-              : [
-                  BoxShadow(
-                    color: AppColors.inkSoft.withValues(alpha: 0.04),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.logout_rounded,
-              size: 19,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Sign out',
-              style: TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                letterSpacing: -0.1,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BanBanner extends StatelessWidget {
-  const _BanBanner({required this.until});
-
-  final DateTime until;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final local = until.toLocal();
-    final date =
-        '${local.day.toString().padLeft(2, '0')}.${local.month.toString().padLeft(2, '0')}'
-        ' ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.busy.withValues(alpha: 0.18)
-            : AppColors.busy.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.busy.withValues(alpha: 0.35),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.busy.withValues(alpha: 0.16),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.block_rounded,
-              color: AppColors.busy,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Account temporarily banned',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'You received too many warnings for inappropriate content. '
-                  'Access will be restored on $date.',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-                    fontSize: 12.5,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WarningsBanner extends StatelessWidget {
-  const _WarningsBanner({required this.warnings});
-
-  final List<AppWarning> warnings;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final count = warnings.length;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.busy.withValues(alpha: 0.16)
-            : AppColors.busy.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.busy.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.busy.withValues(alpha: 0.14),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.warning_amber_rounded,
-              color: AppColors.busy,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$count moderation warning${count == 1 ? '' : 's'}',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Your reported content may have violated community '
-                  'guidelines. Repeated issues can limit your account.',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-                    fontSize: 12.5,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
