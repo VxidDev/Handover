@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "768370007381",
+    "project_id": "handover-e323a",
+    "storage_bucket": "handover-e323a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:768370007381:android:26968e69f85bc323f223dc",
+        "android_client_info": {
+          "package_name": "org.fvlabs.handover"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDb3EVDPESePP8gSTKxkYe4vguPmi2FVfw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

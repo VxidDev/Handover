@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from ..cache import SKILLS_CATALOG_KEY, cache
 from ..database import get_db
 from ..deps import get_current_user_optional
-from ..models import Skill, User
+from ..models import BlockedUser, Skill, User
 from ..schemas import SkillSearchOut
 
 router = APIRouter(prefix="/skills", tags=["skills"])
@@ -30,6 +30,7 @@ def _load_catalog(db: Session) -> list[dict[str, Any]]:
             "blurb": skill.blurb,
             "user_id": skill.user_id,
             "owner_name": skill.owner.name,
+            "owner_profile_image": skill.owner.profile_image,
             "grid": skill.owner.grid,
             "lat": skill.owner.lat,
             "lng": skill.owner.lng,
@@ -62,18 +63,38 @@ def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 
 
 @router.get("", response_model=list[SkillSearchOut])
-def search_skills(
+def search_skills(  # noqa: C901
     q: str = Query(default="", max_length=100),
     radius_km: float | None = Query(default=None, ge=0),
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
+    available: bool | None = Query(default=None),
+    sort: str = Query(default="distance", pattern="^(distance|karma|name)$"),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):
     keyword = q.strip().lower()
     results: list[SkillSearchOut] = []
+
+    blocked_ids: set[int] = set()
+    if current_user is not None:
+        blocked_ids = {
+            b.blocked_id
+            for b in db.query(BlockedUser.blocked_id).filter(
+                BlockedUser.blocker_id == current_user.id
+            )
+        }
+        blocked_ids |= {
+            b.blocker_id
+            for b in db.query(BlockedUser.blocker_id).filter(
+                BlockedUser.blocked_id == current_user.id
+            )
+        }
+
     for entry in get_catalog(db):
         if current_user is not None and entry["user_id"] == current_user.id:
+            continue
+        if entry["user_id"] in blocked_ids:
             continue
         if keyword:
             haystack = (
@@ -81,6 +102,8 @@ def search_skills(
             ).lower()
             if keyword not in haystack:
                 continue
+        if available is not None and entry["available"] != available:
+            continue
         distance = None
         if (
             lat is not None
@@ -100,6 +123,7 @@ def search_skills(
                 blurb=entry["blurb"],
                 owner_id=entry["user_id"],
                 owner_name=entry["owner_name"],
+                owner_profile_image=entry["owner_profile_image"],
                 grid=entry["grid"],
                 distance_km=distance,
                 available=entry["available"],
@@ -107,4 +131,12 @@ def search_skills(
                 images=entry["images"],
             )
         )
+
+    if sort == "distance":
+        results.sort(key=lambda r: (r.distance_km is None, r.distance_km or 0))
+    elif sort == "karma":
+        results.sort(key=lambda r: r.karma, reverse=True)
+    elif sort == "name":
+        results.sort(key=lambda r: r.skill_name.lower())
+
     return results

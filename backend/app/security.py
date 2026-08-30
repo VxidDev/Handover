@@ -1,11 +1,14 @@
 import base64
 import hashlib
 import hmac
+import json
+import logging
 import secrets
 import time
 from typing import Any
 
 import jwt
+import pyotp
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHash, VerificationError
 from cryptography.fernet import Fernet, InvalidToken
@@ -96,3 +99,74 @@ def decrypt_contact(value: str) -> str:
         return _contact_fernet().decrypt(value.encode()).decode()
     except InvalidToken:
         raise RuntimeError("Unable to decrypt private contact data") from None
+
+
+def generate_totp_secret() -> str:
+    return pyotp.random_base32()
+
+
+def get_totp_uri(secret: str, email: str) -> str:
+    totp = pyotp.TOTP(secret)
+    return totp.provisioning_uri(name=email, issuer_name="Handover")
+
+
+def verify_totp(secret: str, code: str) -> bool:
+    totp = pyotp.TOTP(secret)
+    return totp.verify(code, valid_window=1)
+
+
+def generate_recovery_codes(count: int = 8) -> list[str]:
+    return [secrets.token_hex(4).upper() for _ in range(count)]
+
+
+def hash_recovery_code(code: str) -> str:
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def store_recovery_codes(codes: list[str]) -> str:
+    hashed = [hash_recovery_code(c) for c in codes]
+    return json.dumps(hashed)
+
+
+def verify_recovery_code(code: str, stored_json: str) -> bool:
+    try:
+        hashed_stored = json.loads(stored_json)
+    except (json.JSONDecodeError, TypeError):
+        return False
+    code_hash = hash_recovery_code(code)
+    return code_hash in hashed_stored
+
+
+def remove_recovery_code(code: str, stored_json: str) -> str | None:
+    try:
+        hashed_stored = json.loads(stored_json)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    code_hash = hash_recovery_code(code)
+    updated = [h for h in hashed_stored if h != code_hash]
+    if len(updated) == len(hashed_stored):
+        return None
+    return json.dumps(updated)
+
+
+def encrypt_totp_secret(secret: str) -> str:
+    return _contact_fernet().encrypt(secret.encode()).decode()
+
+
+def decrypt_totp_secret(encrypted: str) -> str:
+    try:
+        return _contact_fernet().decrypt(encrypted.encode()).decode()
+    except InvalidToken:
+        raise RuntimeError("Unable to decrypt TOTP secret") from None
+
+
+def generate_email_code() -> str:
+    return f"{secrets.randbelow(10**6):06d}"
+
+
+def hash_email_code(code: str) -> str:
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def verify_email_code(code: str, stored_hash: str) -> bool:
+    return hash_email_code(code) == stored_hash

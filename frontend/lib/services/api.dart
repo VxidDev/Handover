@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'revenuecat_service.dart';
+
 class ApiException implements Exception {
   const ApiException(this.message, {this.statusCode});
 
@@ -66,6 +68,7 @@ class Api {
 
   static String? _token;
   static int? currentUserId;
+  static final Uri _parsedBaseUrl = Uri.parse(baseUrl);
 
   static bool get hasToken => _token != null;
 
@@ -89,6 +92,9 @@ class Api {
     currentUserId = userId;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
+    try {
+      await RevenueCatService.setUserId(userId.toString());
+    } catch (_) {}
   }
 
   static Future<void> clearSession() async {
@@ -96,6 +102,9 @@ class Api {
     currentUserId = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    try {
+      await RevenueCatService.logOut();
+    } catch (_) {}
   }
 
   static Map<String, String> get _headers => {
@@ -117,6 +126,31 @@ class Api {
       path: '/api/requests/$requestId/chat',
       queryParameters: {'token': roomToken},
     );
+  }
+
+  static Uri get notificationWebSocketUri {
+    final apiUri = Uri.parse(baseUrl);
+    return apiUri.replace(
+      scheme: apiUri.scheme == 'https' ? 'wss' : 'ws',
+      path: '/api/notifications',
+      queryParameters: {'token': _token ?? ''},
+    );
+  }
+
+  static String? get token => _token;
+
+  static Future<bool> get isConnected async {
+    try {
+      final socket = await Socket.connect(
+        _parsedBaseUrl.host,
+        _parsedBaseUrl.port,
+        timeout: const Duration(seconds: 3),
+      );
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<dynamic> _send(Future<http.Response> Function() request) async {

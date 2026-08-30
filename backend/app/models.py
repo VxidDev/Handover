@@ -5,6 +5,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Integer,
     String,
     Text,
     UniqueConstraint,
@@ -17,6 +18,15 @@ from .database import Base
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+class BlockedToken(Base):
+    __tablename__ = "blocked_tokens"
+
+    jti: Mapped[str] = mapped_column(String(32), primary_key=True)
+    blocked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 class User(Base):
@@ -34,9 +44,21 @@ class User(Base):
     banned_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    profile_image: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
+    tos_accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    privacy_accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    tos_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    privacy_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    totp_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
+    two_factor_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    recovery_codes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     skills: Mapped[list["Skill"]] = relationship(
         back_populates="owner",
@@ -157,6 +179,26 @@ class Request(Base):
         back_populates="request",
         cascade="all, delete-orphan",
     )
+    hidden_by_users: Mapped[list["HiddenRequest"]] = relationship(
+        back_populates="request",
+        cascade="all, delete-orphan",
+    )
+
+
+class HiddenRequest(Base):
+    __tablename__ = "hidden_requests"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    request_id: Mapped[int] = mapped_column(
+        ForeignKey("requests.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    request: Mapped["Request"] = relationship(back_populates="hidden_by_users")
 
 
 class DisclosureLog(Base):
@@ -196,8 +238,25 @@ class ChatMessage(Base):
         DateTime(timezone=True), default=utcnow
     )
 
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     request: Mapped["Request"] = relationship(back_populates="messages")
     sender: Mapped["User"] = relationship()
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 class Report(Base):
@@ -212,19 +271,58 @@ class Report(Base):
     reporter_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
-    content_type: Mapped[str] = mapped_column(String(20))
-    content_id: Mapped[int] = mapped_column(index=True)
+    reported_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True
+    )
+    content_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    content_id: Mapped[int | None] = mapped_column(index=True, nullable=True)
     reason: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(20), default="pending")
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str | None] = mapped_column(String(20), nullable=True, default="pending")
     toxicity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
 
-    reporter: Mapped["User"] = relationship(backref="reports")
+    reporter: Mapped["User"] = relationship(foreign_keys=[reporter_id], backref="reports")
+    reported: Mapped["User | None"] = relationship(foreign_keys=[reported_id])
     warning: Mapped["Warning | None"] = relationship(
         back_populates="report",
         uselist=False,
+    )
+
+
+class BlockedUser(Base):
+    __tablename__ = "blocked_users"
+
+    blocker_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    blocked_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
+class Rating(Base):
+    __tablename__ = "ratings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    request_id: Mapped[int] = mapped_column(
+        ForeignKey("requests.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    rater_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    rated_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    stars: Mapped[int] = mapped_column(Integer)
+    review: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
     )
 
 
@@ -245,3 +343,71 @@ class Warning(Base):
 
     user: Mapped["User"] = relationship(back_populates="warnings")
     report: Mapped["Report"] = relationship(back_populates="warning")
+
+
+class MessageReadCursor(Base):
+    __tablename__ = "message_read_cursors"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    request_id: Mapped[int] = mapped_column(
+        ForeignKey("requests.id", ondelete="CASCADE"), primary_key=True
+    )
+    last_read_message_id: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class OneSignalPlayer(Base):
+    __tablename__ = "onesignal_players"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    player_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    user: Mapped["User"] = relationship()
+
+
+class PasswordResetCode(Base):
+    __tablename__ = "password_reset_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    code_hash: Mapped[str] = mapped_column(String(64), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
+class Tip(Base):
+    __tablename__ = "tips"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sender_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    recipient_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    amount_cents: Mapped[int] = mapped_column(Integer)
+    recipient_amount_cents: Mapped[int] = mapped_column(Integer, default=0)
+    platform_fee_cents: Mapped[int] = mapped_column(Integer, default=0)
+    currency: Mapped[str] = mapped_column(String(10), default="USD")
+    product_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    transaction_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    payout_status: Mapped[str] = mapped_column(String(20), default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )

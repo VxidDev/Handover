@@ -8,6 +8,8 @@ import '../theme/colors.dart';
 import '../widgets/availability_badge.dart';
 import '../widgets/image_viewer.dart';
 import '../widgets/report_dialog.dart';
+import '../widgets/report_user_sheet.dart';
+import '../widgets/tip_sheet.dart';
 
 class SkillDetailPage extends StatefulWidget {
   const SkillDetailPage({super.key, required this.neighbor, this.onRequest});
@@ -52,6 +54,167 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
         ),
       ),
     );
+  }
+
+  void _reportUser() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ReportUserSheet(userId: widget.neighbor.ownerId),
+    );
+  }
+
+  Future<void> _blockUser() async {
+    final name = widget.neighbor.name.split(' ').first;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: isDark
+          ? Colors.black.withValues(alpha: 0.6)
+          : AppColors.ink.withValues(alpha: 0.4),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkPaper : AppColors.paper,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: 0.6)
+                  : Colors.white.withValues(alpha: 0.8),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+                blurRadius: 40,
+                offset: const Offset(0, 20),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.block_rounded,
+                  color: AppColors.error,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Block $name?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$name won\'t be able to send you messages or see your skills. '
+                'This won\'t notify them.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.darkBorder.withValues(alpha: 0.6)
+                                : AppColors.inkSoft.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Block',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+    try {
+      await Api.post(
+        '/api/safety/block',
+        body: {'blocked_id': widget.neighbor.ownerId},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$name has been blocked.')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(describeError(e))),
+        );
+      }
+    }
   }
 
   @override
@@ -129,6 +292,15 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                           title: neighbor.skill,
                         ),
                         child: Container(
+if (widget.neighbor.ownerId != Api.currentUserId)
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'report') _reportUser();
+                          if (value == 'block') _blockUser();
+                        },
+                        icon: Container(
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
@@ -158,6 +330,50 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                             ),
                           ),
                         ),
+                            Icons.more_vert_rounded,
+                            size: 18,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'report',
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.flag_outlined,
+                                  size: 18,
+                                  color: AppColors.error,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Report user',
+                                  style: TextStyle(color: AppColors.error),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'block',
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.block,
+                                  size: 18,
+                                  color: AppColors.error,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Block user',
+                                  style: TextStyle(color: AppColors.error),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
@@ -337,45 +553,45 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                   ),
                 ),
               ),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: neighbor.available ? widget.onRequest : null,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: neighbor.available
-                        ? AppColors.terracotta
-                        : (isDark ? AppColors.darkSand : AppColors.sand),
-                    foregroundColor: neighbor.available
-                        ? Colors.white
-                        : (isDark
-                              ? AppColors.darkInkFaint
-                              : AppColors.inkFaint),
-                    disabledBackgroundColor: isDark
-                        ? AppColors.darkSand.withValues(alpha: 0.6)
-                        : AppColors.sand.withValues(alpha: 0.6),
-                    disabledForegroundColor: isDark
-                        ? AppColors.darkInkFaint
-                        : AppColors.inkFaint,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+              child: Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => showTipSheet(context, recipientId: neighbor.ownerId, recipientName: neighbor.name),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.terracottaDeep,
+                      side: const BorderSide(color: AppColors.terracotta, width: 1.2),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
-                    textStyle: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                    icon: const Icon(Icons.favorite_rounded, size: 16),
+                    label: const Text('Tip'),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: neighbor.available ? widget.onRequest : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: neighbor.available
+                            ? AppColors.terracotta
+                            : (isDark ? AppColors.darkSand : AppColors.sand),
+                        foregroundColor: neighbor.available
+                            ? Colors.white
+                            : (isDark ? AppColors.darkInkFaint : AppColors.inkFaint),
+                        disabledBackgroundColor: isDark
+                            ? AppColors.darkSand.withValues(alpha: 0.6)
+                            : AppColors.sand.withValues(alpha: 0.6),
+                        disabledForegroundColor: isDark ? AppColors.darkInkFaint : AppColors.inkFaint,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                      icon: Icon(neighbor.available ? Icons.handshake_outlined : Icons.schedule_rounded, size: 18),
+                      label: Text(neighbor.available ? 'Ask for help' : 'Currently busy'),
                     ),
                   ),
-                  icon: Icon(
-                    neighbor.available
-                        ? Icons.handshake_outlined
-                        : Icons.schedule_rounded,
-                    size: 18,
-                  ),
-                  label: Text(
-                    neighbor.available ? 'Ask for help' : 'Currently busy',
-                  ),
-                ),
+                ],
               ),
             ),
           ),

@@ -2,6 +2,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 import 'profile_tab.dart';
 import 'requests_tab.dart';
@@ -20,6 +21,7 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell>
     with SingleTickerProviderStateMixin {
   int _index = 0;
+  int _chatBadge = 0;
 
   late final AnimationController _controller;
 
@@ -33,6 +35,7 @@ class _HomeShellState extends State<HomeShell>
   @override
   void initState() {
     super.initState();
+    _setupNotificationListeners();
 
     _controller = AnimationController(
       vsync: this,
@@ -82,10 +85,48 @@ class _HomeShellState extends State<HomeShell>
     super.dispose();
   }
 
+  void _setupNotificationListeners() {
+    OneSignal.Notifications.addForegroundWillDisplayListener((event) {
+      if (!mounted) return;
+      event.preventDefault();
+      final notification = event.notification;
+      final title = notification.title ?? '';
+      final body = notification.body ?? '';
+      if (body.isNotEmpty) {
+        setState(() => _chatBadge++);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              title.isNotEmpty ? '$title\n$body' : body,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      event.notification.display();
+    });
+
+    OneSignal.Notifications.addClickListener((event) {
+      final requestId = event.notification.additionalData?['request_id'];
+      if (requestId != null && mounted) {
+        _selectTab(2);
+      }
+    });
+  }
+
   void _selectTab(int index) {
     if (_index == index) return;
     HapticFeedback.lightImpact();
-    setState(() => _index = index);
+    setState(() {
+      _index = index;
+      if (index == 2) _chatBadge = 0;
+    });
   }
 
   void _openCreatePost() {
@@ -136,6 +177,26 @@ class _HomeShellState extends State<HomeShell>
                     pillFade: _pillFade,
                     plusScale: _plusScale,
                     plusFade: _plusFade,
+Positioned(
+              left: 16,
+              right: 16,
+              bottom: bottomSafe + 16,
+              child: SlideTransition(
+                position: _navSlide,
+                child: FadeTransition(
+                  opacity: _navFade,
+                  child: SizedBox(
+                    height: 68,
+                    child: _FloatingNavBar(
+                      index: _index,
+                      onTap: _selectTab,
+                      onPlus: _openCreatePost,
+                      chatBadge: _chatBadge,
+                      pillScale: _pillScale,
+                      pillFade: _pillFade,
+                      plusScale: _plusScale,
+                      plusFade: _plusFade,
+                    ),
                   ),
                 ),
               ),
@@ -193,6 +254,7 @@ class _FloatingNavBar extends StatelessWidget {
     required this.index,
     required this.onTap,
     required this.onPlus,
+    required this.chatBadge,
     required this.pillScale,
     required this.pillFade,
     required this.plusScale,
@@ -202,6 +264,7 @@ class _FloatingNavBar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
   final VoidCallback onPlus;
+  final int chatBadge;
   final Animation<double> pillScale;
   final Animation<double> pillFade;
   final Animation<double> plusScale;
@@ -359,6 +422,7 @@ class _FloatingNavBar extends StatelessWidget {
                             selectedIcon: Icons.chat_bubble_rounded,
                             label: 'Chats',
                             isSelected: index == 2,
+                            badgeCount: chatBadge,
                             onTap: () => onTap(2),
                           ),
                         ),
@@ -392,6 +456,7 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.isSelected,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   final IconData icon;
@@ -399,6 +464,7 @@ class _NavItem extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -427,6 +493,59 @@ class _NavItem extends StatelessWidget {
                 key: ValueKey(isSelected),
                 size: 22,
                 color: currentColor,
+return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '$label tab',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          color: Colors.transparent,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: Icon(
+                      isSelected ? selectedIcon : icon,
+                      key: ValueKey(isSelected),
+                      size: 22,
+                      color: currentColor,
+                    ),
+                  ),
+                  if (badgeCount > 0)
+                    Positioned(
+                      right: -6,
+                      top: -4,
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.terracotta,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Center(
+                          child: Text(
+                            badgeCount > 99 ? '99+' : '$badgeCount',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 2),

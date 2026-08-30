@@ -4,15 +4,46 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import get_current_user
-from ..models import Request, Skill, User
-from ..schemas import RequestCreateIn, RequestOut, RequestUpdateIn
+from ..models import (
+    ChatMessage,
+    HiddenRequest,
+    MessageReadCursor,
+    Rating,
+    Request,
+    Skill,
+    User,
+)
+from ..schemas import (
+    ChatMessageOut,
+    RatingIn,
+    RatingOut,
+    RequestCreateIn,
+    RequestOut,
+    RequestUpdateIn,
+)
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
-VALID_STATUSES = {"pending", "accepted", "declined", "cancelled"}
+VALID_STATUSES = {"pending", "accepted", "declined", "cancelled", "completed"}
 
 
-def _to_out(req: Request) -> RequestOut:
+def _to_out(
+    req: Request,
+    last_message: ChatMessage | None = None,
+    unread_count: int = 0,
+    hidden_by_me: bool = False,
+) -> RequestOut:
+    last_msg_out = None
+    if last_message is not None:
+        last_msg_out = ChatMessageOut(
+            id=last_message.id,
+            request_id=last_message.request_id,
+            sender_id=last_message.sender_id,
+            sender_name=last_message.sender.name,
+            body=last_message.body,
+            created_at=last_message.created_at,
+            image_url=last_message.image_url,
+        )
     return RequestOut(
         id=req.id,
         status=req.status,
@@ -21,9 +52,14 @@ def _to_out(req: Request) -> RequestOut:
         updated_at=req.updated_at,
         requester_id=req.requester_id,
         requester_name=req.requester.name,
+        requester_profile_image=req.requester.profile_image,
         provider_id=req.provider_id,
         provider_name=req.provider.name,
+        provider_profile_image=req.provider.profile_image,
         skill_name=req.skill.name,
+        last_message=last_msg_out,
+        unread_count=unread_count,
+        hidden_by_me=hidden_by_me,
     )
 
 
@@ -66,7 +102,9 @@ def list_requests(
     role: str = Query(default="all", pattern="^(all|sent|received)$"),
     status_filter: str = Query(default="all", alias="status"),
     amount: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     active_only: bool = Query(default=False, alias="active"),
+    hidden: bool = Query(default=False),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -85,12 +123,27 @@ def list_requests(
         query = query.filter(Request.status == status_filter)
 
     if active_only:
-        query = query.filter(Request.status != "cancelled")
+        query = query.filter(Request.status.notin_(["cancelled", "completed"]))
 
-    requests = query.order_by(Request.created_at.desc()).limit(amount).all()
+    hidden_ids = {
+        hr.request_id
+        for hr in db.query(HiddenRequest.request_id).filter(
+            HiddenRequest.user_id == user.id
+        )
+    }
+
+    if hidden:
+        query = query.filter(Request.id.in_(hidden_ids))
+    else:
+        if hidden_ids:
+            query = query.filter(Request.id.notin_(hidden_ids))
+
+    requests = (
+        query.order_by(Request.created_at.desc()).offset(offset).limit(amount).all()
+    )
     valid_requests = [r for r in requests if r.skill is not None]
 
-    return [_to_out(r) for r in valid_requests]
+    return [_to_out(r, hidden_by_me=r.id in hidden_ids) for r in valid_requests]
 
 
 @router.delete("/{request_id}", response_model=RequestOut)
@@ -119,8 +172,59 @@ def cancel_request(
     return _to_out(req)
 
 
+@router.post("/{request_id}/hide", status_code=status.HTTP_201_CREATED)
+def hide_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    req = db.get(Request, request_id)
+    if req is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Request not found"
+        )
+    if user.id not in (req.requester_id, req.provider_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a participant of this request",
+        )
+    existing = (
+        db.query(HiddenRequest)
+        .filter(
+            HiddenRequest.user_id == user.id,
+            HiddenRequest.request_id == request_id,
+        )
+        .first()
+    )
+    if existing is not None:
+        return {"ok": True}
+    hidden = HiddenRequest(user_id=user.id, request_id=request_id)
+    db.add(hidden)
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/{request_id}/hide", status_code=status.HTTP_204_NO_CONTENT)
+def unhide_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    hidden = (
+        db.query(HiddenRequest)
+        .filter(
+            HiddenRequest.user_id == user.id,
+            HiddenRequest.request_id == request_id,
+        )
+        .first()
+    )
+    if hidden is not None:
+        db.delete(hidden)
+        db.commit()
+
+
 @router.patch("/{request_id}", response_model=RequestOut)
-def update_request(
+def update_request(  # noqa: C901
     request_id: int,
     payload: RequestUpdateIn,
     db: Session = Depends(get_db),
@@ -131,19 +235,177 @@ def update_request(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Request not found"
         )
-    if req.provider_id != user.id:
+    if payload.status not in VALID_STATUSES:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the skill owner can respond",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status: {payload.status}",
         )
-    if req.status != "pending":
+
+    if payload.status in ("accepted", "declined"):
+        if req.provider_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the skill owner can respond",
+            )
+        if req.status != "pending":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Request already answered"
+            )
+        req.status = payload.status
+        req.provider_share_phone = (
+            payload.share_phone if payload.status == "accepted" else False
+        )
+    elif payload.status == "completed":
+        if req.status != "accepted":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Only accepted requests can be completed",
+            )
+        if user.id not in (req.requester_id, req.provider_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only request participants can complete it",
+            )
+        req.status = "completed"
+        req.requester.karma += 1
+        req.provider.karma += 1
+    elif payload.status == "cancelled":
+        if req.status != "accepted":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Only accepted requests can be withdrawn",
+            )
+        if user.id not in (req.requester_id, req.provider_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only request participants can withdraw",
+            )
+        req.status = "cancelled"
+        user.karma -= 1
+    else:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Request already answered"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot set status to {payload.status} via this endpoint",
         )
-    req.status = payload.status
-    req.provider_share_phone = (
-        payload.share_phone if payload.status == "accepted" else False
-    )
+
     db.commit()
     db.refresh(req)
     return _to_out(req)
+
+
+@router.post(
+    "/{request_id}/rate",
+    response_model=RatingOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def rate_request(
+    request_id: int,
+    payload: RatingIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    req = db.get(Request, request_id)
+    if req is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Request not found"
+        )
+    if req.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only completed requests can be rated",
+        )
+    if user.id not in (req.requester_id, req.provider_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only request participants can rate",
+        )
+    rated_id = req.provider_id if user.id == req.requester_id else req.requester_id
+    existing = (
+        db.query(Rating)
+        .filter(Rating.request_id == request_id, Rating.rater_id == user.id)
+        .first()
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have already rated this request",
+        )
+    rating = Rating(
+        request_id=request_id,
+        rater_id=user.id,
+        rated_id=rated_id,
+        stars=payload.stars,
+        review=payload.review,
+    )
+    db.add(rating)
+    db.commit()
+    db.refresh(rating)
+    return RatingOut(
+        id=rating.id,
+        request_id=rating.request_id,
+        rater_id=rating.rater_id,
+        rater_name=user.name,
+        rated_id=rating.rated_id,
+        stars=rating.stars,
+        review=rating.review,
+        created_at=rating.created_at,
+    )
+
+
+@router.get("/conversations", response_model=list[RequestOut])
+def conversations(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    hidden_ids = {
+        hr.request_id
+        for hr in db.query(HiddenRequest.request_id).filter(
+            HiddenRequest.user_id == user.id
+        )
+    }
+    hidden_filter = []
+    if hidden_ids:
+        hidden_filter = [Request.id.notin_(hidden_ids)]
+    requests = (
+        db.query(Request)
+        .filter(
+            (Request.requester_id == user.id) | (Request.provider_id == user.id),
+            Request.status.in_(["accepted", "completed"]),
+            *hidden_filter,
+        )
+        .all()
+    )
+    result = []
+    for req in requests:
+        if req.skill is None:
+            continue
+        last_message = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.request_id == req.id)
+            .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
+            .first()
+        )
+        cursor = (
+            db.query(MessageReadCursor)
+            .filter(
+                MessageReadCursor.user_id == user.id,
+                MessageReadCursor.request_id == req.id,
+            )
+            .first()
+        )
+        last_read = cursor.last_read_message_id if cursor else 0
+        unread = (
+            db.query(ChatMessage)
+            .filter(
+                ChatMessage.request_id == req.id,
+                ChatMessage.id > last_read,
+                ChatMessage.sender_id != user.id,
+            )
+            .count()
+        )
+        result.append(_to_out(req, last_message=last_message, unread_count=unread))
+    result.sort(
+        key=lambda r: r.last_message.created_at if r.last_message else r.updated_at,
+        reverse=True,
+    )
+    return result

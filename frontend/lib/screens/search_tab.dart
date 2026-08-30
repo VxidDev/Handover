@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'map_picker.dart';
+
 import '../models/neighbor_skill.dart';
 import '../services/api.dart';
 import '../theme/colors.dart';
@@ -386,6 +388,97 @@ class _SearchTabState extends State<SearchTab> {
   List<Widget> _buildResults(BuildContext context, {int startIndex = 3}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    if (Api.currentLat == null) {
+      final iconBg = isDark ? AppColors.darkSand : AppColors.sand;
+      final iconBorder = isDark
+          ? AppColors.darkBorder.withValues(alpha: 0.6)
+          : Colors.white.withValues(alpha: 0.8);
+
+      return [
+        StaggeredItem(
+          index: startIndex,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: Column(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: iconBorder, width: 1.5),
+                  ),
+                  child: Icon(
+                    Icons.map_outlined,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Set your location to find nearby skills',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'We need your area to match you with neighbors.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: () async {
+                    final selection = await Navigator.of(context)
+                        .push<GridSelection>(MaterialPageRoute(
+                      builder: (_) => LocationGridPickerPage(
+                        initialLat: Api.currentLat ?? 52.23,
+                        initialLng: Api.currentLng ?? 21.01,
+                      ),
+                    ));
+                    if (selection != null && mounted) {
+                      try {
+                        await Api.patch(
+                          '/api/users/me',
+                          body: {
+                            'lat': selection.centerLat,
+                            'lng': selection.centerLng,
+                            'grid': selection.cellId,
+                          },
+                        );
+                        Api.currentLat = selection.centerLat;
+                        Api.currentLng = selection.centerLng;
+                      } catch (_) {}
+                      _load();
+                    }
+                  },
+                  icon: const Icon(Icons.map_rounded, size: 17),
+                  label: const Text('Set your area'),
+                  style: FilledButton.styleFrom(
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ];
+    }
 
     if (_loading && _results.isEmpty) {
       return [
