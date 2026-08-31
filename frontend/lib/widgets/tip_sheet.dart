@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -100,35 +101,56 @@ class _TipSheetState extends State<TipSheet> {
     try {
       String? productId;
 
-      if (RevenueCatService.isConfigured && _products.isNotEmpty) {
-        // Try exact product first, then decompose into multiple purchases
-        final exact = RevenueCatService.findProductForAmount(_products, amount);
-        List<StoreProduct> toPurchase;
-        if (exact != null) {
-          toPurchase = [exact];
+      // Play Billing: mock allowed in debug/profile for testing; blocked in release.
+      if (RevenueCatService.isConfigured) {
+        if (_products.isEmpty) {
+          // In debug/profile with simulated store (no products), allow mock tip for testing
+          if (kDebugMode || kProfileMode) {
+            debugPrint('[Tip] No products — mock tip allowed in debug');
+          } else {
+            _snack('Tipping is temporarily unavailable — purchases not configured. Please try again later.');
+            setState(() => _sending = false);
+            return;
+          }
         } else {
-          final decomposed = RevenueCatService.decomposeAmount(_products, cents);
-          if (decomposed == null) {
-            if (mounted) _snack('Can\'t make \$${amount.toStringAsFixed(2)} with available products — try \$${_presetAmounts.map((a) => a.toStringAsFixed(0)).join(", \$")}');
-            setState(() => _sending = false);
-            return;
+          // Try exact product first, then decompose into multiple purchases
+          final exact = RevenueCatService.findProductForAmount(_products, amount);
+          List<StoreProduct> toPurchase;
+          if (exact != null) {
+            toPurchase = [exact];
+          } else {
+            final decomposed = RevenueCatService.decomposeAmount(_products, cents);
+            if (decomposed == null) {
+              if (mounted) _snack('Can\'t make \$${amount.toStringAsFixed(2)} with available products — try \$${_presetAmounts.map((a) => a.toStringAsFixed(0)).join(", \$")}');
+              setState(() => _sending = false);
+              return;
+            }
+            toPurchase = decomposed;
           }
-          toPurchase = decomposed;
+          productId = toPurchase.map((p) => p.identifier).join(',');
+          try {
+            for (final p in toPurchase) {
+              await RevenueCatService.purchaseTip(p);
+            }
+          } catch (e) {
+            if (e.toString().contains('cancelled') || e.toString().contains('UserCancelled')) {
+              setState(() => _sending = false);
+              return;
+            }
+            rethrow;
+          }
         }
-        productId = toPurchase.map((p) => p.identifier).join(',');
-        try {
-          for (final p in toPurchase) {
-            await RevenueCatService.purchaseTip(p);
-          }
-        } catch (e) {
-          if (e.toString().contains('cancelled') || e.toString().contains('UserCancelled')) {
-            setState(() => _sending = false);
-            return;
-          }
-          rethrow;
+      } else {
+        // Dev-only mock allowed; inform user no charge will occur.
+        // In production backend will reject this — frontend guards by isConfigured check
+        // but keep mock path for emulator/dev.
+        if (_products.isEmpty) {
+          // ignore: avoid_print
+          debugPrint('[Tip] Mock tip — no RevenueCat configured (dev only)');
+        } else {
+          // Should not happen: products imply configured
+          productId = null;
         }
-      } else if (RevenueCatService.isConfigured && _products.isEmpty) {
-        _snack('Tip products not configured in RevenueCat — using mock tip');
       }
 
       await Api.post('/api/tips', body: {
@@ -275,7 +297,12 @@ class _TipSheetState extends State<TipSheet> {
             if (!RevenueCatService.isConfigured)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('RevenueCat not configured — tip will be recorded as mock (no charge)', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
+                child: Text('Dev mode — no charge. Production requires Google Play Billing.', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
+              )
+            else if (_products.isEmpty && !_loadingProducts)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('Purchases unavailable — please try again later.', style: TextStyle(color: AppColors.error.withValues(alpha: 0.8), fontSize: 11)),
               ),
             const SizedBox(height: 20),
             SizedBox(

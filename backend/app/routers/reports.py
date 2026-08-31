@@ -44,8 +44,8 @@ def apply_ban_if_needed(db: Session, user: User) -> None:
 
 def _resolve_target(
     db: Session, content_type: str, content_id: int
-) -> tuple[User, str]:
-    """Return the content owner and the text to moderate for a report target."""
+) -> tuple[User, str, object]:
+    """Return (owner, text, target_obj) for a report target."""
     if content_type == "skill":
         skill = db.get(Skill, content_id)
         if skill is None:
@@ -53,14 +53,14 @@ def _resolve_target(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Post not found"
             )
         text = f"{skill.name} {skill.blurb}".strip()
-        return skill.owner, text
+        return skill.owner, text, skill
     if content_type == "chat_message":
         message = db.get(ChatMessage, content_id)
         if message is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Message not found"
             )
-        return message.sender, message.body
+        return message.sender, message.body, message
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         detail="Unsupported content type",
@@ -72,7 +72,7 @@ def _report_out(report: Report) -> ReportOut:
         id=report.id,
         content_type=report.content_type,
         content_id=report.content_id,
-        status=report.status,
+        status=report.status or "pending",
         toxicity_score=report.toxicity_score,
         warning_issued=report.status == "warning_issued",
         created_at=report.created_at,
@@ -85,7 +85,7 @@ def create_report(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    owner, text = _resolve_target(db, payload.content_type, payload.content_id)
+    owner, text, target = _resolve_target(db, payload.content_type, payload.content_id)
     if owner.id == user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -109,13 +109,18 @@ def create_report(
 
     toxic, scores = analyze(text)
     peak = max(scores.values()) if scores else None
+    # If model unavailable scores=={} -> queue for manual review instead of dismiss
+    if not scores and text.strip():
+        status_val = "pending_review"
+    else:
+        status_val = "warning_issued" if toxic else "dismissed"
 
     report = Report(
         reporter_id=user.id,
         content_type=payload.content_type,
         content_id=payload.content_id,
         reason=payload.reason.strip(),
-        status="warning_issued" if toxic else "dismissed",
+        status=status_val,
         toxicity_score=peak,
     )
     db.add(report)
@@ -129,6 +134,18 @@ def create_report(
                 reason=_WARNING_REASON[payload.content_type],
             )
         )
+        # Play UGC 24h takedown: hide offending content immediately
+        if payload.content_type == "skill" and isinstance(target, Skill):
+            target.is_hidden = True
+            target.hidden_reason = "reported_toxic"
+            db.add(target)
+            # Invalidate catalog so hidden skill disappears from search
+            from .skills import invalidate_catalog
+
+            invalidate_catalog()
+        elif payload.content_type == "chat_message" and isinstance(target, ChatMessage):
+            target.is_hidden = True
+            db.add(target)
 
     db.commit()
     apply_ban_if_needed(db, owner)

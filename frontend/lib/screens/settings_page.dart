@@ -1183,7 +1183,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 _AboutRow(
                   label: 'Your data',
-                  value: 'Stored on EU servers. See the Privacy Policy for details.',
+                  value: 'Stored in the EU (Poland) with encrypted backups in Switzerland. See Privacy Policy §9.',
                 ),
               ],
             ),

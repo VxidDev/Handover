@@ -15,8 +15,11 @@ logger = logging.getLogger("handover.tips")
 router = APIRouter(prefix="/tips", tags=["tips"])
 
 
-async def _verify_with_revenuecat(app_user_id: str, product_id: str) -> bool:
+async def _verify_with_revenuecat(app_user_id: str, product_id: str, transaction_id: str | None = None) -> bool:
+    # In production a key is required — mock tips are not allowed (Play Billing)
     if not settings.REVENUECAT_API_KEY:
+        if settings.ENVIRONMENT == "production":
+            return False
         return True  # skip verification in dev if no key
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -30,14 +33,20 @@ async def _verify_with_revenuecat(app_user_id: str, product_id: str) -> bool:
             data = resp.json()
             # For consumables, check non_subscriptions
             entitlements = data.get("subscriber", {}).get("non_subscriptions", {})
-            if product_id in entitlements:
-                return True
+            # product_id may be comma-joined for decomposed purchases
+            for pid in product_id.split(","):
+                pid = pid.strip()
+                if pid and pid in entitlements:
+                    return True
             # Also check entitlements
             ents = data.get("subscriber", {}).get("entitlements", {})
-            if product_id in ents:
-                return True
+            for pid in product_id.split(","):
+                pid = pid.strip()
+                if pid and pid in ents:
+                    return True
             # If we get subscriber data at all, consider it valid in sandbox
-            return True
+            # For decomposed tips we still require at least one match
+            return False if product_id else True
     except Exception:
         logger.exception("RC verify exception")
         return False
@@ -55,11 +64,21 @@ async def create_tip(
     if recipient is None:
         raise HTTPException(status_code=404, detail="Recipient not found")
 
-    # Optional RevenueCat verification
+    # Play Billing: verification is required when a product_id is sent;
+    # in production without a product_id the tip is rejected (no mock tips)
     if payload.product_id:
-        verified = await _verify_with_revenuecat(str(user.id), payload.product_id)
+        verified = await _verify_with_revenuecat(str(user.id), payload.product_id, payload.transaction_id)
         if not verified:
             logger.warning("Tip verification failed for user %s product %s", user.id, payload.product_id)
+            raise HTTPException(status_code=402, detail="Purchase verification failed. Tip not recorded. Please complete payment via Google Play.")
+    else:
+        # No product_id: only allow in non-production (mock) environments
+        if settings.ENVIRONMENT == "production":
+            raise HTTPException(
+                status_code=400,
+                detail="Google Play Billing required for tips. Please use the in-app purchase flow.",
+            )
+        logger.warning("Mock tip allowed (non-production) for user %s amount %s", user.id, payload.amount_cents)
 
     recipient_amount = int(payload.amount_cents * 0.8)
     platform_fee = payload.amount_cents - recipient_amount

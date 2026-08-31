@@ -15,6 +15,15 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     run_startup_migrations()
     run_seed()
+    # Warm up detoxify in background — first /reports call otherwise blocks 3-8s downloading/loading model
+    try:
+        import threading
+
+        from .moderation import get_model
+
+        threading.Thread(target=get_model, daemon=True).start()
+    except Exception:
+        pass
     yield
 
 

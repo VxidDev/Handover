@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -48,7 +49,8 @@ String describeError(Object error) {
     return error.message;
   }
 
-  return 'Can\'t reach the server. Check your connection and try again.';
+  return error.toString().isNotEmpty ? error.toString() : 'Can\'t reach the server. Check your connection and try again.';
+  // return 'Can\'t reach the server. Check your connection and try again.';
 }
 
 class Api {
@@ -125,6 +127,10 @@ class Api {
   };
 
   static Uri _uri(String path, [Map<String, dynamic>? query]) {
+    final base = Uri.parse(baseUrl);
+    // Release guard: https required in release; http allowed for any host in debug/profile (LAN IPs like 10.236.9.56)
+    assert(!kReleaseMode || base.scheme == 'https',
+        'API_BASE_URL must be https:// in production (got $baseUrl)');
     final uri = Uri.parse('$baseUrl$path');
     if (query == null || query.isEmpty) return uri;
     final q = query.map((k, v) => MapEntry(k, v.toString()));

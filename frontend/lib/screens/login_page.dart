@@ -131,10 +131,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      final errorMsg = (e.toString().contains('Exception') 
-          ? e.toString().replaceAll('Exception:', '').trim() 
-          : 'An unexpected error occurred. Please try again.');
-      _snack(errorMsg);
+      _snack(describeError(e));
     }
   }
 

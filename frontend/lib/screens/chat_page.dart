@@ -11,6 +11,7 @@ import '../models/chat_message.dart';
 import '../models/help_request.dart';
 import '../services/api.dart';
 import '../theme/colors.dart';
+import '../widgets/report_dialog.dart';
 import '../widgets/report_user_sheet.dart';
 
 class ChatPage extends StatefulWidget {
@@ -240,7 +241,7 @@ class _ChatPageState extends State<ChatPage> {
     setState(() => _sending = true);
     try {
       final file = File(picked.path);
-      final result = await Api.uploadFile('/api/upload', file);
+      final result = await Api.uploadFile('/api/uploads/images', file);
       final imageUrl = result['url'] as String? ?? result['path'] as String?;
       if (imageUrl != null && mounted) {
         _send(body: '', imageUrl: imageUrl);
@@ -1330,8 +1331,17 @@ class _MessageBubble extends StatelessWidget {
         '${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}';
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 520),
+      child: GestureDetector(
+        onLongPress: mine
+            ? null
+            : () => showReportDialog(
+                  context,
+                  contentType: 'chat_message',
+                  contentId: message.id,
+                  title: message.body.isNotEmpty ? message.body : 'Image message',
+                ),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 520),
         margin: const EdgeInsets.only(bottom: 9),
         padding: const EdgeInsets.fromLTRB(13, 9, 13, 7),
         decoration: BoxDecoration(
@@ -1405,6 +1415,7 @@ class _MessageBubble extends StatelessWidget {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

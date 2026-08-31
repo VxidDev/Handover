@@ -300,7 +300,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                           ),
                         ),
                         TextButton(
-                          onPressed: _currentPage == 2 ? null : _finish,
+                          onPressed: _finish,
                           style: TextButton.styleFrom(
                             minimumSize: Size.zero,
                             padding: const EdgeInsets.symmetric(

@@ -20,6 +20,7 @@ def _load_catalog(db: Session) -> list[dict[str, Any]]:
         db.query(Skill)
         .options(joinedload(Skill.owner), joinedload(Skill.images))
         .join(User)
+        .filter(Skill.is_hidden == False)  # noqa: E712 — hidden UGC removed within 24h
         .order_by(Skill.name.asc())
         .all()
     )

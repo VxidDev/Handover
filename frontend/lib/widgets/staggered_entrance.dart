@@ -43,10 +43,21 @@ class _StaggeredScope extends InheritedWidget {
   final AnimationController controller;
   const _StaggeredScope({required this.controller, required super.child});
 
-  static AnimationController of(BuildContext context) {
+  static AnimationController? ofOrNull(BuildContext context) {
     return context
-        .dependOnInheritedWidgetOfExactType<_StaggeredScope>()!
-        .controller;
+        .dependOnInheritedWidgetOfExactType<_StaggeredScope>()
+        ?.controller;
+  }
+
+  static AnimationController of(BuildContext context) {
+    final c = ofOrNull(context);
+    if (c == null) {
+      throw FlutterError(
+        'StaggeredItem used outside StaggeredEntrance. '
+        'Wrap the page with StaggeredEntrance.',
+      );
+    }
+    return c;
   }
 
   @override
@@ -68,7 +79,8 @@ class StaggeredItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = _StaggeredScope.of(context);
+    final controller = _StaggeredScope.ofOrNull(context);
+    if (controller == null) return child; // fallback outside scope
 
     // Mimics the exact interval logic from your IntroPage
     final step = 0.10;

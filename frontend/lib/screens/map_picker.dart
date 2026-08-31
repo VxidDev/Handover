@@ -77,7 +77,7 @@ class _LocationGridPickerPageState extends State<LocationGridPickerPage> {
     if (_locating) return;
     setState(() => _locating = true);
 
-    final position = await LocationService.getCurrentPosition();
+    final position = await LocationService.getCurrentPosition(context: context);
 
     if (!mounted) return;
 

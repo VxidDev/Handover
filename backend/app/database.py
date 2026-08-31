@@ -157,6 +157,21 @@ def run_startup_migrations() -> None:
                 with engine.begin() as connection:
                     connection.execute(text(f"ALTER TABLE tips ADD COLUMN {col} {ddl}"))
 
+    # UGC moderation: hidden flags for skills and chat messages (Play UGC 24h takedown)
+    if "skills" in inspector.get_table_names():
+        skill_cols = {c["name"] for c in inspector.get_columns("skills")}
+        if "is_hidden" not in skill_cols:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE skills ADD COLUMN is_hidden BOOLEAN NOT NULL DEFAULT FALSE"))
+        if "hidden_reason" not in skill_cols:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE skills ADD COLUMN hidden_reason VARCHAR(100)"))
+    if "chat_messages" in inspector.get_table_names():
+        msg_cols = {c["name"] for c in inspector.get_columns("chat_messages")}
+        if "is_hidden" not in msg_cols:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE chat_messages ADD COLUMN is_hidden BOOLEAN NOT NULL DEFAULT FALSE"))
+
 
 def get_db():
     db = SessionLocal()

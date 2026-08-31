@@ -105,6 +105,8 @@ class Skill(Base):
     )
     name: Mapped[str] = mapped_column(String(100))
     blurb: Mapped[str] = mapped_column(Text, default="")
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    hidden_reason: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
@@ -239,6 +241,7 @@ class ChatMessage(Base):
     )
 
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     request: Mapped["Request"] = relationship(back_populates="messages")
     sender: Mapped["User"] = relationship()

@@ -19,9 +19,9 @@ class _RequestsTabState extends State<RequestsTab>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
-  final Map<int, List<HelpRequest>> _requests = {0: [], 1: [], 2: []};
-  final Map<int, bool> _loading = {0: true, 1: true, 2: true};
-  final Map<int, String?> _error = {0: null, 1: null, 2: null};
+  final Map<int, List<HelpRequest>> _requests = {0: [], 1: [], 2: [], 3: []};
+  final Map<int, bool> _loading = {0: true, 1: true, 2: true, 3: true};
+  final Map<int, String?> _error = {0: null, 1: null, 2: null, 3: null};
   final Set<int> _removingIds = {};
   int? _busyRequestId;
   int _currentTabIndex = 0;
@@ -852,8 +852,8 @@ class _RequestsTabState extends State<RequestsTab>
   }
 
   Widget _buildTabContent(int tabIndex) {
-    final requests = _requests[tabIndex]!;
-    final loading = _loading[tabIndex]!;
+    final requests = _requests[tabIndex] ?? const [];
+    final loading = _loading[tabIndex] ?? false;
     final error = _error[tabIndex];
 
     return RefreshIndicator(

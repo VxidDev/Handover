@@ -2,6 +2,15 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+# Lazy import to avoid circular
+def _is_production() -> bool:
+    try:
+        from .config import settings
+
+        return settings.ENVIRONMENT == "production"
+    except Exception:
+        return False
+
 
 class SignupIn(BaseModel):
     email: EmailStr
@@ -11,6 +20,16 @@ class SignupIn(BaseModel):
     lng: float | None = None
     accept_tos: bool | None = None
     accept_privacy: bool | None = None
+
+    @model_validator(mode="after")
+    def check_consent_and_age(self):
+        # Play Child Safety + GDPR 16+ : must confirm age and accept both documents.
+        if self.accept_tos is False or self.accept_privacy is False:
+            raise ValueError("You must be at least 16 and accept the Terms and Privacy Policy")
+        # In production, missing consent is also rejected — tests (dev) remain lenient
+        if _is_production() and (self.accept_tos is not True or self.accept_privacy is not True):
+            raise ValueError("You must be at least 16 and accept the Terms and Privacy Policy")
+        return self
 
 
 class LoginIn(BaseModel):

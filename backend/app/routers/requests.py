@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import get_current_user
 from ..models import (
+    BlockedUser,
     ChatMessage,
     HiddenRequest,
     MessageReadCursor,
@@ -83,6 +84,26 @@ def create_request(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Neighbor is currently unavailable",
+        )
+
+    # Block enforcement: Play UGC — blocked users cannot interact
+    is_blocked = (
+        db.query(BlockedUser)
+        .filter(
+            ((BlockedUser.blocker_id == requester.id) & (BlockedUser.blocked_id == skill.user_id))
+            | ((BlockedUser.blocker_id == skill.user_id) & (BlockedUser.blocked_id == requester.id))
+        )
+        .first()
+    )
+    if is_blocked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot interact with this user",
+        )
+
+    if skill.is_hidden:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found"
         )
 
     request = Request(

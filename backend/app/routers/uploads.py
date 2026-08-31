@@ -1,3 +1,4 @@
+import logging
 import uuid
 from pathlib import Path
 
@@ -6,6 +7,9 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from ..deps import get_current_user
 from ..models import User
+from ..moderation import moderate_image
+
+logger = logging.getLogger("handover.uploads")
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
@@ -38,6 +42,15 @@ async def upload_image(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File too large. Max size is 5MB.",
+        )
+
+    # Play UGC image check — flag violations before storing (CSAM/NSFW placeholder)
+    is_violation, reason = moderate_image(file.filename or "", content)
+    if is_violation:
+        logger.warning("Image upload blocked for user %s: %s", current_user.id, reason)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Image rejected by moderation. Please choose a different image.",
         )
 
     filename = f"{uuid.uuid4().hex}{ext}"

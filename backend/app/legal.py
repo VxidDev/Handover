@@ -6,8 +6,8 @@ and the app renders the same text the consent refers to.
 """
 
 TOS_VERSION = "1.0.0"
-PRIVACY_VERSION = "1.0.0"
-EFFECTIVE_DATE = "2026-08-19"
+PRIVACY_VERSION = "1.0.1"
+EFFECTIVE_DATE = "2026-08-31"
 
 CONTROLLER_NAME = "Handover Community"
 CONTROLLER_EMAIL = "privacy@handover.app"
@@ -103,7 +103,7 @@ You can exercise most of these directly from the settings page. For anything els
 Passwords are stored as one-way hashes, phone numbers are encrypted at rest, and access to your account requires authentication. We apply reasonable technical and organizational measures to protect your data.
 
 ## 9. Data Storage and International Transfers
-Your data is stored on secure servers physically located in **Switzerland**, managed by a third-party infrastructure provider. Switzerland is recognized by the European Commission as providing an adequate level of data protection. We contractually require our infrastructure providers to maintain strict security standards and prohibit unauthorized access or transfer of your data outside the agreed-upon regions.
+Your data is stored on secure servers physically located in the **European Union (Poland region) with encrypted backups in Switzerland**, managed by third-party infrastructure providers. Switzerland is recognized by the European Commission as providing an adequate level of data protection where applicable. We contractually require our infrastructure providers to maintain strict security standards and prohibit unauthorized access or transfer of your data outside the agreed-upon regions.
 
 ## 10. Children's Privacy
 Handover is not intended for children under 16, and we do not knowingly collect data from them.
