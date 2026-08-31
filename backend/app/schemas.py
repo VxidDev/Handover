@@ -9,6 +9,8 @@ class SignupIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     lat: float | None = None
     lng: float | None = None
+    accept_tos: bool | None = None
+    accept_privacy: bool | None = None
 
 
 class LoginIn(BaseModel):
@@ -41,13 +43,19 @@ class UserOut(BaseModel):
     name: str
     is_available: bool
     karma: int
+    lat: float | None = None
+    lng: float | None = None
     grid: str | None = None
+    banned_until: datetime | None = None
+    profile_image: str | None = None
     created_at: datetime
 
 
 class UserMeOut(UserOut):
     skills: list[SkillOut] = []
     phone: str | None = None
+    tos_accepted_at: datetime | None = None
+    privacy_accepted_at: datetime | None = None
 
 
 class AuthOut(BaseModel):
@@ -62,6 +70,7 @@ class UserUpdateIn(BaseModel):
     lng: float | None = None
     grid: str | None = Field(default=None, max_length=20)
     phone: str | None = Field(default=None, max_length=50)
+    profile_image: str | None = Field(default=None, max_length=500)
 
 
 class SkillCreateIn(BaseModel):
@@ -76,6 +85,7 @@ class SkillSearchOut(BaseModel):
     blurb: str
     owner_id: int
     owner_name: str
+    owner_profile_image: str | None = None
     grid: str | None = None
     distance_km: float | None = None
     available: bool
@@ -98,13 +108,18 @@ class RequestOut(BaseModel):
     updated_at: datetime
     requester_id: int
     requester_name: str
+    requester_profile_image: str | None = None
     provider_id: int
     provider_name: str
+    provider_profile_image: str | None = None
     skill_name: str
+    last_message: "ChatMessageOut | None" = None
+    unread_count: int = 0
+    hidden_by_me: bool = False
 
 
 class RequestUpdateIn(BaseModel):
-    status: str = Field(pattern="^(accepted|declined)$")
+    status: str = Field(pattern="^(accepted|declined|completed|cancelled)$")
     share_phone: bool | None = None
 
     @model_validator(mode="after")
@@ -121,6 +136,7 @@ class ChatMessageOut(BaseModel):
     sender_name: str
     body: str
     created_at: datetime
+    image_url: str | None = None
 
 
 class RoomTokenOut(BaseModel):
@@ -128,3 +144,129 @@ class RoomTokenOut(BaseModel):
     expires_at: datetime
     request: RequestOut
     contact_info: dict[str, str]
+
+
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    email: EmailStr
+    email_code: str | None = Field(default=None, min_length=6, max_length=6, pattern=r"^\d{6}$")
+    totp_code: str | None = Field(default=None, min_length=6, max_length=6, pattern=r"^\d{6}$")
+    recovery_code: str | None = Field(default=None, max_length=16)
+    new_password: str = Field(min_length=6, max_length=128)
+
+    @model_validator(mode="after")
+    def require_one_code(self):
+        if not self.email_code and not self.totp_code and not self.recovery_code:
+            raise ValueError("One of email_code, totp_code, or recovery_code is required")
+        return self
+
+
+class ReportCreateIn(BaseModel):
+    content_type: str = Field(pattern="^(skill|chat_message)$")
+    content_id: int
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class ReportOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    content_type: str
+    content_id: int
+    status: str
+    toxicity_score: float | None = None
+    warning_issued: bool
+    created_at: datetime
+
+
+class WarningOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    reason: str
+    created_at: datetime
+
+
+class ReportIn(BaseModel):
+    reported_id: int
+    reason: str = Field(min_length=1, max_length=50)
+    details: str | None = Field(default=None, max_length=1000)
+
+
+class BlockIn(BaseModel):
+    blocked_id: int
+
+
+class RatingIn(BaseModel):
+    stars: int = Field(ge=1, le=5)
+    review: str | None = Field(default=None, max_length=500)
+
+
+class RatingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    request_id: int
+    rater_id: int
+    rater_name: str
+    rated_id: int
+    stars: int
+    review: str | None = None
+    created_at: datetime
+
+
+class TwoFASetupOut(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class TwoFAEnableIn(BaseModel):
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class TwoFADisableIn(BaseModel):
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class TwoFAVerifyIn(BaseModel):
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class TwoFARecoveryCodeIn(BaseModel):
+    recovery_code: str = Field(min_length=1, max_length=16)
+
+
+class TwoFAStatusOut(BaseModel):
+    enabled: bool
+
+
+class UnreadCountsOut(BaseModel):
+    counts: dict[str, int]
+
+
+class TipCreateIn(BaseModel):
+    recipient_id: int
+    amount_cents: int = Field(ge=50, le=100000, description="Tip in cents, 50..100000")
+    product_id: str | None = Field(default=None, max_length=100)
+    transaction_id: str | None = Field(default=None, max_length=255)
+
+
+class TipOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    sender_id: int
+    recipient_id: int
+    amount_cents: int
+    recipient_amount_cents: int
+    platform_fee_cents: int
+    currency: str
+    status: str
+    payout_status: str
+    created_at: datetime
+
+
+RequestOut.model_rebuild()

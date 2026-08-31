@@ -6,7 +6,7 @@ abstract class AppTheme {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      fontFamily: 'Georgia',
+      fontFamily: 'Roboto', // Default to clean UI font for readability
       colorScheme: const ColorScheme.light(
         primary: AppColors.terracotta,
         onPrimary: Colors.white,
@@ -14,6 +14,10 @@ abstract class AppTheme {
         onSecondary: Colors.white,
         surface: AppColors.paper,
         onSurface: AppColors.ink,
+        surfaceContainerLowest: AppColors.cream,
+        surfaceContainerLow: AppColors.paper,
+        surfaceContainer: AppColors.paper,
+        surfaceContainerHigh: Color(0xFFF5F0EA), // Subtle elevation color
         error: AppColors.error,
         outline: AppColors.border,
       ),
@@ -21,42 +25,46 @@ abstract class AppTheme {
     );
 
     return base.copyWith(
+      // TYPOGRAPHY: Use Georgia ONLY for headings to create a premium, editorial feel
       textTheme: base.textTheme.copyWith(
+        displayLarge: const TextStyle(
+          fontFamily: 'Georgia',
+          fontSize: 36,
+          fontWeight: FontWeight.w700,
+          color: AppColors.ink,
+          letterSpacing: -0.5,
+        ),
         headlineMedium: const TextStyle(
+          fontFamily: 'Georgia',
           fontSize: 30,
           fontWeight: FontWeight.w700,
           color: AppColors.ink,
           letterSpacing: -0.5,
-          fontFamily: 'Roboto',
         ),
         titleLarge: const TextStyle(
+          fontFamily: 'Georgia',
           fontSize: 20,
           fontWeight: FontWeight.w700,
           color: AppColors.ink,
-          fontFamily: 'Roboto',
         ),
         titleMedium: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
           color: AppColors.ink,
-          fontFamily: 'Roboto',
         ),
         bodyLarge: const TextStyle(
           fontSize: 15,
           color: AppColors.ink,
-          fontFamily: 'Roboto',
-          height: 1.4,
+          height: 1.5,
         ),
         bodyMedium: const TextStyle(
           fontSize: 13.5,
           color: AppColors.inkSoft,
-          fontFamily: 'Roboto',
-          height: 1.4,
+          height: 1.5,
         ),
         labelLarge: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          fontFamily: 'Roboto',
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -65,24 +73,29 @@ abstract class AppTheme {
         elevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
+          fontFamily: 'Georgia',
           color: AppColors.ink,
-          fontSize: 19,
+          fontSize: 20,
           fontWeight: FontWeight.w700,
-          fontFamily: 'Roboto',
         ),
       ),
+      // CARDS: Added subtle border + tiny elevation so they don't vanish on light backgrounds
       cardTheme: CardThemeData(
         color: AppColors.paper,
-        elevation: 0,
+        elevation: 1,
+        shadowColor: AppColors.shadow,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.border, width: 1),
+        ),
         margin: EdgeInsets.zero,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.terracotta,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -91,8 +104,8 @@ abstract class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.inkSoft,
-          side: const BorderSide(color: AppColors.border, width: 1.4),
+          foregroundColor: AppColors.terracottaDeep,
+          side: const BorderSide(color: AppColors.border, width: 1.5),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -101,13 +114,14 @@ abstract class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.terracottaDeep,
+          foregroundColor: AppColors.terracotta,
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
+      // INPUTS: Changed from 'sand' to 'paper' with a border for a crisp, clean look
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.sand,
+        fillColor: AppColors.paper,
         hintStyle: const TextStyle(color: AppColors.inkFaint, fontSize: 14),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 16,
@@ -115,31 +129,45 @@ abstract class AppTheme {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.border, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.border, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.terracotta, width: 1.6),
+          borderSide: const BorderSide(color: AppColors.terracotta, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
       ),
+      // CHIPS: Lighter background, clearer selected state, subtle border
       chipTheme: base.chipTheme.copyWith(
-        backgroundColor: AppColors.sand,
+        backgroundColor: AppColors.paper,
         selectedColor: AppColors.terracottaTint,
-        labelStyle: const TextStyle(color: AppColors.ink, fontSize: 13),
+        labelStyle: const TextStyle(
+          color: AppColors.ink,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
         secondaryLabelStyle: const TextStyle(
           color: AppColors.terracottaDeep,
           fontSize: 13,
+          fontWeight: FontWeight.w600,
         ),
-        side: BorderSide.none,
+        side: const BorderSide(color: AppColors.border, width: 1),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.paper,
+        backgroundColor: AppColors.paper, // Contrasts nicely with cream scaffold
         indicatorColor: AppColors.terracottaTint,
         elevation: 0,
         height: 68,
@@ -148,13 +176,13 @@ abstract class AppTheme {
           return TextStyle(
             fontSize: 11.5,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? AppColors.terracottaDeep : AppColors.inkFaint,
+            color: selected ? AppColors.terracottaDeep : AppColors.inkSoft,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? AppColors.terracottaDeep : AppColors.inkFaint,
+            color: selected ? AppColors.terracotta : AppColors.inkFaint,
           );
         }),
       ),
@@ -181,10 +209,15 @@ abstract class AppTheme {
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.paper,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: const BorderSide(color: AppColors.border, width: 1),
+        ),
         titleTextStyle: const TextStyle(
+          fontFamily: 'Georgia',
           color: AppColors.ink,
-          fontSize: 17,
+          fontSize: 18,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -271,7 +304,7 @@ abstract class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.terracotta,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -381,18 +414,18 @@ abstract class AppTheme {
   }
 
   static List<BoxShadow> get cardShadow => [
-    BoxShadow(
-      color: AppColors.shadow,
-      blurRadius: 18,
-      offset: const Offset(0, 6),
-    ),
-  ];
+        BoxShadow(
+          color: AppColors.shadow,
+          blurRadius: 18,
+          offset: const Offset(0, 6),
+        ),
+      ];
 
   static List<BoxShadow> get darkCardShadow => [
-    BoxShadow(
-      color: AppColors.darkShadow,
-      blurRadius: 18,
-      offset: const Offset(0, 6),
-    ),
-  ];
+        BoxShadow(
+          color: AppColors.darkShadow,
+          blurRadius: 18,
+          offset: const Offset(0, 6),
+        ),
+      ];
 }

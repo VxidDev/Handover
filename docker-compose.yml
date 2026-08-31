@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  handover-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: handover_backend
+    # Порты НЕ публикуются! Доступ только через nginx внутри сети
+    volumes:
+      - ./backend/data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///data/handover.db
+      - SECRET_KEY=${SECRET_KEY:-change_me_in_production_please}
+      - TOKEN_TTL_SECONDS=604800
+      - ROOM_TOKEN_TTL_SECONDS=900
+    restart: unless-stopped
+    networks:
+      - handover-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: handover_nginx
+    ports:
+      - "80:80"
+      
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - handover-backend
+    restart: unless-stopped
+    networks:
+      - handover-net
+
+networks:
+  handover-net:
+    driver: bridge

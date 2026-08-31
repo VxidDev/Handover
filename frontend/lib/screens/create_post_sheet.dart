@@ -20,7 +20,9 @@ class _CreatePostSheetState extends State<CreatePostSheet>
   final List<XFile?> _images = [null, null, null];
 
   bool _submitting = false;
+  String? _uploadProgress;
   String? _error;
+  bool _titleError = false;
 
   late final AnimationController _successController;
   late final Animation<double> _successScale;
@@ -72,7 +74,7 @@ class _CreatePostSheetState extends State<CreatePostSheet>
       }
     } catch (e) {
       setState(() {
-        _error = 'Failed to pick image: ${e.toString()}';
+        _error = 'Couldn\'t open image picker. Please check permissions.';
       });
     }
   }
@@ -88,12 +90,18 @@ class _CreatePostSheetState extends State<CreatePostSheet>
     final blurb = _blurb.text.trim();
 
     if (name.isEmpty) {
-      setState(() => _error = 'Please enter a title.');
+      setState(() {
+        _error = 'Please enter a title.';
+        _titleError = true;
+      });
       return;
     }
 
     if (blurb.isEmpty) {
-      setState(() => _error = 'Please enter a description.');
+      setState(() {
+        _error = 'Please enter a description.';
+        _titleError = false;
+      });
       return;
     }
 
@@ -104,14 +112,20 @@ class _CreatePostSheetState extends State<CreatePostSheet>
 
     try {
       final imagePaths = <String>[];
-      for (final img in _images) {
-        if (img != null) {
-          final uploaded = await Api.uploadFile(
-            '/api/uploads/images',
-            File(img.path),
-          );
-          imagePaths.add(uploaded['path'] as String);
+      final imagesToUpload = _images.where((img) => img != null).toList();
+      for (int i = 0; i < imagesToUpload.length; i++) {
+        final img = imagesToUpload[i]!;
+        if (mounted) {
+          setState(() => _uploadProgress = 'Uploading image ${i + 1} of ${imagesToUpload.length}');
         }
+        final uploaded = await Api.uploadFile(
+          '/api/uploads/images',
+          File(img.path),
+        );
+        imagePaths.add(uploaded['path'] as String);
+      }
+      if (mounted) {
+        setState(() => _uploadProgress = null);
       }
 
       await Api.post(
@@ -246,8 +260,8 @@ class _CreatePostSheetState extends State<CreatePostSheet>
                                         top: 4,
                                         right: 4,
                                         child: Container(
-                                          width: 24,
-                                          height: 24,
+                                          width: 32,
+                                          height: 32,
                                           decoration: BoxDecoration(
                                             color: Colors.black.withValues(
                                               alpha: 0.6,
@@ -256,7 +270,7 @@ class _CreatePostSheetState extends State<CreatePostSheet>
                                           ),
                                           child: const Icon(
                                             Icons.close,
-                                            size: 16,
+                                            size: 18,
                                             color: Colors.white,
                                           ),
                                         ),
@@ -287,7 +301,7 @@ class _CreatePostSheetState extends State<CreatePostSheet>
                   autofocus: true,
                   maxLength: 50,
                   onChanged: (_) {
-                    if (_error != null) setState(() => _error = null);
+                    if (_error != null) setState(() { _error = null; _titleError = false; });
                   },
                   style: TextStyle(
                     fontSize: 14,
@@ -304,7 +318,7 @@ class _CreatePostSheetState extends State<CreatePostSheet>
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    errorText: _error,
+                    errorText: _titleError ? _error : null,
                     errorStyle: TextStyle(fontSize: 12, color: AppColors.error),
                   ),
                 ),
@@ -326,7 +340,7 @@ class _CreatePostSheetState extends State<CreatePostSheet>
                   maxLines: 4,
                   maxLength: 500,
                   onChanged: (_) {
-                    if (_error != null) setState(() => _error = null);
+                    if (_error != null) setState(() { _error = null; _titleError = false; });
                   },
                   style: TextStyle(
                     fontSize: 14,
@@ -344,6 +358,8 @@ class _CreatePostSheetState extends State<CreatePostSheet>
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
+                    errorText: !_titleError ? _error : null,
+                    errorStyle: TextStyle(fontSize: 12, color: AppColors.error),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -419,13 +435,28 @@ class _CreatePostSheetState extends State<CreatePostSheet>
                             return child!;
                           },
                           child: _submitting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    if (_uploadProgress != null) ...[
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _uploadProgress!,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 )
                               : const Text('Post'),
                         ),

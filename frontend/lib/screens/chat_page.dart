@@ -1,13 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../models/chat_message.dart';
 import '../models/help_request.dart';
 import '../services/api.dart';
 import '../theme/colors.dart';
+import '../widgets/report_user_sheet.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({
@@ -37,6 +41,11 @@ class _ChatPageState extends State<ChatPage> {
   bool _disposed = false;
   bool _fallbackLoaded = false;
   int _connectionGeneration = 0;
+  String _status = 'accepted';
+  bool _completing = false;
+  bool _otherTyping = false;
+  Timer? _otherTypingTimer;
+  Timer? _sendTypingTimer;
 
   List<ChatMessage> get _messages =>
       _messagesById.values.toList()
@@ -45,6 +54,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+    _status = widget.request.status;
     _connect();
   }
 
@@ -83,6 +93,7 @@ class _ChatPageState extends State<ChatPage> {
         onDone: () => _socketEnded(generation),
         cancelOnError: true,
       );
+      _reconnectAttempts = 0;
     } catch (error) {
       if (_disposed || generation != _connectionGeneration) return;
       if (mounted) {
@@ -116,6 +127,15 @@ class _ChatPageState extends State<ChatPage> {
         _addMessages([
           ChatMessage.fromJson(payload['message'] as Map<String, dynamic>),
         ]);
+      } else if (type == 'typing') {
+        final typingUserId = payload['user_id'] as int?;
+        if (typingUserId != null && typingUserId != Api.currentUserId) {
+          setState(() => _otherTyping = true);
+          _otherTypingTimer?.cancel();
+          _otherTypingTimer = Timer(const Duration(seconds: 5), () {
+            if (mounted) setState(() => _otherTyping = false);
+          });
+        }
       }
     } catch (_) {
       if (mounted) setState(() => _error = 'A chat update could not be read.');
@@ -145,10 +165,16 @@ class _ChatPageState extends State<ChatPage> {
     _scheduleReconnect(generation);
   }
 
+  int _reconnectAttempts = 0;
+
   void _scheduleReconnect(int generation) {
     if (_disposed || generation != _connectionGeneration) return;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 3), _connect);
+    final delay = Duration(
+      seconds: (3 * (1 << _reconnectAttempts.clamp(0, 5))).toInt(),
+    );
+    _reconnectTimer = Timer(delay, _connect);
+    _reconnectAttempts++;
   }
 
   Future<void> _loadFallbackHistory() async {
@@ -173,21 +199,59 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void _send() {
-    final body = _composer.text.trim();
-    if (body.isEmpty || body.length > 2000 || _channel == null || _sending) {
+  void _send({String? body, String? imageUrl}) {
+    final text = body ?? _composer.text.trim();
+    if ((text.isEmpty && imageUrl == null) || text.length > 2000 || _channel == null || _sending) {
       return;
     }
     setState(() => _sending = true);
     try {
-      _channel!.sink.add(jsonEncode({'type': 'message', 'body': body}));
-      _composer.clear();
+      final msg = <String, dynamic>{'type': 'message', 'body': text};
+      if (imageUrl != null) msg['image_url'] = imageUrl;
+      _channel!.sink.add(jsonEncode(msg));
+      if (body == null) _composer.clear();
       setState(() => _sending = false);
     } catch (_) {
       setState(() {
         _sending = false;
         _error = 'Message not sent. Wait for the chat to reconnect.';
       });
+    }
+  }
+
+  void _sendTyping() {
+    if (_channel == null) return;
+    try {
+      _channel!.sink.add(jsonEncode({'type': 'typing'}));
+    } catch (_) {}
+  }
+
+  void _onComposerTextChanged() {
+    if (_sendTypingTimer?.isActive ?? false) return;
+    _sendTyping();
+    _sendTypingTimer = Timer(const Duration(seconds: 2), () {});
+  }
+
+  Future<void> _pickAndSendImage() async {
+    if (_channel == null || _sending) return;
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null || !mounted) return;
+    setState(() => _sending = true);
+    try {
+      final file = File(picked.path);
+      final result = await Api.uploadFile('/api/upload', file);
+      final imageUrl = result['url'] as String? ?? result['path'] as String?;
+      if (imageUrl != null && mounted) {
+        _send(body: '', imageUrl: imageUrl);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _sending = false;
+          _error = 'Image could not be sent.';
+        });
+      }
     }
   }
 
@@ -200,11 +264,476 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  Future<void> _finishHandover() async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final firstName = widget.otherUserName.split(' ').first;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: isDark
+          ? Colors.black.withValues(alpha: 0.6)
+          : AppColors.ink.withValues(alpha: 0.4),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkPaper : AppColors.paper,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: 0.6)
+                  : Colors.white.withValues(alpha: 0.8),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+                blurRadius: 40,
+                offset: const Offset(0, 20),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.sage.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.task_alt_rounded,
+                  color: AppColors.sage,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              Text(
+                'Mark as completed?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Nice work helping $firstName! The handover will close and move to Completed.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // History info card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.darkSand.withValues(alpha: 0.5)
+                      : AppColors.sand.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.history_rounded,
+                      size: 17,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Chat history stays available anytime.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.darkBorder.withValues(alpha: 0.6)
+                                : AppColors.inkSoft.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Not yet',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.sage,
+                          borderRadius: BorderRadius.circular(100),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.sage.withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Complete',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    HapticFeedback.lightImpact();
+    setState(() => _completing = true);
+    try {
+      await Api.patch(
+        '/api/requests/${widget.request.id}',
+        body: {'status': 'completed'},
+      );
+      if (mounted) {
+        setState(() => _status = 'completed');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Handover marked as completed.')),
+        );
+        _showRatingDialog();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(describeError(e))));
+      }
+    } finally {
+      if (mounted) setState(() => _completing = false);
+    }
+  }
+
+  void _showRatingDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _RatingSheet(requestId: widget.request.id),
+    );
+  }
+
+  Future<void> _withdrawHandover() async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final firstName = widget.otherUserName.split(' ').first;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: isDark
+          ? Colors.black.withValues(alpha: 0.6)
+          : AppColors.ink.withValues(alpha: 0.4),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkPaper : AppColors.paper,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: 0.6)
+                  : Colors.white.withValues(alpha: 0.8),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+                blurRadius: 40,
+                offset: const Offset(0, 20),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.undo_rounded,
+                  color: AppColors.error,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              Text(
+                'Withdraw from handover?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$firstName will be notified and this chat will close.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Karma impact card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.darkSand.withValues(alpha: 0.5)
+                      : AppColors.sand.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.eco_outlined,
+                      size: 17,
+                      color: isDark ? AppColors.terracotta : AppColors.terracottaDeep,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Karma impact',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ),
+                    const Text(
+                      '−1',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.error,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.darkBorder.withValues(alpha: 0.6)
+                                : AppColors.inkSoft.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Keep it',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(100),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.error.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Withdraw',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    HapticFeedback.mediumImpact();
+    setState(() => _completing = true);
+    try {
+      await Api.patch(
+        '/api/requests/${widget.request.id}',
+        body: {'status': 'cancelled'},
+      );
+      if (mounted) {
+        setState(() => _status = 'cancelled');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Handover withdrawn.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(describeError(e))));
+      }
+    } finally {
+      if (mounted) setState(() => _completing = false);
+    }
+  }
+
+  Future<void> _hideConversation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hide conversation?'),
+        content: const Text(
+          'This conversation will be hidden from your list. '
+          'You won\'t see it unless the other person sends a new message.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Hide'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await Api.post('/api/requests/${widget.request.id}/hide');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Conversation hidden.')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(describeError(e))));
+      }
+    }
+  }
+
   @override
   void dispose() {
     _disposed = true;
     _connectionGeneration++;
     _reconnectTimer?.cancel();
+    _otherTypingTimer?.cancel();
+    _sendTypingTimer?.cancel();
     _socketSubscription?.cancel();
     _channel?.sink.close();
     _composer.dispose();
@@ -212,9 +741,173 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
+  int get _otherUserId =>
+      widget.request.requesterId == Api.currentUserId
+          ? widget.request.providerId
+          : widget.request.requesterId;
+
+  void _reportUser() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ReportUserSheet(userId: _otherUserId),
+    );
+  }
+
+  Future<void> _blockUser() async {
+    final firstName = widget.otherUserName.split(' ').first;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: isDark
+          ? Colors.black.withValues(alpha: 0.6)
+          : AppColors.ink.withValues(alpha: 0.4),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkPaper : AppColors.paper,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: 0.6)
+                  : Colors.white.withValues(alpha: 0.8),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+                blurRadius: 40,
+                offset: const Offset(0, 20),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.block_rounded,
+                  color: AppColors.error,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Block $firstName?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$firstName won\'t be able to send you messages or see your skills. '
+                'This won\'t notify them.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.darkBorder.withValues(alpha: 0.6)
+                                : AppColors.inkSoft.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Block',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+    try {
+      await Api.post('/api/safety/block', body: {'blocked_id': _otherUserId});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$firstName has been blocked.')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(describeError(e))),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isAccepted = _status == 'accepted';
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
@@ -232,6 +925,117 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ],
         ),
+        actions: [
+          if (isAccepted)
+            TextButton.icon(
+              onPressed: _completing ? null : _withdrawHandover,
+              icon: const Icon(Icons.close_rounded, size: 18),
+              label: const Text('Withdraw'),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+            ),
+          if (isAccepted)
+            TextButton.icon(
+              onPressed: _completing ? null : _finishHandover,
+              icon: _completing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.sage,
+                      ),
+                    )
+                  : const Icon(Icons.check_circle_outline, size: 20),
+              label: const Text('Finish'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.sage),
+            ),
+          if (!isAccepted && _status == 'completed')
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Center(
+                child: Text(
+                  'Completed',
+                  style: TextStyle(
+                    color: AppColors.sage,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'hide') _hideConversation();
+              if (value == 'report') _reportUser();
+              if (value == 'block') _blockUser();
+            },
+            icon: Icon(
+              Icons.more_vert_rounded,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'hide',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.visibility_off_outlined,
+                      size: 18,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Hide conversation',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'report',
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.flag_outlined,
+                      size: 18,
+                      color: AppColors.error,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Report user',
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'block',
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.block,
+                      size: 18,
+                      color: AppColors.error,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Block user',
+                      style: TextStyle(color: AppColors.error),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -244,11 +1048,40 @@ class _ChatPageState extends State<ChatPage> {
                   _ContactBanner(phone: _phone!, name: widget.otherUserName),
                 _SafetyNotice(connecting: _connecting, error: _error),
                 Expanded(child: _messageList()),
+                if (_otherTyping)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${widget.otherUserName.split(' ').first} is typing',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          width: 16,
+                          height: 12,
+                          child: _TypingDots(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 _Composer(
                   controller: _composer,
-                  enabled: !_connecting && _channel != null,
+                  enabled: !_connecting && _channel != null && isAccepted,
                   sending: _sending,
-                  onSend: _send,
+                  onSend: () => _send(),
+                  onPickImage: _pickAndSendImage,
+                  onTextChanged: _onComposerTextChanged,
                 ),
               ],
             ),
@@ -277,14 +1110,29 @@ class _ChatPageState extends State<ChatPage> {
         ),
       );
     }
+
+    final List<Widget> items = [];
+    DateTime? prevDate;
+    for (var i = 0; i < messages.length; i++) {
+      final msg = messages[i];
+      final msgDate = DateTime(msg.createdAt.year, msg.createdAt.month, msg.createdAt.day);
+      if (prevDate == null || msgDate != prevDate) {
+        items.add(_DateSeparator(date: msg.createdAt));
+        prevDate = msgDate;
+      }
+      items.add(
+        _MessageBubble(
+          message: msg,
+          mine: msg.senderId == Api.currentUserId,
+        ),
+      );
+    }
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-      itemCount: messages.length,
-      itemBuilder: (context, index) => _MessageBubble(
-        message: messages[index],
-        mine: messages[index].senderId == Api.currentUserId,
-      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) => items[index],
     );
   }
 }
@@ -365,6 +1213,108 @@ class _ContactBanner extends StatelessWidget {
   }
 }
 
+class _DateSeparator extends StatelessWidget {
+  const _DateSeparator({required this.date});
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDay = DateTime(date.year, date.month, date.day);
+    String label;
+    if (messageDay == today) {
+      label = 'Today';
+    } else if (messageDay == today.subtract(const Duration(days: 1))) {
+      label = 'Yesterday';
+    } else {
+      label = '${date.month}/${date.day}/${date.year}';
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          const Expanded(child: Divider()),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
+          const Expanded(child: Divider()),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypingDots extends StatefulWidget {
+  const _TypingDots({required this.color});
+  final Color color;
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            final offset = i * 0.33;
+            final value = ((_controller.value - offset) % 1.0);
+            final opacity = value < 0.5
+                ? (value * 2).clamp(0.3, 1.0)
+                : ((1.0 - value) * 2).clamp(0.3, 1.0);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1.5),
+              child: Opacity(
+                opacity: opacity.toDouble(),
+                child: Text(
+                  '.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: widget.color,
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({required this.message, required this.mine});
 
@@ -417,14 +1367,33 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 ),
               ),
-            Text(
-              message.body,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.35,
-                color: mine ? Colors.white : theme.colorScheme.onSurface,
+            if (message.imageUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  '${Api.baseUrl}${message.imageUrl}',
+                  width: 240,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    padding: const EdgeInsets.all(12),
+                    child: Icon(
+                      Icons.broken_image_rounded,
+                      color: mine
+                          ? Colors.white.withValues(alpha: 0.6)
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
               ),
-            ),
+            if (message.body.isNotEmpty)
+              Text(
+                message.body,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.35,
+                  color: mine ? Colors.white : theme.colorScheme.onSurface,
+                ),
+              ),
             const SizedBox(height: 3),
             Text(
               time,
@@ -448,12 +1417,16 @@ class _Composer extends StatefulWidget {
     required this.enabled,
     required this.sending,
     required this.onSend,
+    this.onPickImage,
+    this.onTextChanged,
   });
 
   final TextEditingController controller;
   final bool enabled;
   final bool sending;
   final VoidCallback onSend;
+  final VoidCallback? onPickImage;
+  final VoidCallback? onTextChanged;
 
   @override
   State<_Composer> createState() => _ComposerState();
@@ -475,7 +1448,10 @@ class _ComposerState extends State<_Composer> {
     }
   }
 
-  void _changed() => setState(() {});
+  void _changed() {
+    setState(() {});
+    widget.onTextChanged?.call();
+  }
 
   @override
   void dispose() {
@@ -514,7 +1490,15 @@ class _ComposerState extends State<_Composer> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
+              if (widget.onPickImage != null)
+                IconButton(
+                  onPressed: widget.enabled ? widget.onPickImage : null,
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  tooltip: 'Send image',
+                  visualDensity: VisualDensity.compact,
+                ),
+              const SizedBox(width: 4),
               IconButton.filled(
                 onPressed: canSend ? widget.onSend : null,
                 icon: const Icon(Icons.arrow_upward_rounded),
@@ -524,6 +1508,298 @@ class _ComposerState extends State<_Composer> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RatingSheet extends StatefulWidget {
+  const _RatingSheet({required this.requestId});
+
+  final int requestId;
+
+  @override
+  State<_RatingSheet> createState() => _RatingSheetState();
+}
+
+class _RatingSheetState extends State<_RatingSheet> {
+  int _stars = 0;
+  final _review = TextEditingController();
+  bool _submitting = false;
+  bool _submitted = false;
+
+  @override
+  void dispose() {
+    _review.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_stars == 0 || _submitting) return;
+    setState(() => _submitting = true);
+    try {
+      await Api.post(
+        '/api/requests/${widget.requestId}/rate',
+        body: {
+          'stars': _stars,
+          'review': _review.text.trim(),
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _submitted = true;
+      });
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (mounted) Navigator.of(context).pop();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    final dialogBg = isDark ? AppColors.darkPaper : AppColors.paper;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: Container(
+        decoration: BoxDecoration(
+          color: dialogBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: _submitted ? _buildSuccess(theme) : _buildForm(theme, isDark),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuccess(ThemeData theme) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        Container(
+          width: 56,
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.gold.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.star_rounded,
+            color: AppColors.gold,
+            size: 28,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          'Thanks for your feedback!',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: theme.colorScheme.onSurface,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildForm(ThemeData theme, bool isDark) {
+    final cancelBorder = isDark
+        ? AppColors.darkBorder.withValues(alpha: 0.6)
+        : AppColors.inkSoft.withValues(alpha: 0.2);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        Container(
+          width: 56,
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.gold.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.star_rounded,
+            color: AppColors.gold,
+            size: 28,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          'Rate your experience',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: theme.colorScheme.onSurface,
+            letterSpacing: -0.3,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(5, (i) {
+            final index = i + 1;
+            final filled = index <= _stars;
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() => _stars = index);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Icon(
+                  filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                  size: 40,
+                  color: filled
+                      ? AppColors.gold
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.25),
+                ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 20),
+        Container(
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.darkSand.withValues(alpha: 0.9)
+                : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: 0.7)
+                  : AppColors.inkSoft.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
+          child: TextField(
+            controller: _review,
+            maxLines: 3,
+            style: TextStyle(
+              fontSize: 13.5,
+              color: theme.colorScheme.onSurface,
+              height: 1.4,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Leave a review (optional)',
+              hintStyle: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+                fontSize: 13.5,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.all(14),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(100),
+                    border: Border.all(color: cancelBorder, width: 1),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Skip',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: GestureDetector(
+                onTap: _stars == 0 ? null : _submit,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: _stars == 0
+                        ? AppColors.gold.withValues(alpha: 0.4)
+                        : AppColors.gold,
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: _stars > 0
+                        ? [
+                            BoxShadow(
+                              color: AppColors.gold.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Submit',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

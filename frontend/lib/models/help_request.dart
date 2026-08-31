@@ -4,34 +4,54 @@ class HelpRequest {
     required this.status,
     required this.requesterId,
     required this.requesterName,
+    this.requesterProfileImage,
     required this.providerId,
     required this.providerName,
+    this.providerProfileImage,
     required this.skillName,
     this.message,
     this.createdAt,
+    this.updatedAt,
+    this.unreadCount,
+    this.lastMessage,
+    this.hiddenByMe = false,
   });
 
   final int id;
   final String status;
   final int requesterId;
   final String requesterName;
+  final String? requesterProfileImage;
   final int providerId;
   final String providerName;
+  final String? providerProfileImage;
   final String skillName;
   final String? message;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final int? unreadCount;
+  final String? lastMessage;
+  final bool hiddenByMe;
 
   factory HelpRequest.fromJson(Map<String, dynamic> json) => HelpRequest(
     id: json['id'] as int,
     status: json['status'] as String,
     requesterId: json['requester_id'] as int,
     requesterName: json['requester_name'] as String,
+    requesterProfileImage: json['requester_profile_image'] as String?,
     providerId: json['provider_id'] as int,
     providerName: json['provider_name'] as String,
+    providerProfileImage: json['provider_profile_image'] as String?,
     skillName: json['skill_name'] as String,
     message: json['message'] as String?,
     createdAt: json['created_at'] != null
         ? DateTime.tryParse(json['created_at'] as String)
         : null,
+    updatedAt: json['updated_at'] != null
+        ? DateTime.tryParse(json['updated_at'] as String)
+        : null,
+    unreadCount: json['unread_count'] as int?,
+    lastMessage: json['last_message'] as String?,
+    hiddenByMe: json['hidden_by_me'] as bool? ?? false,
   );
 }

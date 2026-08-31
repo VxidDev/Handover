@@ -9,6 +9,7 @@ from app.cache import cache
 from app.database import Base, get_db
 from app.main import app
 from app.models import Skill, User
+from app.routers import rooms
 from app.security import create_token, hash_password
 
 ApiFixture = namedtuple(
@@ -25,7 +26,7 @@ ApiFixture = namedtuple(
 
 
 @pytest.fixture
-def api(tmp_path):
+def api(tmp_path, monkeypatch):
     engine = create_engine(
         f"sqlite:///{tmp_path / 'test.db'}",
         connect_args={"check_same_thread": False},
@@ -89,6 +90,7 @@ def api(tmp_path):
             yield db
 
     app.dependency_overrides[get_db] = override_db
+    monkeypatch.setattr(rooms, "SessionLocal", TestingSession)
     cache.clear()
 
     client = TestClient(app)
