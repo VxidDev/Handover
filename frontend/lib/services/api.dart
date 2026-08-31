@@ -56,7 +56,7 @@ class Api {
 
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:9000',
+    defaultValue: 'https://api-handover.fvlabs.org',
   );
 
   static const String _tokenKey = 'handover_token';
