@@ -83,7 +83,7 @@ class Settings:
         if self.ENVIRONMENT == "production" and self.CORS_ORIGINS == ["*"]:
             _fail_startup(
                 "CORS_ORIGINS must not be '*' in production.\n"
-                "Set it to your frontend domain, e.g. CORS_ORIGINS=https://handover.app"
+                "Set it to your frontend domain, e.g. CORS_ORIGINS=https://fvlabs.org"
             )
 
         self._validate_fernet_key()

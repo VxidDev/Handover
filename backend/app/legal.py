@@ -5,13 +5,16 @@ source of truth: signup records the exact version each user consented to,
 and the app renders the same text the consent refers to.
 """
 
-TOS_VERSION = "1.0.0"
-PRIVACY_VERSION = "1.0.1"
-EFFECTIVE_DATE = "2026-08-31"
+TOS_VERSION = "1.1.0"
+PRIVACY_VERSION = "1.1.0"
+EFFECTIVE_DATE = "2026-09-01"
 
 CONTROLLER_NAME = "Handover Community"
-CONTROLLER_EMAIL = "privacy@handover.app"
+CONTROLLER_EMAIL = "support@fvlabs.org"
 CONTROLLER_ADDRESS = "Poland"
+CHILD_SAFETY_EMAIL = "support@fvlabs.org"
+# Play Child Safety Standards – designated contact for CSAE notifications from Google Play
+CHILD_SAFETY_CONTACT = "support@fvlabs.org"
 
 TERMS_OF_SERVICE = """\
 ## 1. Introduction
@@ -33,15 +36,32 @@ You agree not to:
 - **Attempt** to access another user's account or data.
 - **Misuse** the service, including automated scraping or abuse.
 - **Use** the service for commercial solicitation without consent.
+- **Post** any content that exploits or endangers children — see §5A.
+
+## 5A. Child Safety — Zero Tolerance for Child Sexual Abuse and Exploitation (CSAE)
+Handover has **zero tolerance** for child sexual abuse material (CSAM) and any conduct that endangers children. You must not create, upload, store, share, or distribute:
+- **CSAM** or any sexual content involving minors (including solicitation, acquisition, or distribution).
+- **Grooming, sexualization, or sexual exploitation** of a minor, including forming relationships with minors for sexual purposes.
+- **Sextortion, trafficking, or employment of minors** in sexual services, or any predatory behavior toward children.
+- **Romantic or sexual relationships** between adults and minors, or content that encourages them.
+
+We **prohibit** any content that depicts, describes, enables, or encourages the above. We remove such content immediately upon discovery, terminate offending accounts, and cooperate with law enforcement as required. If we obtain actual knowledge of CSAM, we will remove it, preserve evidence where legally required, and report it to the **National Center for Missing and Exploited Children (NCMEC) CyberTipline** (https://report.cybertip.org/) or to your relevant regional authority (https://support.google.com/websearch/answer/148666). Reports can also be made in-app (Report button) or to {safety_email}.
+
+Handover is not directed to children under 16 and is not intended for use by children. See Privacy Policy §10.
 
 ## 6. Skills and Content
-You remain responsible for the skills and messages you publish. You grant the community the limited right to see and respond to the content you share through the service. We do not claim ownership of your content.
+You remain responsible for the skills and messages you publish. You grant the community the limited right to see and respond to the content you share through the service. We do not claim ownership of your content. By publishing, you represent that your content complies with these Terms, including §5A, and does not contain CSAM or other child-endangerment material.
 
 ## 7. Privacy and Consent
 Your use of the service involves the processing of personal data as described in our Privacy Policy. By accepting these Terms, you also confirm that you have read the Privacy Policy. You may **withdraw your consent** at any time, which may limit what we can offer you.
 
-## 8. Community Standards
-We encourage mutual respect. Reports of misuse are handled reasonably and promptly, and accounts that seriously or repeatedly violate these terms may be suspended or terminated.
+## 8. Community Standards and Moderation
+We encourage mutual respect. We operate **robust, ongoing moderation** of user-generated content (skills, messages, images):
+- In-app **Report** buttons for every skill and chat message, and **Block** for 1:1 interactions.
+- Automated screening (toxicity) plus human review; violating content is hidden within 24 hours and warnings/bans are issued.
+- **No tolerance** for CSAM/CSAE, harassment, or threats — such content and accounts are removed promptly.
+
+Reports of misuse are handled reasonably and promptly, and accounts that seriously or repeatedly violate these terms may be suspended or terminated. For child-safety concerns, contact {safety_email} — our designated point of contact for CSAE notifications from Google Play and users.
 
 ## 9. Termination
 You may stop using the service at any time and delete your account from the settings page, which erases your personal data. We may suspend or close accounts that violate these Terms, the law, or the rights of others.
@@ -59,7 +79,7 @@ We may update these Terms from time to time. Material changes will be communicat
 These Terms are governed by the laws of **Poland**, without prejudice to the mandatory consumer protection laws of your country of residence.
 
 ## 14. Contact
-Questions about these Terms can be sent to {contact_email}.
+Questions about these Terms can be sent to {contact_email}. Child safety reports: {safety_email}.
 """
 
 PRIVACY_POLICY = """\
@@ -106,13 +126,14 @@ Passwords are stored as one-way hashes, phone numbers are encrypted at rest, and
 Your data is stored on secure servers physically located in the **European Union (Poland region) with encrypted backups in Switzerland**, managed by third-party infrastructure providers. Switzerland is recognized by the European Commission as providing an adequate level of data protection where applicable. We contractually require our infrastructure providers to maintain strict security standards and prohibit unauthorized access or transfer of your data outside the agreed-upon regions.
 
 ## 10. Children's Privacy
-Handover is not intended for children under 16, and we do not knowingly collect data from them.
+Handover is not intended for children under 16, and we do not knowingly collect data from them. If we learn that a child under 16 has created an account, we will delete the account and associated data promptly. If you believe a child is using Handover, please contact {contact_email} or {safety_email}. We do not allow CSAM and will report it as described in our Terms §5A.
 
 ## 11. Changes to This Policy
 We will notify you of material changes in the app and update the version number shown here. Continued use of the service after the effective date constitutes acceptance of the updated policy.
 
 ## 12. Contact
-Privacy questions or requests: {contact_email}.
+Privacy questions or requests: {contact_email}. Child safety: {safety_email}.
+You can also request account deletion at any time in-app (Settings → Delete account) or via https://fvlabs.org/delete-account .
 """
 
 
@@ -123,4 +144,5 @@ def format_document(document: str, version: str) -> str:
         controller_name=CONTROLLER_NAME,
         controller_address=CONTROLLER_ADDRESS,
         contact_email=CONTROLLER_EMAIL,
+        safety_email=CHILD_SAFETY_EMAIL,
     )

@@ -294,15 +294,23 @@ class _TipSheetState extends State<TipSheet> {
                   style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11.5),
                 ),
               ),
+            if (_customAmount != null && _customAmount! >= 0.5)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Charged via Google Play Billing. You will see the Play confirmation and price before paying.',
+                  style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11, fontStyle: FontStyle.italic),
+                ),
+              ),
             if (!RevenueCatService.isConfigured)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Dev mode — no charge. Production requires Google Play Billing.', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
+                child: Text('Dev mode — no charge. Production requires Google Play Billing (backend will reject mock tips).', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
               )
             else if (_products.isEmpty && !_loadingProducts)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Purchases unavailable — please try again later.', style: TextStyle(color: AppColors.error.withValues(alpha: 0.8), fontSize: 11)),
+                child: Text('Purchases unavailable — please try again later. Tips must use Google Play Billing per Play Payments policy.', style: TextStyle(color: AppColors.error.withValues(alpha: 0.8), fontSize: 11)),
               ),
             const SizedBox(height: 20),
             SizedBox(

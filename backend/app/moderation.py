@@ -41,16 +41,49 @@ def analyze(text: str) -> tuple[bool, dict[str, float]]:
 
 
 def moderate_image(filename: str, content: bytes) -> tuple[bool, str | None]:
-    """Lightweight image moderation stub for Play UGC compliance.
+    """Play UGC image moderation.
 
-    Returns (is_violation, reason). Currently checks only for disallowed
-    extensions/size (handled upstream) and flags for manual review if the file
-    is suspiciously large or has mismatched content. Real deployments should
-    plug in an image classifier (e.g. NSFW) and return violation accordingly.
-    The upload path will still accept the image but reports can hide it within 24h.
+    Returns (is_violation, reason). Checks magic bytes vs extension, rejects
+    non-image payloads and mismatched content (common CSAM evasion). Does NOT
+    replace a dedicated NSFW classifier — see README. Valid images pass;
+    violating uploads are blocked before storage and logged. Reports can still
+    hide content within 24h via /reports.
     """
-    # Basic sanity: ensure file header matches extension
     if not filename or not content:
         return True, "empty_file"
-    # No blocking by default — allow upload, moderation via reporting queue
+    if len(content) < 12:
+        return True, "file_too_small"
+
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    header = content[:12]
+
+    # Magic-byte checks
+    is_jpeg = header.startswith(b"\xff\xd8\xff")
+    is_png = header.startswith(b"\x89PNG\r\n\x1a\n")
+    is_webp = header.startswith(b"RIFF") and content[8:12] == b"WEBP"
+
+    # Detect actual type
+    if is_jpeg:
+        actual = "jpg"
+    elif is_png:
+        actual = "png"
+    elif is_webp:
+        actual = "webp"
+    else:
+        logger.warning("Image upload rejected: unknown magic bytes for %s", filename)
+        return True, "unsupported_or_mismatched_content"
+
+    # Extension must match content — prevents .jpg hiding executable, etc.
+    ext_normalized = "jpg" if ext in ("jpg", "jpeg") else ext
+    if ext_normalized != actual:
+        logger.warning("Image extension mismatch: %s claims .%s but is %s", filename, ext, actual)
+        return True, "extension_mismatch"
+
+    # WebP/JPEG/PNG only; size already capped at 5MB upstream, but double-check
+    if len(content) > 5 * 1024 * 1024:
+        return True, "file_too_large"
+
+    # Hook for NSFW/CSAM classifier: plug in (e.g. NudeNet, Hive, Google Vision SafeSearch)
+    # Example: if nsfw_score > 0.85: return True, "nsfw_blocked"
+    # Currently no model bundled; rely on user reporting + 24h takedown.
     return False, None

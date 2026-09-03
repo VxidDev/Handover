@@ -1179,7 +1179,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 _AboutRow(
                   label: 'Privacy contact',
-                  value: 'privacy@handover.app',
+                  value: 'support@fvlabs.org',
                 ),
                 _AboutRow(
                   label: 'Your data',
