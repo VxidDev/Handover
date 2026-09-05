@@ -1384,7 +1384,7 @@ class _MessageBubble extends StatelessWidget {
                   '${Api.baseUrl}${message.imageUrl}',
                   width: 240,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
+                  errorBuilder: (_, __, ___) => Container(
                     padding: const EdgeInsets.all(12),
                     child: Icon(
                       Icons.broken_image_rounded,

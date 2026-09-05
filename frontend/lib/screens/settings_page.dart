@@ -1500,7 +1500,7 @@ class _ProfilePhotoTile extends StatelessWidget {
                               width: 34,
                               height: 34,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Icon(
+                              errorBuilder: (_, __, ___) => Icon(
                                 Icons.person_outline_rounded,
                                 size: 17,
                                 color: avatarColor,

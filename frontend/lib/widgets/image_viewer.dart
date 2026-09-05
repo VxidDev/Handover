@@ -59,7 +59,7 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
                       child: Image.network(
                         widget.images[index],
                         fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) => const Center(
+                        errorBuilder: (_, __, ___) => const Center(
                           child: Icon(
                             Icons.broken_image,
                             color: Colors.white38,

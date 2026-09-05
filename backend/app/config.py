@@ -50,8 +50,21 @@ class Settings:
     ONESIGNAL_APP_ID = os.getenv("ONESIGNAL_APP_ID", "")
     ONESIGNAL_REST_API_KEY = os.getenv("ONESIGNAL_REST_API_KEY", "")
 
+    # Transactional email (Resend) — free tier: 3,000 emails/month
+    RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+    # e.g. "Handover <no-reply@yourdomain.com>" — must be a verified domain in Resend.
+    # For testing you can use the sandbox: "Handover <onboarding@resend.dev>"
+    # (sandbox only delivers to your own Resend account email).
+    EMAIL_FROM = os.getenv("EMAIL_FROM", "")
+
     REVENUECAT_API_KEY = os.getenv("REVENUECAT_API_KEY", "")
     REVENUECAT_WEBHOOK_AUTH = os.getenv("REVENUECAT_WEBHOOK_AUTH", "")
+
+    # Image moderation (Play Child Safety) — leave auto; set HIVE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS in prod
+    NSFW_THRESHOLD = float(os.getenv("NSFW_THRESHOLD", "0.85"))
+    NSFW_ENABLED = os.getenv("NSFW_ENABLED", "auto")
+    HIVE_API_KEY = os.getenv("HIVE_API_KEY", "")
+    GOOGLE_VISION_CREDENTIALS = os.getenv("GOOGLE_VISION_CREDENTIALS", "") or os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
 
     CORS_ORIGINS: list[str] = []
 

@@ -641,7 +641,7 @@ class _HeroCard extends StatelessWidget {
                                       width: 52,
                                       height: 52,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Text(
+                                      errorBuilder: (_, __, ___) => Text(
                                         profile.name.isNotEmpty
                                             ? profile.name[0].toUpperCase()
                                             : '?',

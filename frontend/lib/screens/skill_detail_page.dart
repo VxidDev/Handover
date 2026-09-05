@@ -378,7 +378,7 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                                   return Image.network(
                                     url,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) =>
+                                    errorBuilder: (_, __, ___) =>
                                         _imagePlaceholder(theme, isDark),
                                   );
                                 },
@@ -653,7 +653,7 @@ class _OwnerCard extends StatelessWidget {
                       width: 44,
                       height: 44,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Text(
+                      errorBuilder: (_, __, ___) => Text(
                         initial,
                         style: TextStyle(
                           color: avatarColor,

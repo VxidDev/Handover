@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 import httpx
 
@@ -51,32 +50,34 @@ Use the code below to reset your password. This code expires in 15 minutes.
 If you didn't request this, you can safely ignore this email.
 """
 
+RESEND_API_URL = "https://api.resend.com/emails"
+
 
 async def send_email_code(to_email: str, code: str) -> bool:
-    if not settings.ONESIGNAL_REST_API_KEY or not settings.ONESIGNAL_APP_ID:
+    if not settings.RESEND_API_KEY or not settings.EMAIL_FROM:
         logger.warning(
-            "OneSignal not configured — skipping email to %s (code: %s)",
+            "Resend not configured (RESEND_API_KEY / EMAIL_FROM) — "
+            "skipping email to %s (code: %s)",
             to_email,
             code,
         )
         return False
 
     payload = {
-        "app_id": settings.ONESIGNAL_APP_ID,
-        "target_channel": "email",
-        "email_to": [to_email],
-        "email_subject": RESET_PASSWORD_SUBJECT,
-        "email_body": RESET_PASSWORD_HTML.format(code=code),
-        "idempotency_key": str(uuid.uuid4()),
+        "from": settings.EMAIL_FROM,
+        "to": [to_email],
+        "subject": RESET_PASSWORD_SUBJECT,
+        "html": RESET_PASSWORD_HTML.format(code=code),
+        "text": RESET_PASSWORD_TEXT.format(code=code),
     }
 
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://api.onesignal.com/notifications",
+                RESEND_API_URL,
                 json=payload,
                 headers={
-                    "Authorization": f"Key {settings.ONESIGNAL_REST_API_KEY}",
+                    "Authorization": f"Bearer {settings.RESEND_API_KEY}",
                     "Content-Type": "application/json",
                 },
                 timeout=10.0,
@@ -85,13 +86,6 @@ async def send_email_code(to_email: str, code: str) -> bool:
                 logger.info("Email code sent to %s", to_email)
                 return True
             else:
-                if "Email sending for this app has been disabled" in response.text:
-                    logger.warning(
-                        "OneSignal Email disabled — code for %s: %s (use this for testing until approved)",
-                        to_email,
-                        code,
-                    )
-                    return True
                 logger.error(
                     "Failed to send email code to %s: %s %s",
                     to_email,

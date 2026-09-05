@@ -6,7 +6,7 @@ and the app renders the same text the consent refers to.
 """
 
 TOS_VERSION = "1.1.0"
-PRIVACY_VERSION = "1.1.0"
+PRIVACY_VERSION = "1.2.0"
 EFFECTIVE_DATE = "2026-09-01"
 
 CONTROLLER_NAME = "Handover Community"
@@ -84,26 +84,32 @@ Questions about these Terms can be sent to {contact_email}. Child safety reports
 
 PRIVACY_POLICY = """\
 ## 1. Who We Are
-Handover is operated by {controller_name} (based in {controller_address}). For any questions about how we handle personal data, contact {contact_email}.
+Handover is operated by {controller_name} (based in {controller_address}). For any questions about how we handle personal data, contact {contact_email}. Child safety: {safety_email}.
 
 ## 2. What We Collect
-We only collect what is necessary to run the service:
-- **Account data:** your name and email address.
-- **Profile data:** your availability, optionally a phone number (stored encrypted), and a coarse "privacy area" that approximates your neighborhood without revealing your exact address.
-- **Skills and messages:** the skills you publish, requests you make, and chat messages you exchange with neighbors.
-- **Technical data:** basic logs for security and troubleshooting.
+We only collect what is necessary to run the service — exactly what we declare in Play Data safety:
+- **Account data:** your name and email address (required to create and secure your account).
+- **Contact (optional):** phone number, **encrypted at rest with Fernet** and only disclosed when you tap “Share” on an accepted request (logged in `DisclosureLog`; never shown to other users by default).
+- **Location (approximate, optional):** coarse lat/lng + privacy grid (e.g. Warsaw grid cell). Collected **only in foreground** with low accuracy (`geolocator` `LocationAccuracy.low`), never in background; downgraded from precise if granted. You can also pick a grid manually on the map. Purpose: find nearby neighbors, distance sort, radius filter. See prominent disclosure before permission.
+- **Photos / Media:** profile photo and skill images you choose via system picker (`image_picker`, `READ_MEDIA_IMAGES`). Stored at `/uploads` (5 MB limit), magic-byte validated and screened for NSFW/CSAM via Hive/Google Vision SafeSearch when configured; mismatched or corrupt images are rejected.
+- **App activity:** skills, requests, chat messages, ratings, tips, reports, blocks — user-generated content you create.
+- **Purchases / Financial info:** tips via Google Play Billing (through RevenueCat). We store `amount_cents`, `recipient_amount_cents` (80% to recipient / 20% platform), `product_id`, `transaction_id` after verification with RevenueCat; no card data is handled by us — charging and receipt are via Google Play.
+- **Technical data:** device-agnostic logs for security/troubleshooting; **no Advertising ID collected** (OneSignal push may use its own `player_id` if you enable notifications — see §4).
+- **Device identifiers (only if you enable push):** OneSignal `player_id` if you opt into notifications; not used for ads or cross-app tracking.
+
+If you deny optional location or photos, the service still works with manual equivalents.
 
 ## 3. Why We Process Your Data (Legal Bases)
-- **Consent:** providing your name, email, and the skills you choose to share. Consent is freely given and can be withdrawn at any time.
-- **Performance of a contract:** operating your account and delivering the service you asked for.
-- **Legitimate interests:** keeping the service safe and secure, and troubleshooting technical issues.
-- **Legal obligations:** where we must retain or disclose data by law.
+- **Consent:** providing your name, email, phone (if given), location/grid, photos, skills and messages you choose to share. Consent is freely given and can be withdrawn at any time (affects functionality).
+- **Performance of a contract:** operating your account and delivering the service you asked for (matching neighbors, chat, tipping).
+- **Legitimate interests:** keeping the service safe and secure (moderation via Detoxify for text, NSFW checks for images, report/block, 24-hour hide), troubleshooting technical issues, and preventing CSAM/CSAE.
+- **Legal obligations:** where we must retain or disclose data by law (e.g., CSAM reporting to NCMEC, fraud prevention).
 
 ## 4. How We Use Your Data
-We use your data only to provide and improve Handover: to show your skills to neighbors, to connect you with people who can help, to let you chat, and to keep the platform safe. We **never sell** your personal data.
+We use your data only to provide and improve Handover: to show your skills to neighbors nearby (distance-sort using coarse location/grid), to let you chat, to display your profile/skill photos, to process tips via Google Play Billing (price shown before purchase, “Recipient gets 80% · platform 20% · Charged via Google Play”), and to keep the platform safe via automated + human moderation. We **never sell** your personal data and **never use it for ads**. Push notifications (OneSignal) are optional; if enabled, your `player_id` is used solely to deliver handover alerts.
 
 ## 5. Sharing
-Your name, availability, and skills are visible to neighbors in your area. Your phone number is only shared with a neighbor when you explicitly choose to share it for a specific request. Your email is **never shown** to other users.
+Your name, availability, skills and skill/profile photos are visible to neighbors in your area. Your coarse grid/approximate location is used for distance, not your exact address. Your phone number is only shared with a neighbor when you explicitly choose to share it for a specific accepted request (audited via `DisclosureLog`). Your email is **never shown** to other users. Tips are processed by Google Play / RevenueCat; we share only the verification identifiers. We do not share data with advertisers and do not sell data.
 
 ## 6. Data Retention
 We keep your data only as long as your account is active. When you delete your account, we erase your personal data and content, including uploaded images and chat messages. Backup copies are deleted on a schedule consistent with applicable law.
@@ -120,7 +126,7 @@ Under applicable data protection laws (including the EU GDPR and Swiss FADP), yo
 You can exercise most of these directly from the settings page. For anything else, contact {contact_email}. You may also lodge a complaint with your local data protection authority.
 
 ## 8. Security
-Passwords are stored as one-way hashes, phone numbers are encrypted at rest, and access to your account requires authentication. We apply reasonable technical and organizational measures to protect your data.
+Passwords are stored as Argon2 hashes (legacy PBKDF2 verified and migrated), phone numbers and TOTP secrets are Fernet-encrypted at rest, and access requires authentication (JWT `HS256` with `jti` revocation via `BlockedToken`). All traffic is HTTPS only (`network_security_config.xml` `cleartextTrafficPermitted="false"`; debug LAN cleartext is debug-only). We apply reasonable technical and organizational measures to protect your data. In production uploads are limited to `jpg`/`png`/`webp`, validated by magic bytes + Pillow integrity + optional Hive / Google Vision SafeSearch (`NSFW_THRESHOLD 0.85`).
 
 ## 9. Data Storage and International Transfers
 Your data is stored on secure servers physically located in the **European Union (Poland region) with encrypted backups in Switzerland**, managed by third-party infrastructure providers. Switzerland is recognized by the European Commission as providing an adequate level of data protection where applicable. We contractually require our infrastructure providers to maintain strict security standards and prohibit unauthorized access or transfer of your data outside the agreed-upon regions.

@@ -1,31 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Disallow cleartext in production; allow only localhost for dev builds via debug override -->
+    <!-- Production: no cleartext anywhere. Base enforces HTTPS for all hosts. -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    <!-- Debug builds keep cleartext for 10.0.2.2 / localhost emulators if needed -->
+    <!-- Debug builds keep cleartext for emulators — see src/debug/res/xml/network_security_config.xml override -->
     <debug-overrides>
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />
         </trust-anchors>
     </debug-overrides>
-    <!-- Production domain – explicitly pinned, cleartext still false via base-config; this entry documents allowed prod host -->
-    <!-- fvlabs.org and api.fvlabs.org must be HTTPS only (base-config enforces) -->
+    <!-- Production domains — explicitly pinned, cleartext false (redundant with base-config, documents intent) -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">fvlabs.org</domain>
         <domain includeSubdomains="true">api.fvlabs.org</domain>
-    </domain-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <domain includeSubdomains="true">127.0.0.1</domain>
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">10.236.9.56</domain>
-        <!-- Add your LAN IP here if it changes (e.g. 192.168.x.x) -->
-        <domain includeSubdomains="true">192.168.1.1</domain>
-        <domain includeSubdomains="true">192.168.0.1</domain>
+        <domain includeSubdomains="true">api-handover.fvlabs.org</domain>
     </domain-config>
 </network-security-config>

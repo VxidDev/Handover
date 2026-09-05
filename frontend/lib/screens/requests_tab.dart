@@ -1209,7 +1209,7 @@ class _RequestCard extends StatelessWidget {
                           width: 44,
                           height: 44,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Text(
+                          errorBuilder: (_, __, ___) => Text(
                             initial,
                             style: TextStyle(
                               color: avatarFg,

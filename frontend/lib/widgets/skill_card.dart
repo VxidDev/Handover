@@ -134,7 +134,7 @@ class SkillCard extends StatelessWidget {
                                   width: 22,
                                   height: 22,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Text(
+                                  errorBuilder: (_, __, ___) => Text(
                                     neighbor.initial,
                                     style: TextStyle(
                                       color: avatarColor,
@@ -224,7 +224,7 @@ class SkillCard extends StatelessWidget {
           child: Image.network(
             url, // Use the full URL instead of just the path
             fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
+            errorBuilder: (_, __, ___) => Container(
               color: isDark
                   ? AppColors.darkSand.withValues(alpha: 0.4)
                   : AppColors.sand.withValues(alpha: 0.4),

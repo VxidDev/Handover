@@ -1253,7 +1253,7 @@ class _RequestHelpDialogState extends State<_RequestHelpDialog>
                           width: 52,
                           height: 52,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Text(
+                          errorBuilder: (_, __, ___) => Text(
                             widget.neighbor.name.isNotEmpty
                                 ? widget.neighbor.name[0].toUpperCase()
                                 : '?',
