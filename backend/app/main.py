@@ -53,6 +53,51 @@ app.include_router(tips.router, prefix=settings.API_PREFIX)
 app.include_router(legal.router, prefix=settings.API_PREFIX)
 
 
+# Play Child Safety Standards – required for Social/Dating categories (CSAE). Must be publicly
+# reachable without auth, non-editable, not a PDF. Uses legal.py §5A as single source of truth.
+@app.get("/child-safety", include_in_schema=False)
+@app.get("/handover/child-safety", include_in_schema=False)
+@app.get("/safety/child-safety", include_in_schema=False)
+def child_safety_page():
+    from fastapi.responses import HTMLResponse
+
+    html = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handover — Child Safety Standards</title>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:720px;margin:40px auto;padding:0 20px;color:#1a1a1a;line-height:1.65}a{color:#b85c38}h1{font-size:28px}h2{font-size:18px;margin-top:28px}.box{background:#fdf8f3;border:1px solid #f0d9c8;border-radius:12px;padding:16px 20px}li{margin:6px 0}</style>
+</head><body>
+<h1>Handover — Child Safety Standards</h1>
+<p><b>Effective date:</b> 2026-09-01 &nbsp;|&nbsp; Controller: Handover Community, Poland<br>
+<b>Designated child safety contact (CSAE):</b> <a href="mailto:support@fvlabs.org">support@fvlabs.org</a> — also reachable at <a href="mailto:void@fvlabs.org">void@fvlabs.org</a> (developer account). This contact is monitored and able to discuss CSAM prevention and compliance with Google Play and law enforcement.</p>
+<div class="box">
+<h2 style="margin-top:0">Zero tolerance for CSAM/CSAE</h2>
+<p>Handover has <b>zero tolerance</b> for child sexual abuse material (CSAM) and any conduct that endangers children. You must not create, upload, store, share, or distribute:</p>
+<ul>
+<li>CSAM or any sexual content involving minors (including solicitation, acquisition, or distribution)</li>
+<li>Grooming, sexualization, or sexual exploitation of a minor, including forming relationships with minors for sexual purposes</li>
+<li>Sextortion, trafficking, or employment of minors in sexual services, or predatory behavior toward children</li>
+<li>Romantic or sexual relationships between adults and minors, or content that encourages them</li>
+</ul>
+<p>We prohibit any content that depicts, describes, enables, or encourages the above. See Terms of Service §5A.</p>
+</div>
+<h2>What we do</h2>
+<ul>
+<li><b>Remove immediately</b> upon discovery, terminate offending accounts, and cooperate with law enforcement as required</li>
+<li><b>Report</b> to the <a href="https://report.cybertip.org/">NCMEC CyberTipline</a> (or your regional authority: <a href="https://support.google.com/websearch/answer/148666">google.com/websearch/answer/148666</a>) when we obtain actual knowledge of CSAM — preserving evidence where legally required</li>
+<li><b>Moderate 24/7:</b> in-app <b>Report</b> on every skill and chat message + <b>Block</b> for 1:1 interactions, Detoxify toxicity screening + Hive/Google Vision image checks, human review; violating content hidden within 24 hours, warnings/bans issued</li>
+<li><b>Not directed to children:</b> Handover requires age 16+ and is not intended for use by children (Privacy Policy §10)</li>
+</ul>
+<h2>How to report</h2>
+<ul>
+<li>In-app: tap <b>Report</b> on any skill or message, or <b>Block</b> a user</li>
+<li>Email: <a href="mailto:support@fvlabs.org">support@fvlabs.org</a> (and <a href="mailto:void@fvlabs.org">void@fvlabs.org</a>) with subject “Child safety report”</li>
+<li>External: <a href="https://report.cybertip.org/">NCMEC</a> or your local authority</li>
+</ul>
+<p>We review child-safety reports promptly and comply with all relevant child-safety laws, including reporting to regional and national authorities.</p>
+<p><a href="/api/legal">Full legal (API)</a> • <a href="/delete-account">Delete account</a></p>
+</body></html>"""
+    return HTMLResponse(content=html)
+
+
 # Play Account Deletion – external web resource requirement (must be reachable without auth)
 # Serves /delete-account, /handover/delete-account and /account-deletion for flexibility; Play Console + static site use https://fvlabs.org/handover/delete-account and https://fvlabs.org/delete-account
 @app.get("/delete-account", include_in_schema=False)

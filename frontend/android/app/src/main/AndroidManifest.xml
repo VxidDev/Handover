@@ -2,7 +2,10 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <!-- geolocator plugin injects ACCESS_FINE_LOCATION via manifest merge; we only
+         use LocationAccuracy.low (coarse), so strip it to match Data safety
+         (approximate location only) and skip Play's precise-location review -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove"/>
     <!-- Play Billing: required for in-app tips via Google Play Billing (purchases_flutter / RevenueCat) -->
     <uses-permission android:name="com.android.vending.BILLING"/>
     <!-- Play Data safety + OneSignal: no Advertising ID collected; declare and remove to be explicit -->

@@ -19,4 +19,10 @@
         <domain includeSubdomains="true">api.fvlabs.org</domain>
         <domain includeSubdomains="true">api-handover.fvlabs.org</domain>
     </domain-config>
+    <!-- Local tunnel for screenshots/QA — adb reverse tcp:9000 -> localhost:9000 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
 </network-security-config>

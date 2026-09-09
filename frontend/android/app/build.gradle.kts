@@ -19,7 +19,7 @@ android {
         applicationId = "org.fvlabs.handover"
         // Play Target API Level policy (Aug 2025+): target API 35. Pin to 35 for Play compliance.
         minSdk = flutter.minSdkVersion
-        targetSdk = 35
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -59,8 +59,14 @@ android {
         release {
             // Use release signingConfig — requires KEYSTORE_* env vars in CI / Play App Signing
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8 code shrinking + resource shrinking — OneSignal & RevenueCat ship
+            // their own consumer ProGuard rules; custom rules in proguard-rules.pro
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
         debug {
             // Explicit debug type keeps cleartext network_security_config separate
