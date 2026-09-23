@@ -90,8 +90,14 @@ def create_request(
     is_blocked = (
         db.query(BlockedUser)
         .filter(
-            ((BlockedUser.blocker_id == requester.id) & (BlockedUser.blocked_id == skill.user_id))
-            | ((BlockedUser.blocker_id == skill.user_id) & (BlockedUser.blocked_id == requester.id))
+            (
+                (BlockedUser.blocker_id == requester.id)
+                & (BlockedUser.blocked_id == skill.user_id)
+            )
+            | (
+                (BlockedUser.blocker_id == skill.user_id)
+                & (BlockedUser.blocked_id == requester.id)
+            )
         )
         .first()
     )

@@ -40,6 +40,8 @@ async def send_push(
                 },
             )
             if resp.status_code >= 400:
-                logger.warning("OneSignal push failed: %s %s", resp.status_code, resp.text)
+                logger.warning(
+                    "OneSignal push failed: %s %s", resp.status_code, resp.text
+                )
     except Exception:
         logger.exception("OneSignal push error")

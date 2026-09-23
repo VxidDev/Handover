@@ -3,7 +3,8 @@ backend/venv/
 backend/.venv/
 backend/__pycache__/
 backend/**/__pycache__/
-backend/uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
 backend/*.pyc
 backend/.env
 backend/data/

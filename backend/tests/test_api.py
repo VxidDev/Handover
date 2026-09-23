@@ -332,7 +332,10 @@ class TestUploads:
 
         monkeypatch.setattr(uploads, "UPLOAD_DIR", tmp_path)
         # Minimal valid PNG header (89 50 4E 47 0D 0A 1A 0A) + IHDR
-        png_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde" + b"\x00" * 64
+        png_bytes = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
+            + b"\x00" * 64
+        )
         response = api.client.post(
             "/api/uploads/images",
             headers=auth(api.provider_token),

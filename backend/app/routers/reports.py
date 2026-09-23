@@ -155,9 +155,7 @@ def create_report(
 
 
 @router.get("/mine", response_model=list[ReportOut])
-def my_reports(
-    db: Session = Depends(get_db), user: User = Depends(get_current_user)
-):
+def my_reports(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     reports = (
         db.query(Report)
         .filter(Report.reporter_id == user.id)
@@ -168,9 +166,7 @@ def my_reports(
 
 
 @router.get("/warnings", response_model=list[WarningOut])
-def my_warnings(
-    db: Session = Depends(get_db), user: User = Depends(get_current_user)
-):
+def my_warnings(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     warnings = (
         db.query(Warning)
         .filter(Warning.user_id == user.id)

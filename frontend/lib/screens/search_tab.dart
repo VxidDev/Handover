@@ -469,12 +469,14 @@ class _SearchTabState extends State<SearchTab> {
                 FilledButton.icon(
                   onPressed: () async {
                     final selection = await Navigator.of(context)
-                        .push<GridSelection>(MaterialPageRoute(
-                      builder: (_) => LocationGridPickerPage(
-                        initialLat: Api.currentLat ?? 52.23,
-                        initialLng: Api.currentLng ?? 21.01,
-                      ),
-                    ));
+                        .push<GridSelection>(
+                          MaterialPageRoute(
+                            builder: (_) => LocationGridPickerPage(
+                              initialLat: Api.currentLat ?? 52.23,
+                              initialLng: Api.currentLng ?? 21.01,
+                            ),
+                          ),
+                        );
                     if (selection != null && mounted) {
                       try {
                         await Api.patch(
@@ -866,7 +868,9 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                           size: 18,
                           color: _availableOnly
                               ? AppColors.sage
-                              : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                              : theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.5,
+                                ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -883,7 +887,8 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                           scale: 0.85,
                           child: Switch(
                             value: _availableOnly,
-                            onChanged: (v) => setState(() => _availableOnly = v),
+                            onChanged: (v) =>
+                                setState(() => _availableOnly = v),
                           ),
                         ),
                       ],
@@ -1676,9 +1681,10 @@ class _SkeletonCardState extends State<_SkeletonCard>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
-    _opacity = Tween<double>(begin: 0.3, end: 0.7).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _opacity = Tween<double>(
+      begin: 0.3,
+      end: 0.7,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override

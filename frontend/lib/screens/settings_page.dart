@@ -81,7 +81,10 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _toggleAvailability(bool value) async {
     setState(() => _savingAvailability = true);
     try {
-      final res = await Api.patch('/api/users/me', body: {'is_available': value});
+      final res = await Api.patch(
+        '/api/users/me',
+        body: {'is_available': value},
+      );
       if (!mounted) return;
       final profile = UserProfile.fromJson(res as Map<String, dynamic>);
       setState(() {
@@ -110,11 +113,14 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _savingLocation = true);
 
     try {
-      final res = await Api.patch('/api/users/me', body: {
-        'grid': selection.cellId,
-        'lat': selection.centerLat,
-        'lng': selection.centerLng,
-      });
+      final res = await Api.patch(
+        '/api/users/me',
+        body: {
+          'grid': selection.cellId,
+          'lat': selection.centerLat,
+          'lng': selection.centerLng,
+        },
+      );
       if (!mounted) return;
       Api.currentLat = selection.centerLat;
       Api.currentLng = selection.centerLng;
@@ -183,9 +189,9 @@ class _SettingsPageState extends State<SettingsPage> {
     if (_twoFactorEnabled) {
       await _disable2FA();
     } else {
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const TwoFactorSetupPage()),
-      );
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const TwoFactorSetupPage()));
       _load2FAStatus();
     }
   }
@@ -280,7 +286,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Text(
                       'Cancel',
                       style: TextStyle(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -358,7 +366,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
     setState(() => _uploadingImage = true);
     try {
-      final res = await Api.uploadFile('/api/uploads/images', File(croppedFile.path));
+      final res = await Api.uploadFile(
+        '/api/uploads/images',
+        File(croppedFile.path),
+      );
       final path = res['path'] as String;
       final updateRes = await Api.patch(
         '/api/users/me',
@@ -398,9 +409,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _openLegal(LegalDocument document) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => LegalPage(document: document)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => LegalPage(document: document)));
   }
 
   Future<void> _editDisplayName() async {
@@ -483,21 +494,27 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Text(
                       'Cancel',
                       style: TextStyle(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
+                    onPressed: () =>
+                        Navigator.pop(ctx, nameController.text.trim()),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.terracotta,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(100),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                       elevation: 0,
                     ),
                     child: const Text('Save'),
@@ -510,7 +527,11 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
 
-    if (newName == null || newName.isEmpty || newName == _profile?.name || !mounted) return;
+    if (newName == null ||
+        newName.isEmpty ||
+        newName == _profile?.name ||
+        !mounted)
+      return;
 
     setState(() => _savingName = true);
     try {
@@ -556,7 +577,9 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Container(
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkPaper : AppColors.paper,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
             ),
             child: SafeArea(
               child: Padding(
@@ -570,7 +593,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         width: 36,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.2,
+                          ),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -591,7 +616,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: TextStyle(
                         fontSize: 13,
                         height: 1.4,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -625,9 +652,14 @@ class _SettingsPageState extends State<SettingsPage> {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () async {
-                              await Clipboard.setData(ClipboardData(text: pretty));
+                              await Clipboard.setData(
+                                ClipboardData(text: pretty),
+                              );
                               if (ctx.mounted) Navigator.pop(ctx);
-                              _snack('Data copied to clipboard.', isError: false);
+                              _snack(
+                                'Data copied to clipboard.',
+                                isError: false,
+                              );
                             },
                             icon: const Icon(Icons.copy_rounded, size: 17),
                             label: const Text('Copy'),
@@ -642,7 +674,9 @@ class _SettingsPageState extends State<SettingsPage> {
                               if (saved != null) {
                                 _snack('Saved to $saved', isError: false);
                               } else {
-                                _snack('Couldn\'t save the file to this device.');
+                                _snack(
+                                  'Couldn\'t save the file to this device.',
+                                );
                               }
                             },
                             icon: const Icon(Icons.download_rounded, size: 17),
@@ -658,7 +692,10 @@ class _SettingsPageState extends State<SettingsPage> {
                         onPressed: () async {
                           await Clipboard.setData(ClipboardData(text: pretty));
                           if (ctx.mounted) Navigator.pop(ctx);
-                          _snack('Copied! Paste into any app to save.', isError: false);
+                          _snack(
+                            'Copied! Paste into any app to save.',
+                            isError: false,
+                          );
                         },
                         icon: const Icon(Icons.share_rounded, size: 17),
                         label: const Text('Share'),
@@ -687,9 +724,7 @@ class _SettingsPageState extends State<SettingsPage> {
         baseDir.createSync(recursive: true);
       }
       final stamp = DateTime.now().toIso8601String().split('.').first;
-      final file = File(
-        '${baseDir.path}/handover-export-$stamp.json',
-      );
+      final file = File('${baseDir.path}/handover-export-$stamp.json');
       await file.writeAsString(pretty);
       return file.path;
     } catch (_) {
@@ -921,11 +956,7 @@ class _SettingsPageState extends State<SettingsPage> {
         padding: const EdgeInsets.symmetric(vertical: 80),
         child: Column(
           children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              color: mutedText,
-              size: 40,
-            ),
+            Icon(Icons.cloud_off_rounded, color: mutedText, size: 40),
             const SizedBox(height: 16),
             Text(
               'Couldn\'t load settings',
@@ -1049,7 +1080,9 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             _SettingsTile(
               icon: Icons.shield_outlined,
-              iconColor: _twoFactorEnabled ? AppColors.sage : AppColors.terracotta,
+              iconColor: _twoFactorEnabled
+                  ? AppColors.sage
+                  : AppColors.terracotta,
               title: 'Two-factor authentication',
               subtitle: _twoFactorEnabled
                   ? 'Enabled — your account is protected'
@@ -1071,7 +1104,8 @@ class _SettingsPageState extends State<SettingsPage> {
               icon: Icons.download_for_offline_outlined,
               iconColor: AppColors.sage,
               title: 'Download my data',
-              subtitle: 'Export everything we hold about you (GDPR portability)',
+              subtitle:
+                  'Export everything we hold about you (GDPR portability)',
               trailing: const Icon(Icons.chevron_right_rounded, size: 20),
               onTap: _downloadData,
             ),
@@ -1172,7 +1206,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const SizedBox(height: 14),
                 _AboutRow(label: 'App', value: 'Handover 1.0.0'),
-                _AboutRow(label: 'What it is', value: 'Community-powered mutual aid'),
+                _AboutRow(
+                  label: 'What it is',
+                  value: 'Community-powered mutual aid',
+                ),
                 _AboutRow(
                   label: 'Controller',
                   value: 'Handover Community · Within the European Union',
@@ -1183,7 +1220,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 _AboutRow(
                   label: 'Your data',
-                  value: 'Stored in the EU (Poland) with encrypted backups in Switzerland. See Privacy Policy §9.',
+                  value:
+                      'Stored in the EU (Poland) with encrypted backups in Switzerland. See Privacy Policy §9.',
                 ),
               ],
             ),
@@ -1422,7 +1460,7 @@ class _ProfilePhotoTile extends StatelessWidget {
         onLongPress: hasImage
             ? () async {
                 final isDark = Theme.of(context).brightness == Brightness.dark;
-    final confirmed = await showDialog<bool>(
+                final confirmed = await showDialog<bool>(
                   context: context,
                   barrierColor: isDark
                       ? Colors.black.withValues(alpha: 0.6)
@@ -1439,11 +1477,18 @@ class _ProfilePhotoTile extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 28),
+                          const Icon(
+                            Icons.delete_outline_rounded,
+                            color: AppColors.error,
+                            size: 28,
+                          ),
                           const SizedBox(height: 14),
                           const Text(
                             'Remove profile photo?',
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
                           ),
                           const SizedBox(height: 20),
                           Row(
@@ -1458,7 +1503,9 @@ class _ProfilePhotoTile extends StatelessWidget {
                               Expanded(
                                 child: FilledButton(
                                   onPressed: () => Navigator.pop(dCtx, true),
-                                  style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.error,
+                                  ),
                                   child: const Text('Remove'),
                                 ),
                               ),
@@ -1494,24 +1541,24 @@ class _ProfilePhotoTile extends StatelessWidget {
                         ),
                       )
                     : hasImage
-                        ? ClipOval(
-                            child: Image.network(
-                              '${Api.baseUrl}${profile.profileImage}',
-                              width: 34,
-                              height: 34,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(
-                                Icons.person_outline_rounded,
-                                size: 17,
-                                color: avatarColor,
-                              ),
-                            ),
-                          )
-                        : Icon(
-                            Icons.camera_alt_outlined,
+                    ? ClipOval(
+                        child: Image.network(
+                          '${Api.baseUrl}${profile.profileImage}',
+                          width: 34,
+                          height: 34,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.person_outline_rounded,
                             size: 17,
                             color: avatarColor,
                           ),
+                        ),
+                      )
+                    : Icon(
+                        Icons.camera_alt_outlined,
+                        size: 17,
+                        color: avatarColor,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1528,7 +1575,9 @@ class _ProfilePhotoTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      hasImage ? 'Tap to change · hold to remove' : 'Add a photo',
+                      hasImage
+                          ? 'Tap to change · hold to remove'
+                          : 'Add a photo',
                       style: TextStyle(
                         color: theme.colorScheme.onSurface.withValues(
                           alpha: 0.6,
@@ -1721,7 +1770,8 @@ class _AnimatedAvailabilitySwitch extends StatefulWidget {
       _AnimatedAvailabilitySwitchState();
 }
 
-class _AnimatedAvailabilitySwitchState extends State<_AnimatedAvailabilitySwitch>
+class _AnimatedAvailabilitySwitchState
+    extends State<_AnimatedAvailabilitySwitch>
     with SingleTickerProviderStateMixin {
   late final AnimationController _bounceController;
   late final Animation<double> _bounce;
@@ -1732,8 +1782,7 @@ class _AnimatedAvailabilitySwitchState extends State<_AnimatedAvailabilitySwitch
   static const double _thumbSize = 26;
 
   static const double _thumbLeftOff = _trackPadding;
-  static const double _thumbLeftOn =
-      _trackWidth - _trackPadding - _thumbSize;
+  static const double _thumbLeftOn = _trackWidth - _trackPadding - _thumbSize;
 
   @override
   void initState() {
@@ -1863,7 +1912,10 @@ class _AnimatedAvailabilitySwitchState extends State<_AnimatedAvailabilitySwitch
                           transitionBuilder: (child, anim) {
                             return ScaleTransition(
                               scale: anim,
-                              child: FadeTransition(opacity: anim, child: child),
+                              child: FadeTransition(
+                                opacity: anim,
+                                child: child,
+                              ),
                             );
                           },
                           child: Icon(
@@ -2295,7 +2347,9 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.8,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -2356,7 +2410,9 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
                   decoration: InputDecoration(
                     hintText: widget.email,
                     hintStyle: TextStyle(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.35,
+                      ),
                       fontSize: 14,
                     ),
                     filled: true,
@@ -2461,11 +2517,7 @@ class _DeleteItem extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: AppColors.error.withValues(alpha: 0.7),
-          ),
+          Icon(icon, size: 16, color: AppColors.error.withValues(alpha: 0.7)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

@@ -6,7 +6,20 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import UPLOAD_DIR, settings
 from .database import Base, engine, run_startup_migrations
-from .routers import auth, legal, notifications, onesignal, reports, requests, rooms, safety, skills, tips, uploads, users
+from .routers import (
+    auth,
+    legal,
+    notifications,
+    onesignal,
+    reports,
+    requests,
+    rooms,
+    safety,
+    skills,
+    tips,
+    uploads,
+    users,
+)
 from .seed import run as run_seed
 
 
@@ -102,18 +115,30 @@ def child_safety_page():
 def moderation_queue(request: __import__("fastapi").Request):
     from fastapi import HTTPException as _HE
     from fastapi.responses import HTMLResponse as _HR
+
     # Simple gate — ?key=SECRET_KEY (SECRET_KEY from backend/.env). Keeps the queue private
     # without needing a full admin login.
     from .config import settings as _settings
+
     if request.query_params.get("key") != _settings.SECRET_KEY:
         raise _HE(status_code=403, detail="Forbidden — provide ?key=SECRET_KEY")
-    from sqlalchemy.orm import Session as _Session
-    from fastapi import Depends as _Depends
+
     # inline to avoid circular import at top
-    from .database import get_db as _get_db
-    from .models import Report as _Report, Skill as _Skill, ChatMessage as _CM, User as _User  # noqa
     from sqlalchemy.orm import Session
+
     from .database import SessionLocal
+    from .models import (
+        ChatMessage as _CM,
+    )
+    from .models import (
+        Report as _Report,
+    )  # noqa
+    from .models import (
+        Skill as _Skill,
+    )
+    from .models import (
+        User as _User,
+    )
 
     db: Session = SessionLocal()
     try:
@@ -136,7 +161,11 @@ def moderation_queue(request: __import__("fastapi").Request):
             # reporter name
             reporter = db.get(_User, r.reporter_id)
             reporter_label = reporter.email if reporter else str(r.reporter_id)
-            color = {"pending_review": "#b7791f", "warning_issued": "#c53030", "dismissed": "#38a169"}.get(r.status or "", "#555")
+            color = {
+                "pending_review": "#b7791f",
+                "warning_issued": "#c53030",
+                "dismissed": "#38a169",
+            }.get(r.status or "", "#555")
             # resolve owner id for ban action
             owner_id = None
             try:
@@ -154,7 +183,7 @@ def moderation_queue(request: __import__("fastapi").Request):
             actions = ""
             if owner_id:
                 actions = f"""<form method="post" action="/admin/moderation/ban?key={key}" style="display:inline"><input type="hidden" name="user_id" value="{owner_id}"><input type="hidden" name="report_id" value="{r.id}"><button style="background:#c53030;color:#fff;border:0;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px">Ban 7d</button></form> <form method="post" action="/admin/moderation/dismiss?key={key}" style="display:inline"><input type="hidden" name="report_id" value="{r.id}"><button style="background:#718096;color:#fff;border:0;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px">Dismiss</button></form>"""
-            rows_html += f"<tr><td>{r.id}</td><td>{r.content_type or 'user'}</td><td>{r.content_id or r.reported_id or '—'}</td><td style='max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' title='{preview}'>{preview}</td><td>{reporter_label}</td><td>{r.reason[:30]}</td><td><span style='background:{color};color:#fff;padding:2px 8px;border-radius:999px;font-size:12px'>{r.status}</span></td><td>{round(r.toxicity_score,3) if r.toxicity_score is not None else '—'}</td><td>{r.created_at.strftime('%m-%d %H:%M') if r.created_at else ''}</td><td>{actions}</td></tr>"
+            rows_html += f"<tr><td>{r.id}</td><td>{r.content_type or 'user'}</td><td>{r.content_id or r.reported_id or '—'}</td><td style='max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' title='{preview}'>{preview}</td><td>{reporter_label}</td><td>{r.reason[:30]}</td><td><span style='background:{color};color:#fff;padding:2px 8px;border-radius:999px;font-size:12px'>{r.status}</span></td><td>{round(r.toxicity_score, 3) if r.toxicity_score is not None else '—'}</td><td>{r.created_at.strftime('%m-%d %H:%M') if r.created_at else ''}</td><td>{actions}</td></tr>"
         if not rows_html:
             rows_html = "<tr><td colspan=10 style='text-align:center;color:#777;padding:24px'>No reports yet — queue is empty.</td></tr>"
         html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -172,26 +201,44 @@ def moderation_queue(request: __import__("fastapi").Request):
 
 
 @app.post("/admin/moderation/ban", include_in_schema=False)
-def moderation_ban(request: __import__("fastapi").Request, user_id: int = __import__("fastapi").Form(...), report_id: int = __import__("fastapi").Form(...)):
+def moderation_ban(
+    request: __import__("fastapi").Request,
+    user_id: int = __import__("fastapi").Form(...),
+    report_id: int = __import__("fastapi").Form(...),
+):
+    from datetime import UTC, datetime, timedelta
+
     from fastapi import HTTPException as _HE
     from fastapi.responses import RedirectResponse as _RR
-    from datetime import datetime, UTC, timedelta
+
     from .config import settings as _settings
+
     if request.query_params.get("key") != _settings.SECRET_KEY:
         raise _HE(status_code=403, detail="Forbidden")
     from .database import SessionLocal
-    from .models import User as _User, Report as _Report, Warning as _Warning
+    from .models import Report as _Report
+    from .models import User as _User
+    from .models import Warning as _Warning
+
     db = SessionLocal()
     try:
         u = db.get(_User, user_id)
         if u:
-            u.banned_until = datetime.now(UTC) + timedelta(days=_settings.WARNING_BAN_DURATION_DAYS)
+            u.banned_until = datetime.now(UTC) + timedelta(
+                days=_settings.WARNING_BAN_DURATION_DAYS
+            )
             db.add(u)
             r = db.get(_Report, report_id)
             if r:
                 r.status = "warning_issued"
                 db.add(r)
-                db.add(_Warning(user_id=u.id, report_id=r.id, reason="manual ban from moderation queue"))
+                db.add(
+                    _Warning(
+                        user_id=u.id,
+                        report_id=r.id,
+                        reason="manual ban from moderation queue",
+                    )
+                )
             db.commit()
     finally:
         db.close()
@@ -200,14 +247,20 @@ def moderation_ban(request: __import__("fastapi").Request, user_id: int = __impo
 
 
 @app.post("/admin/moderation/dismiss", include_in_schema=False)
-def moderation_dismiss(request: __import__("fastapi").Request, report_id: int = __import__("fastapi").Form(...)):
+def moderation_dismiss(
+    request: __import__("fastapi").Request,
+    report_id: int = __import__("fastapi").Form(...),
+):
     from fastapi import HTTPException as _HE
     from fastapi.responses import RedirectResponse as _RR
+
     from .config import settings as _settings
+
     if request.query_params.get("key") != _settings.SECRET_KEY:
         raise _HE(status_code=403, detail="Forbidden")
     from .database import SessionLocal
     from .models import Report as _Report
+
     db = SessionLocal()
     try:
         r = db.get(_Report, report_id)

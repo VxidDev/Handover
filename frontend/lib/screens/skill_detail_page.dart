@@ -155,8 +155,9 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.7),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
                         ),
@@ -201,16 +202,16 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
         body: {'blocked_id': widget.neighbor.ownerId},
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$name has been blocked.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$name has been blocked.')));
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(describeError(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(describeError(e))));
       }
     }
   }
@@ -536,13 +537,28 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
               child: Row(
                 children: [
                   OutlinedButton.icon(
-                    onPressed: () => showTipSheet(context, recipientId: neighbor.ownerId, recipientName: neighbor.name),
+                    onPressed: () => showTipSheet(
+                      context,
+                      recipientId: neighbor.ownerId,
+                      recipientName: neighbor.name,
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.terracottaDeep,
-                      side: const BorderSide(color: AppColors.terracotta, width: 1.2),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      side: const BorderSide(
+                        color: AppColors.terracotta,
+                        width: 1.2,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 15,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     icon: const Icon(Icons.favorite_rounded, size: 16),
                     label: const Text('Tip'),
@@ -557,18 +573,34 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                             : (isDark ? AppColors.darkSand : AppColors.sand),
                         foregroundColor: neighbor.available
                             ? Colors.white
-                            : (isDark ? AppColors.darkInkFaint : AppColors.inkFaint),
+                            : (isDark
+                                  ? AppColors.darkInkFaint
+                                  : AppColors.inkFaint),
                         disabledBackgroundColor: isDark
                             ? AppColors.darkSand.withValues(alpha: 0.6)
                             : AppColors.sand.withValues(alpha: 0.6),
-                        disabledForegroundColor: isDark ? AppColors.darkInkFaint : AppColors.inkFaint,
+                        disabledForegroundColor: isDark
+                            ? AppColors.darkInkFaint
+                            : AppColors.inkFaint,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      icon: Icon(neighbor.available ? Icons.handshake_outlined : Icons.schedule_rounded, size: 18),
-                      label: Text(neighbor.available ? 'Ask for help' : 'Currently busy'),
+                      icon: Icon(
+                        neighbor.available
+                            ? Icons.handshake_outlined
+                            : Icons.schedule_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        neighbor.available ? 'Ask for help' : 'Currently busy',
+                      ),
                     ),
                   ),
                 ],

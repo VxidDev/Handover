@@ -105,7 +105,9 @@ class Skill(Base):
     )
     name: Mapped[str] = mapped_column(String(100))
     blurb: Mapped[str] = mapped_column(Text, default="")
-    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    is_hidden: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false()
+    )
     hidden_reason: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
@@ -241,7 +243,9 @@ class ChatMessage(Base):
     )
 
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    is_hidden: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false()
+    )
 
     request: Mapped["Request"] = relationship(back_populates="messages")
     sender: Mapped["User"] = relationship()
@@ -281,13 +285,17 @@ class Report(Base):
     content_id: Mapped[int | None] = mapped_column(index=True, nullable=True)
     reason: Mapped[str] = mapped_column(Text)
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str | None] = mapped_column(String(20), nullable=True, default="pending")
+    status: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, default="pending"
+    )
     toxicity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
 
-    reporter: Mapped["User"] = relationship(foreign_keys=[reporter_id], backref="reports")
+    reporter: Mapped["User"] = relationship(
+        foreign_keys=[reporter_id], backref="reports"
+    )
     reported: Mapped["User | None"] = relationship(foreign_keys=[reported_id])
     warning: Mapped["Warning | None"] = relationship(
         back_populates="report",

@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Системные зависимости для сборки argon2-cffi и других C-extensions
+# System dependencies for building argon2-cffi and other C extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libc-dev \
@@ -15,11 +15,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . .
 
-# Директория для SQLite (создаем заранее, чтобы volume корректно примонтировался)
+# Directory for SQLite (created upfront so the volume mounts cleanly)
 RUN mkdir -p /app/data
 
 EXPOSE 8099
 
-# ВАЖНО: host 0.0.0.0 для доступа из контейнера nginx.
-# Порт 8099 остается внутренним, наружу не публикуется.
+# NOTE: host 0.0.0.0 for access from the nginx container.
+# Port 8099 stays internal, it is not published.
 CMD ["granian", "app.main:app", "--interface", "asgi", "--host", "0.0.0.0", "--port", "8099"]

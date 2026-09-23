@@ -108,7 +108,9 @@ class _LegalPageState extends State<LegalPage> {
                       _error!,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.55,
+                        ),
                         fontSize: 14,
                         height: 1.4,
                       ),
@@ -154,7 +156,9 @@ class _LegalPageState extends State<LegalPage> {
                             'Effective ${doc['effective_date'] ?? '—'}',
                             style: TextStyle(
                               fontSize: 13,
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
                             ),
                           ),
                         ],
@@ -182,7 +186,9 @@ class _LegalPageState extends State<LegalPage> {
                           p: TextStyle(
                             fontSize: 16,
                             height: 1.6,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.85,
+                            ),
                           ),
                           listBullet: const TextStyle(
                             color: AppColors.terracotta,
@@ -191,7 +197,9 @@ class _LegalPageState extends State<LegalPage> {
                           blockquote: TextStyle(
                             fontSize: 16,
                             height: 1.6,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.7,
+                            ),
                           ),
                         ),
                       ),
@@ -202,7 +210,9 @@ class _LegalPageState extends State<LegalPage> {
                         color: isDark
                             ? AppColors.darkSand.withValues(alpha: 0.5)
                             : AppColors.sand.withValues(alpha: 0.6),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(14),
+                        ),
                       ),
                       child: Text(
                         'Questions? Contact ${(_legal?['controller']?['email']) ?? 'the Handover team'}',
@@ -210,7 +220,9 @@ class _LegalPageState extends State<LegalPage> {
                         style: TextStyle(
                           fontSize: 14,
                           height: 1.5,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.7,
+                          ),
                         ),
                       ),
                     ),

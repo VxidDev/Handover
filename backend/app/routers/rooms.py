@@ -18,10 +18,18 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..database import SessionLocal, get_db
 from ..deps import authenticate_room_token, get_current_user
-from ..models import BlockedUser, ChatMessage, DisclosureLog, MessageReadCursor, OneSignalPlayer, Request, User
+from ..models import (
+    BlockedUser,
+    ChatMessage,
+    DisclosureLog,
+    MessageReadCursor,
+    OneSignalPlayer,
+    Request,
+    User,
+)
+from ..onesignal import send_push
 from ..schemas import ChatMessageOut, RoomTokenOut, UnreadCountsOut
 from ..security import create_token, decrypt_contact
-from ..onesignal import send_push
 from .notifications import notification_manager
 from .requests import _to_out
 
@@ -35,14 +43,19 @@ def _is_blocked(db: Session, user_id: int, other_id: int) -> bool:
         db.query(BlockedUser)
         .filter(
             ((BlockedUser.blocker_id == user_id) & (BlockedUser.blocked_id == other_id))
-            | ((BlockedUser.blocker_id == other_id) & (BlockedUser.blocked_id == user_id))
+            | (
+                (BlockedUser.blocker_id == other_id)
+                & (BlockedUser.blocked_id == user_id)
+            )
         )
         .first()
         is not None
     )
 
 
-def _accepted_participant(request: Request | None, user: User, db: Session | None = None) -> Request:
+def _accepted_participant(
+    request: Request | None, user: User, db: Session | None = None
+) -> Request:
     if request is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Request not found"
@@ -57,10 +70,15 @@ def _accepted_participant(request: Request | None, user: User, db: Session | Non
         )
     # Block enforcement for chat access
     if db is not None:
-        other_id = request.requester_id if user.id == request.provider_id else request.provider_id
+        other_id = (
+            request.requester_id
+            if user.id == request.provider_id
+            else request.provider_id
+        )
         if _is_blocked(db, user.id, other_id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="You cannot interact with this user"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You cannot interact with this user",
             )
     return request
 
@@ -268,7 +286,9 @@ async def request_chat(  # noqa: C901
         with SessionLocal() as db:
             messages = (
                 db.query(ChatMessage)
-                .filter(ChatMessage.request_id == request_id, ChatMessage.is_hidden == False)  # noqa: E712
+                .filter(
+                    ChatMessage.request_id == request_id, ChatMessage.is_hidden == False
+                )  # noqa: E712
                 .order_by(ChatMessage.created_at, ChatMessage.id)
                 .all()
             )
@@ -361,12 +381,18 @@ async def request_chat(  # noqa: C901
                     db.add(rep)
                     db.flush()
                     rep.content_id = message.id
-                    warn = Warning(user_id=user_id, report_id=rep.id, reason="inappropriate chat message")
+                    warn = Warning(
+                        user_id=user_id,
+                        report_id=rep.id,
+                        reason="inappropriate chat message",
+                    )
                     db.add(warn)
                 db.commit()
                 db.refresh(message)
                 if is_toxic:
-                    await websocket.send_json({"type": "error", "detail": "Message blocked by moderation."})
+                    await websocket.send_json(
+                        {"type": "error", "detail": "Message blocked by moderation."}
+                    )
                     continue
                 event_message = _message_out(message).model_dump(mode="json")
             await manager.broadcast(

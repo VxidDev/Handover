@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+
 # Lazy import to avoid circular
 def _is_production() -> bool:
     try:
@@ -25,10 +26,16 @@ class SignupIn(BaseModel):
     def check_consent_and_age(self):
         # Play Child Safety + GDPR 16+ : must confirm age and accept both documents.
         if self.accept_tos is False or self.accept_privacy is False:
-            raise ValueError("You must be at least 16 and accept the Terms and Privacy Policy")
+            raise ValueError(
+                "You must be at least 16 and accept the Terms and Privacy Policy"
+            )
         # In production, missing consent is also rejected — tests (dev) remain lenient
-        if _is_production() and (self.accept_tos is not True or self.accept_privacy is not True):
-            raise ValueError("You must be at least 16 and accept the Terms and Privacy Policy")
+        if _is_production() and (
+            self.accept_tos is not True or self.accept_privacy is not True
+        ):
+            raise ValueError(
+                "You must be at least 16 and accept the Terms and Privacy Policy"
+            )
         return self
 
 
@@ -171,15 +178,21 @@ class ForgotPasswordIn(BaseModel):
 
 class ResetPasswordIn(BaseModel):
     email: EmailStr
-    email_code: str | None = Field(default=None, min_length=6, max_length=6, pattern=r"^\d{6}$")
-    totp_code: str | None = Field(default=None, min_length=6, max_length=6, pattern=r"^\d{6}$")
+    email_code: str | None = Field(
+        default=None, min_length=6, max_length=6, pattern=r"^\d{6}$"
+    )
+    totp_code: str | None = Field(
+        default=None, min_length=6, max_length=6, pattern=r"^\d{6}$"
+    )
     recovery_code: str | None = Field(default=None, max_length=16)
     new_password: str = Field(min_length=6, max_length=128)
 
     @model_validator(mode="after")
     def require_one_code(self):
         if not self.email_code and not self.totp_code and not self.recovery_code:
-            raise ValueError("One of email_code, totp_code, or recovery_code is required")
+            raise ValueError(
+                "One of email_code, totp_code, or recovery_code is required"
+            )
         return self
 
 

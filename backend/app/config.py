@@ -41,9 +41,7 @@ class Settings:
 
     WARNING_EXPIRY_DAYS = int(os.getenv("WARNING_EXPIRY_DAYS", "7"))
     WARNING_BAN_THRESHOLD = int(os.getenv("WARNING_BAN_THRESHOLD", "10"))
-    WARNING_BAN_DURATION_DAYS = int(
-        os.getenv("WARNING_BAN_DURATION_DAYS", "7")
-    )
+    WARNING_BAN_DURATION_DAYS = int(os.getenv("WARNING_BAN_DURATION_DAYS", "7"))
 
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
@@ -64,7 +62,9 @@ class Settings:
     NSFW_THRESHOLD = float(os.getenv("NSFW_THRESHOLD", "0.85"))
     NSFW_ENABLED = os.getenv("NSFW_ENABLED", "auto")
     HIVE_API_KEY = os.getenv("HIVE_API_KEY", "")
-    GOOGLE_VISION_CREDENTIALS = os.getenv("GOOGLE_VISION_CREDENTIALS", "") or os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+    GOOGLE_VISION_CREDENTIALS = os.getenv("GOOGLE_VISION_CREDENTIALS", "") or os.getenv(
+        "GOOGLE_APPLICATION_CREDENTIALS", ""
+    )
 
     CORS_ORIGINS: list[str] = []
 

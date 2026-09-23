@@ -15,6 +15,8 @@ from cryptography.fernet import Fernet, InvalidToken
 
 from .config import settings
 
+logger = logging.getLogger("handover.security")
+
 _ITERATIONS = 260_000
 
 _hasher = PasswordHasher()
@@ -79,7 +81,9 @@ def decode_room_token(token: str, request_id: int) -> int:
 def _contact_fernet() -> Fernet:
     key = settings.CONTACT_ENCRYPTION_KEY
     if key is None:
-        print("[WARNING] CONTACT_ENCRYPTION_KEY is None, randomizing...")
+        logger.warning(
+            "CONTACT_ENCRYPTION_KEY is None, deriving ephemeral key from SECRET_KEY..."
+        )
         digest = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
         key = base64.urlsafe_b64encode(digest).decode()
     try:

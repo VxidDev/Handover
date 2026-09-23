@@ -54,14 +54,16 @@ class _ReportSheetState extends State<_ReportSheet> {
     if (reason.isEmpty || _submitting) return;
     setState(() => _submitting = true);
     try {
-      final res = await Api.post(
-        '/api/reports',
-        body: {
-          'content_type': widget.contentType,
-          'content_id': widget.contentId,
-          'reason': reason,
-        },
-      ) as Map<String, dynamic>;
+      final res =
+          await Api.post(
+                '/api/reports',
+                body: {
+                  'content_type': widget.contentType,
+                  'content_id': widget.contentId,
+                  'reason': reason,
+                },
+              )
+              as Map<String, dynamic>;
       final warningIssued = res['warning_issued'] == true;
       if (!mounted) return;
       Navigator.pop(context);

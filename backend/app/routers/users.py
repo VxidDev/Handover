@@ -7,7 +7,19 @@ from sqlalchemy.orm import Session
 from ..config import UPLOAD_DIR
 from ..database import get_db
 from ..deps import get_current_user
-from ..models import BlockedUser, ChatMessage, PrivateContact, Rating, Report, Request, Skill, SkillImage, Tip, User, Warning
+from ..models import (
+    BlockedUser,
+    ChatMessage,
+    PrivateContact,
+    Rating,
+    Report,
+    Request,
+    Skill,
+    SkillImage,
+    Tip,
+    User,
+    Warning,
+)
 from ..schemas import SkillCreateIn, SkillOut, UserMeOut, UserUpdateIn
 from ..security import decrypt_contact, encrypt_contact
 from .skills import invalidate_catalog
@@ -68,54 +80,124 @@ def export_my_data(
             "profile_image": user.profile_image,
             "phone": phone,
             "created_at": user.created_at.isoformat() if user.created_at else None,
-            "tos_accepted_at": user.tos_accepted_at.isoformat() if user.tos_accepted_at else None,
+            "tos_accepted_at": user.tos_accepted_at.isoformat()
+            if user.tos_accepted_at
+            else None,
             "tos_version": user.tos_version,
-            "privacy_accepted_at": user.privacy_accepted_at.isoformat() if user.privacy_accepted_at else None,
+            "privacy_accepted_at": user.privacy_accepted_at.isoformat()
+            if user.privacy_accepted_at
+            else None,
             "privacy_version": user.privacy_version,
             "two_factor_enabled": user.two_factor_enabled,
         },
         "skills": [
-            {"id": s.id, "name": s.name, "blurb": s.blurb, "created_at": s.created_at.isoformat() if s.created_at else None, "images": [i.path for i in s.images]}
+            {
+                "id": s.id,
+                "name": s.name,
+                "blurb": s.blurb,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "images": [i.path for i in s.images],
+            }
             for s in skills
         ],
         "requests_sent": [
-            {"id": r.id, "provider_id": r.provider_id, "skill_id": r.skill_id, "status": r.status, "message": r.message, "created_at": r.created_at.isoformat() if r.created_at else None}
+            {
+                "id": r.id,
+                "provider_id": r.provider_id,
+                "skill_id": r.skill_id,
+                "status": r.status,
+                "message": r.message,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
             for r in sent
         ],
         "requests_received": [
-            {"id": r.id, "requester_id": r.requester_id, "skill_id": r.skill_id, "status": r.status, "message": r.message, "created_at": r.created_at.isoformat() if r.created_at else None}
+            {
+                "id": r.id,
+                "requester_id": r.requester_id,
+                "skill_id": r.skill_id,
+                "status": r.status,
+                "message": r.message,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
             for r in received
         ],
         "messages": [
-            {"id": m.id, "request_id": m.request_id, "body": m.body, "image_url": m.image_url, "created_at": m.created_at.isoformat() if m.created_at else None}
+            {
+                "id": m.id,
+                "request_id": m.request_id,
+                "body": m.body,
+                "image_url": m.image_url,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            }
             for m in messages
         ],
         "ratings_given": [
-            {"id": x.id, "request_id": x.request_id, "rated_id": x.rated_id, "stars": x.stars, "review": x.review, "created_at": x.created_at.isoformat() if x.created_at else None}
+            {
+                "id": x.id,
+                "request_id": x.request_id,
+                "rated_id": x.rated_id,
+                "stars": x.stars,
+                "review": x.review,
+                "created_at": x.created_at.isoformat() if x.created_at else None,
+            }
             for x in ratings_given
         ],
         "ratings_received": [
-            {"id": x.id, "request_id": x.request_id, "rater_id": x.rater_id, "stars": x.stars, "review": x.review, "created_at": x.created_at.isoformat() if x.created_at else None}
+            {
+                "id": x.id,
+                "request_id": x.request_id,
+                "rater_id": x.rater_id,
+                "stars": x.stars,
+                "review": x.review,
+                "created_at": x.created_at.isoformat() if x.created_at else None,
+            }
             for x in ratings_recv
         ],
         "tips_sent": [
-            {"id": t.id, "recipient_id": t.recipient_id, "amount_cents": t.amount_cents, "status": t.status, "created_at": t.created_at.isoformat() if t.created_at else None}
+            {
+                "id": t.id,
+                "recipient_id": t.recipient_id,
+                "amount_cents": t.amount_cents,
+                "status": t.status,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+            }
             for t in tips_sent
         ],
         "tips_received": [
-            {"id": t.id, "sender_id": t.sender_id, "amount_cents": t.amount_cents, "recipient_amount_cents": t.recipient_amount_cents, "created_at": t.created_at.isoformat() if t.created_at else None}
+            {
+                "id": t.id,
+                "sender_id": t.sender_id,
+                "amount_cents": t.amount_cents,
+                "recipient_amount_cents": t.recipient_amount_cents,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+            }
             for t in tips_recv
         ],
         "blocked_users": [b.blocked_id for b in blocked],
         "reports_made": [
-            {"id": r.id, "content_type": r.content_type, "content_id": r.content_id, "reason": r.reason, "status": r.status, "created_at": r.created_at.isoformat() if r.created_at else None}
+            {
+                "id": r.id,
+                "content_type": r.content_type,
+                "content_id": r.content_id,
+                "reason": r.reason,
+                "status": r.status,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
             for r in reports_made
         ],
         "warnings": [
-            {"id": w.id, "report_id": w.report_id, "reason": w.reason, "created_at": w.created_at.isoformat() if w.created_at else None}
+            {
+                "id": w.id,
+                "report_id": w.report_id,
+                "reason": w.reason,
+                "created_at": w.created_at.isoformat() if w.created_at else None,
+            }
             for w in warnings_list
         ],
-        "exported_at": __import__("datetime").datetime.now(__import__("datetime").UTC).isoformat(),
+        "exported_at": __import__("datetime")
+        .datetime.now(__import__("datetime").UTC)
+        .isoformat(),
     }
 
 
@@ -133,11 +215,16 @@ def delete_my_account(
             if p.exists() and p.is_file():
                 p.unlink(missing_ok=True)
         # skill images
-        skill_ids = [s.id for s in db.query(Skill.id).filter(Skill.user_id == user.id).all()]
+        skill_ids = [
+            s.id for s in db.query(Skill.id).filter(Skill.user_id == user.id).all()
+        ]
         if skill_ids:
             from ..models import SkillImage as _SI
 
-            paths = [row[0] for row in db.query(_SI.path).filter(_SI.skill_id.in_(skill_ids)).all()]
+            paths = [
+                row[0]
+                for row in db.query(_SI.path).filter(_SI.skill_id.in_(skill_ids)).all()
+            ]
             for rel in paths:
                 pp = Path(UPLOAD_DIR) / Path(rel).name
                 if pp.exists() and pp.is_file():
@@ -146,7 +233,13 @@ def delete_my_account(
                     except Exception:
                         pass
             # also chat image_urls that are /uploads/...
-            msgs = db.query(ChatMessage.image_url).filter(ChatMessage.sender_id == user.id, ChatMessage.image_url.isnot(None)).all()
+            msgs = (
+                db.query(ChatMessage.image_url)
+                .filter(
+                    ChatMessage.sender_id == user.id, ChatMessage.image_url.isnot(None)
+                )
+                .all()
+            )
             for (url,) in msgs:
                 if url and url.startswith("/uploads/"):
                     pp = Path(UPLOAD_DIR) / Path(url).name

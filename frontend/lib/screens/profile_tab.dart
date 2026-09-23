@@ -128,7 +128,9 @@ class _ProfileTabState extends State<ProfileTab> {
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(ctx, false),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        foregroundColor: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
                         side: BorderSide(
                           color: isDark
                               ? AppColors.darkBorder.withValues(alpha: 0.6)
@@ -192,9 +194,9 @@ class _ProfileTabState extends State<ProfileTab> {
 
   void _openSettings() {
     HapticFeedback.lightImpact();
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SettingsPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
   }
 
   Future<void> _pickProfileImage() async {
@@ -231,7 +233,10 @@ class _ProfileTabState extends State<ProfileTab> {
 
     setState(() => _uploadingImage = true);
     try {
-      final res = await Api.uploadFile('/api/uploads/images', File(croppedFile.path));
+      final res = await Api.uploadFile(
+        '/api/uploads/images',
+        File(croppedFile.path),
+      );
       final path = res['path'] as String;
       final updateRes = await Api.patch(
         '/api/users/me',
@@ -326,7 +331,8 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
                 onTap: () async {
                   Navigator.pop(ctx);
-                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  final isDark =
+                      Theme.of(context).brightness == Brightness.dark;
                   final removeConfirmed = await showDialog<bool>(
                     context: context,
                     barrierColor: isDark
@@ -635,25 +641,13 @@ class _HeroCard extends StatelessWidget {
                                 ),
                               )
                             : profile.profileImage != null
-                                ? ClipOval(
-                                    child: Image.network(
-                                      '${Api.baseUrl}${profile.profileImage}',
-                                      width: 52,
-                                      height: 52,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Text(
-                                        profile.name.isNotEmpty
-                                            ? profile.name[0].toUpperCase()
-                                            : '?',
-                                        style: TextStyle(
-                                          color: avatarColor,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 22,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : Text(
+                            ? ClipOval(
+                                child: Image.network(
+                                  '${Api.baseUrl}${profile.profileImage}',
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Text(
                                     profile.name.isNotEmpty
                                         ? profile.name[0].toUpperCase()
                                         : '?',
@@ -663,6 +657,18 @@ class _HeroCard extends StatelessWidget {
                                       fontSize: 22,
                                     ),
                                   ),
+                                ),
+                              )
+                            : Text(
+                                profile.name.isNotEmpty
+                                    ? profile.name[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  color: avatarColor,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 22,
+                                ),
+                              ),
                       ),
                       Positioned(
                         right: -1,
@@ -1473,4 +1479,3 @@ class _EmptySkillsState extends StatelessWidget {
     );
   }
 }
-

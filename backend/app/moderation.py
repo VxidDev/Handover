@@ -88,17 +88,24 @@ def _nsfw_score_via_provider(content: bytes) -> float | None:
                 for out in data.get("status", []):
                     for cls in out.get("response", {}).get("output", []):
                         for c in cls.get("classes", []):
-                            if "nude" in c.get("class", "").lower() or "sexual" in c.get("class", "").lower():
+                            if (
+                                "nude" in c.get("class", "").lower()
+                                or "sexual" in c.get("class", "").lower()
+                            ):
                                 scores.append(float(c.get("score", 0)))
                 if scores:
                     return max(scores)
             else:
-                logger.warning("Hive NSFW check failed %s %s", resp.status_code, resp.text[:200])
+                logger.warning(
+                    "Hive NSFW check failed %s %s", resp.status_code, resp.text[:200]
+                )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Hive NSFW provider error: %s", exc)
 
     # Google Vision SafeSearch
-    vision_creds = os.getenv("GOOGLE_VISION_CREDENTIALS") or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    vision_creds = os.getenv("GOOGLE_VISION_CREDENTIALS") or os.getenv(
+        "GOOGLE_APPLICATION_CREDENTIALS"
+    )
     if vision_creds:
         try:
             from google.cloud import vision  # type: ignore
@@ -123,8 +130,6 @@ def _nsfw_score_via_provider(content: bytes) -> float | None:
     model_path = os.getenv("NSFW_MODEL_PATH")
     if model_path:
         try:
-            from PIL import Image
-            import io
 
             # Lazy import to avoid hard dependency
             try:
@@ -133,8 +138,8 @@ def _nsfw_score_via_provider(content: bytes) -> float | None:
                 NudeDetector = None  # type: ignore
 
             if NudeDetector is not None:
-                import tempfile
                 import pathlib
+                import tempfile
 
                 with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
                     tmp.write(content)
@@ -147,7 +152,9 @@ def _nsfw_score_via_provider(content: bytes) -> float | None:
                         max_score = max((d.get("score", 0) for d in result), default=0)
                         return float(max_score)
             # If model is ONNX generic, user should extend here
-            logger.info("NSFW_MODEL_PATH set but NudeNet not installed — skipping local check")
+            logger.info(
+                "NSFW_MODEL_PATH set but NudeNet not installed — skipping local check"
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Local NSFW model error: %s", exc)
 
@@ -164,8 +171,9 @@ def _validate_image_integrity(content: bytes) -> tuple[bool, str | None]:
     Report->24h hide + NSFW pipeline rather than breaking existing tests.
     """
     try:
-        from PIL import Image
         import io
+
+        from PIL import Image
     except ImportError:
         logger.info("Pillow not installed — skipping deep image integrity check")
         return True, None
@@ -182,7 +190,10 @@ def _validate_image_integrity(content: bytes) -> tuple[bool, str | None]:
     except Exception as exc:  # noqa: BLE001
         # Don't block minimal header-only stubs (test) — they have valid magic but incomplete IDAT
         # Real user uploads from image_picker will be complete; truncated uploads can be retried.
-        logger.info("Pillow load failed (likely truncated stub) — allowing magic-byte-valid image: %s", exc)
+        logger.info(
+            "Pillow load failed (likely truncated stub) — allowing magic-byte-valid image: %s",
+            exc,
+        )
         return True, None
     return True, None
 
@@ -228,7 +239,9 @@ def moderate_image(filename: str, content: bytes) -> tuple[bool, str | None]:
     # Extension must match content — prevents .jpg hiding executable, etc.
     ext_normalized = "jpg" if ext in ("jpg", "jpeg") else ext
     if ext_normalized != actual:
-        logger.warning("Image extension mismatch: %s claims .%s but is %s", filename, ext, actual)
+        logger.warning(
+            "Image extension mismatch: %s claims .%s but is %s", filename, ext, actual
+        )
         return True, "extension_mismatch"
 
     # Size cap 5 MB (upstream already checks, double-enforce)
@@ -245,12 +258,20 @@ def moderate_image(filename: str, content: bytes) -> tuple[bool, str | None]:
     if _is_nsfw_enabled():
         score = _nsfw_score_via_provider(content)
         if score is not None and score >= NSFW_THRESHOLD:
-            logger.warning("Image NSFW blocked for %s: score %.3f >= %.2f", filename, score, NSFW_THRESHOLD)
+            logger.warning(
+                "Image NSFW blocked for %s: score %.3f >= %.2f",
+                filename,
+                score,
+                NSFW_THRESHOLD,
+            )
             return True, "nsfw_blocked"
         if score is not None:
             logger.info("Image NSFW pass for %s: score %.3f", filename, score)
         else:
-            logger.info("Image NSFW provider configured but returned no score for %s — passing to manual review queue", filename)
+            logger.info(
+                "Image NSFW provider configured but returned no score for %s — passing to manual review queue",
+                filename,
+            )
     else:
         logger.info(
             "Image NSFW classifier not configured (set HIVE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS or NSFW_MODEL_PATH; NSFW_ENABLED=%s) — structural checks passed, relying on Report->24h hide for %s",

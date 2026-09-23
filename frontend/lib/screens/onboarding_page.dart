@@ -41,7 +41,10 @@ class _OnboardingPageState extends State<OnboardingPage>
       duration: const Duration(seconds: 30),
       vsync: this,
     )..repeat();
-    _bgRotation = Tween<double>(begin: 0, end: 2 * math.pi).animate(_bgController);
+    _bgRotation = Tween<double>(
+      begin: 0,
+      end: 2 * math.pi,
+    ).animate(_bgController);
   }
 
   @override
@@ -77,7 +80,8 @@ class _OnboardingPageState extends State<OnboardingPage>
 
     final result = await Navigator.of(context).push<GridSelection>(
       MaterialPageRoute(
-        builder: (_) => LocationGridPickerPage(initialLat: lat, initialLng: lng),
+        builder: (_) =>
+            LocationGridPickerPage(initialLat: lat, initialLng: lng),
       ),
     );
 
@@ -102,7 +106,9 @@ class _OnboardingPageState extends State<OnboardingPage>
           content: Text(describeError(e)),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -132,10 +138,7 @@ class _OnboardingPageState extends State<OnboardingPage>
     try {
       await Api.post(
         '/api/users/me/skills',
-        body: {
-          'name': name,
-          'blurb': _skillDescController.text.trim(),
-        },
+        body: {'name': name, 'blurb': _skillDescController.text.trim()},
       );
       setState(() => _skillAdded = true);
     } catch (e) {
@@ -146,7 +149,9 @@ class _OnboardingPageState extends State<OnboardingPage>
           content: Text(describeError(e)),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -205,7 +210,9 @@ class _OnboardingPageState extends State<OnboardingPage>
           content: Text(describeError(e)),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -293,8 +300,9 @@ class _OnboardingPageState extends State<OnboardingPage>
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.5),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
                               letterSpacing: 0.2,
                             ),
                           ),
@@ -314,8 +322,9 @@ class _OnboardingPageState extends State<OnboardingPage>
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.45),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.45,
+                              ),
                             ),
                           ),
                         ),
@@ -487,7 +496,10 @@ class _OnboardingPageState extends State<OnboardingPage>
                         AppColors.sage.withValues(alpha: 0.25),
                         AppColors.sage.withValues(alpha: 0.12),
                       ]
-                    : [AppColors.sageLight, AppColors.sageLight.withValues(alpha: 0.5)],
+                    : [
+                        AppColors.sageLight,
+                        AppColors.sageLight.withValues(alpha: 0.5),
+                      ],
               ),
               shape: BoxShape.circle,
             ),
@@ -557,8 +569,9 @@ class _OnboardingPageState extends State<OnboardingPage>
                     borderRadius: BorderRadius.circular(100),
                   ),
                   elevation: 0,
-                  disabledBackgroundColor:
-                      AppColors.sage.withValues(alpha: 0.5),
+                  disabledBackgroundColor: AppColors.sage.withValues(
+                    alpha: 0.5,
+                  ),
                   textStyle: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -625,7 +638,10 @@ class _OnboardingPageState extends State<OnboardingPage>
                         AppColors.gold.withValues(alpha: 0.25),
                         AppColors.gold.withValues(alpha: 0.12),
                       ]
-                    : [AppColors.goldTint, AppColors.goldTint.withValues(alpha: 0.5)],
+                    : [
+                        AppColors.goldTint,
+                        AppColors.goldTint.withValues(alpha: 0.5),
+                      ],
               ),
               shape: BoxShape.circle,
             ),
@@ -696,8 +712,9 @@ class _OnboardingPageState extends State<OnboardingPage>
                             Icon(
                               Icons.camera_alt_outlined,
                               size: 36,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.4),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.4,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -705,8 +722,9 @@ class _OnboardingPageState extends State<OnboardingPage>
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
-                                color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.4),
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.4,
+                                ),
                               ),
                             ),
                           ],
@@ -786,10 +804,10 @@ class _OnboardingPageState extends State<OnboardingPage>
               color: isActive
                   ? AppColors.terracotta
                   : isCompleted
-                      ? AppColors.sage
-                      : isDark
-                          ? AppColors.darkBorder
-                          : AppColors.border,
+                  ? AppColors.sage
+                  : isDark
+                  ? AppColors.darkBorder
+                  : AppColors.border,
               borderRadius: BorderRadius.circular(100),
             ),
           ),

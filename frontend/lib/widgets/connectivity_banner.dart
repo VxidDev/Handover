@@ -45,7 +45,10 @@ class _ConnectivityBannerState extends State<ConnectivityBanner> {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -53,7 +56,11 @@ class _ConnectivityBannerState extends State<ConnectivityBanner> {
                     const SizedBox(width: 8),
                     Text(
                       'You\'re offline. Some features may not work.',
-                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),

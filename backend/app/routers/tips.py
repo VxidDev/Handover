@@ -15,7 +15,9 @@ logger = logging.getLogger("handover.tips")
 router = APIRouter(prefix="/tips", tags=["tips"])
 
 
-async def _verify_with_revenuecat(app_user_id: str, product_id: str, transaction_id: str | None = None) -> bool:
+async def _verify_with_revenuecat(
+    app_user_id: str, product_id: str, transaction_id: str | None = None
+) -> bool:
     # In production a key is required — mock tips are not allowed (Play Billing)
     if not settings.REVENUECAT_API_KEY:
         if settings.ENVIRONMENT == "production":
@@ -67,10 +69,19 @@ async def create_tip(
     # Play Billing: verification is required when a product_id is sent;
     # in production without a product_id the tip is rejected (no mock tips)
     if payload.product_id:
-        verified = await _verify_with_revenuecat(str(user.id), payload.product_id, payload.transaction_id)
+        verified = await _verify_with_revenuecat(
+            str(user.id), payload.product_id, payload.transaction_id
+        )
         if not verified:
-            logger.warning("Tip verification failed for user %s product %s", user.id, payload.product_id)
-            raise HTTPException(status_code=402, detail="Purchase verification failed. Tip not recorded. Please complete payment via Google Play.")
+            logger.warning(
+                "Tip verification failed for user %s product %s",
+                user.id,
+                payload.product_id,
+            )
+            raise HTTPException(
+                status_code=402,
+                detail="Purchase verification failed. Tip not recorded. Please complete payment via Google Play.",
+            )
     else:
         # No product_id: only allow in non-production (mock) environments
         if settings.ENVIRONMENT == "production":
@@ -78,7 +89,11 @@ async def create_tip(
                 status_code=400,
                 detail="Google Play Billing required for tips. Please use the in-app purchase flow.",
             )
-        logger.warning("Mock tip allowed (non-production) for user %s amount %s", user.id, payload.amount_cents)
+        logger.warning(
+            "Mock tip allowed (non-production) for user %s amount %s",
+            user.id,
+            payload.amount_cents,
+        )
 
     recipient_amount = int(payload.amount_cents * 0.8)
     platform_fee = payload.amount_cents - recipient_amount
@@ -101,19 +116,34 @@ async def create_tip(
     db.refresh(tip)
     logger.info(
         "Tip %s: %d cents -> recipient %d cents, platform %d cents",
-        tip.id, payload.amount_cents, recipient_amount, platform_fee,
+        tip.id,
+        payload.amount_cents,
+        recipient_amount,
+        platform_fee,
     )
     return tip
 
 
 @router.get("/received", response_model=list[TipOut])
-def received_tips(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return db.query(Tip).filter(Tip.recipient_id == user.id).order_by(Tip.created_at.desc()).all()
+def received_tips(
+    db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    return (
+        db.query(Tip)
+        .filter(Tip.recipient_id == user.id)
+        .order_by(Tip.created_at.desc())
+        .all()
+    )
 
 
 @router.get("/sent", response_model=list[TipOut])
 def sent_tips(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return db.query(Tip).filter(Tip.sender_id == user.id).order_by(Tip.created_at.desc()).all()
+    return (
+        db.query(Tip)
+        .filter(Tip.sender_id == user.id)
+        .order_by(Tip.created_at.desc())
+        .all()
+    )
 
 
 @router.post("/webhook", status_code=status.HTTP_204_NO_CONTENT)

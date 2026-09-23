@@ -97,10 +97,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       return;
     }
 
-    final body = <String, dynamic>{
-      'email': email,
-      'new_password': password,
-    };
+    final body = <String, dynamic>{'email': email, 'new_password': password};
 
     if (_codeMode == 'email') {
       final code = _emailCode.text.trim();
@@ -191,12 +188,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   _step == 1
                       ? 'Enter the email address you signed up with'
                       : _step == 2
-                          ? _codeMode == 'email'
-                              ? 'Enter the code sent to your email'
-                              : _codeMode == 'recovery'
-                                  ? 'Enter a recovery code'
-                                  : 'Enter your authenticator code'
-                          : 'Your password has been reset',
+                      ? _codeMode == 'email'
+                            ? 'Enter the code sent to your email'
+                            : _codeMode == 'recovery'
+                            ? 'Enter a recovery code'
+                            : 'Enter your authenticator code'
+                      : 'Your password has been reset',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                     fontSize: 14.5,
@@ -333,7 +330,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               setState(() => _codeMode = 'email');
                             },
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               visualDensity: VisualDensity.compact,
                             ),
@@ -353,7 +352,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         Text(
                           'or',
                           style: TextStyle(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
                             fontSize: 12.5,
                           ),
                         ),
@@ -365,7 +366,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               setState(() => _codeMode = 'totp');
                             },
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               visualDensity: VisualDensity.compact,
                             ),
@@ -385,7 +388,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         Text(
                           'or',
                           style: TextStyle(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
                             fontSize: 12.5,
                           ),
                         ),
@@ -397,7 +402,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               setState(() => _codeMode = 'recovery');
                             },
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               visualDensity: VisualDensity.compact,
                             ),
@@ -655,8 +662,7 @@ class _GlassFieldState extends State<_GlassField> {
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     size: 20,
                   ),
-                  onPressed: () =>
-                      setState(() => _obscureText = !_obscureText),
+                  onPressed: () => setState(() => _obscureText = !_obscureText),
                 )
               : null,
           isDense: true,

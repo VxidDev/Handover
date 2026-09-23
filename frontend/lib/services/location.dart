@@ -37,13 +37,21 @@ class LocationService {
                       color: const Color(0xFFD96C4A).withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.location_on_rounded, color: Color(0xFFD96C4A), size: 22),
+                    child: const Icon(
+                      Icons.location_on_rounded,
+                      color: Color(0xFFD96C4A),
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Allow location access?',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface),
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
                   ),
                 ],
@@ -51,26 +59,48 @@ class LocationService {
               const SizedBox(height: 16),
               Text(
                 'Handover uses your location to:',
-                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface),
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 8),
-              _bullet(theme, 'Find nearby neighbors and skills (distance sort & radius filter).'),
-              _bullet(theme, 'Create a rough privacy area (grid) instead of sharing your exact address.'),
+              _bullet(
+                theme,
+                'Find nearby neighbors and skills (distance sort & radius filter).',
+              ),
+              _bullet(
+                theme,
+                'Create a rough privacy area (grid) instead of sharing your exact address.',
+              ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.6,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline_rounded, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Location is optional. You can also pick an area manually on the map. Granting “Precise” will be downgraded to coarse for privacy.',
-                        style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurface.withValues(alpha: 0.65), height: 1.35),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.65,
+                          ),
+                          height: 1.35,
+                        ),
                       ),
                     ),
                   ],
@@ -89,7 +119,9 @@ class LocationService {
                   Expanded(
                     child: FilledButton(
                       onPressed: () => Navigator.pop(ctx, true),
-                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD96C4A)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFD96C4A),
+                      ),
                       child: const Text('Continue'),
                     ),
                   ),
@@ -99,7 +131,10 @@ class LocationService {
               Center(
                 child: Text(
                   'You can change this anytime in Settings',
-                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.45)),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                  ),
                 ),
               ),
             ],
@@ -116,9 +151,28 @@ class LocationService {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(padding: const EdgeInsets.only(top: 6), child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFFD96C4A), shape: BoxShape.circle))),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                color: Color(0xFFD96C4A),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: TextStyle(fontSize: 12.5, color: theme.colorScheme.onSurface.withValues(alpha: 0.75), height: 1.4))),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                height: 1.4,
+              ),
+            ),
+          ),
         ],
       ),
     );

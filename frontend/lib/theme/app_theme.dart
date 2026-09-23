@@ -62,10 +62,7 @@ abstract class AppTheme {
           color: AppColors.inkSoft,
           height: 1.5,
         ),
-        labelLarge: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
+        labelLarge: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.cream,
@@ -167,7 +164,8 @@ abstract class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.paper, // Contrasts nicely with cream scaffold
+        backgroundColor:
+            AppColors.paper, // Contrasts nicely with cream scaffold
         indicatorColor: AppColors.terracottaTint,
         elevation: 0,
         height: 68,
@@ -414,18 +412,18 @@ abstract class AppTheme {
   }
 
   static List<BoxShadow> get cardShadow => [
-        BoxShadow(
-          color: AppColors.shadow,
-          blurRadius: 18,
-          offset: const Offset(0, 6),
-        ),
-      ];
+    BoxShadow(
+      color: AppColors.shadow,
+      blurRadius: 18,
+      offset: const Offset(0, 6),
+    ),
+  ];
 
   static List<BoxShadow> get darkCardShadow => [
-        BoxShadow(
-          color: AppColors.darkShadow,
-          blurRadius: 18,
-          offset: const Offset(0, 6),
-        ),
-      ];
+    BoxShadow(
+      color: AppColors.darkShadow,
+      blurRadius: 18,
+      offset: const Offset(0, 6),
+    ),
+  ];
 }

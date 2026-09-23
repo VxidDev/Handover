@@ -3,11 +3,9 @@ import logging
 from collections import defaultdict
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
-from sqlalchemy.orm import Session
 
 from ..database import SessionLocal
-from ..deps import get_current_user
-from ..models import ChatMessage, Request, User
+from ..models import Request, User
 from ..security import decode_token
 
 logger = logging.getLogger("handover.notifications")
@@ -54,9 +52,7 @@ class NotificationManager:
             if req is None:
                 return
             participant_ids = [
-                pid
-                for pid in (req.requester_id, req.provider_id)
-                if pid != sender_id
+                pid for pid in (req.requester_id, req.provider_id) if pid != sender_id
             ]
         for uid in participant_ids:
             await self.send(uid, event)

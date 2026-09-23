@@ -49,17 +49,6 @@ class _StaggeredScope extends InheritedWidget {
         ?.controller;
   }
 
-  static AnimationController of(BuildContext context) {
-    final c = ofOrNull(context);
-    if (c == null) {
-      throw FlutterError(
-        'StaggeredItem used outside StaggeredEntrance. '
-        'Wrap the page with StaggeredEntrance.',
-      );
-    }
-    return c;
-  }
-
   @override
   bool updateShouldNotify(_StaggeredScope oldWidget) => false;
 }

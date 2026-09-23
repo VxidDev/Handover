@@ -116,7 +116,10 @@ class _CreatePostSheetState extends State<CreatePostSheet>
       for (int i = 0; i < imagesToUpload.length; i++) {
         final img = imagesToUpload[i]!;
         if (mounted) {
-          setState(() => _uploadProgress = 'Uploading image ${i + 1} of ${imagesToUpload.length}');
+          setState(
+            () => _uploadProgress =
+                'Uploading image ${i + 1} of ${imagesToUpload.length}',
+          );
         }
         final uploaded = await Api.uploadFile(
           '/api/uploads/images',
@@ -301,7 +304,11 @@ class _CreatePostSheetState extends State<CreatePostSheet>
                   autofocus: true,
                   maxLength: 50,
                   onChanged: (_) {
-                    if (_error != null) setState(() { _error = null; _titleError = false; });
+                    if (_error != null)
+                      setState(() {
+                        _error = null;
+                        _titleError = false;
+                      });
                   },
                   style: TextStyle(
                     fontSize: 14,
@@ -340,7 +347,11 @@ class _CreatePostSheetState extends State<CreatePostSheet>
                   maxLines: 4,
                   maxLength: 500,
                   onChanged: (_) {
-                    if (_error != null) setState(() { _error = null; _titleError = false; });
+                    if (_error != null)
+                      setState(() {
+                        _error = null;
+                        _titleError = false;
+                      });
                   },
                   style: TextStyle(
                     fontSize: 14,

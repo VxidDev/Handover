@@ -33,9 +33,7 @@ def test_cannot_report_own_skill(api):
 
 
 def test_report_dismisses_safe_content(api, monkeypatch):
-    monkeypatch.setattr(
-        reports, "analyze", lambda text: (False, {"toxicity": 0.1})
-    )
+    monkeypatch.setattr(reports, "analyze", lambda text: (False, {"toxicity": 0.1}))
     response = _report_skill(api, api.requester_token, api.ids["plumbing_id"])
     assert response.status_code == 201
     body = response.json()
@@ -47,9 +45,7 @@ def test_report_dismisses_safe_content(api, monkeypatch):
 
 
 def test_cannot_report_same_content_twice(api, monkeypatch):
-    monkeypatch.setattr(
-        reports, "analyze", lambda text: (True, {"toxicity": 0.9})
-    )
+    monkeypatch.setattr(reports, "analyze", lambda text: (True, {"toxicity": 0.9}))
     first = _report_skill(api, api.requester_token, api.ids["plumbing_id"])
     assert first.status_code == 201
 
@@ -62,9 +58,7 @@ def test_cannot_report_same_content_twice(api, monkeypatch):
 
 
 def test_report_issues_warning_for_toxic_content(api, monkeypatch):
-    monkeypatch.setattr(
-        reports, "analyze", lambda text: (True, {"toxicity": 0.99})
-    )
+    monkeypatch.setattr(reports, "analyze", lambda text: (True, {"toxicity": 0.99}))
     response = _report_skill(api, api.requester_token, api.ids["plumbing_id"])
     assert response.status_code == 201
     body = response.json()
@@ -92,9 +86,7 @@ def test_report_chat_message(api, monkeypatch):
         db.commit()
         message_id = message.id
 
-    monkeypatch.setattr(
-        reports, "analyze", lambda text: (True, {"toxicity": 0.9})
-    )
+    monkeypatch.setattr(reports, "analyze", lambda text: (True, {"toxicity": 0.9}))
     response = api.client.post(
         "/api/reports",
         headers=auth(api.requester_token),
@@ -109,23 +101,17 @@ def test_report_chat_message(api, monkeypatch):
 
 
 def test_my_reports_lists_only_own(api, monkeypatch):
-    monkeypatch.setattr(
-        reports, "analyze", lambda text: (False, {"toxicity": 0.1})
-    )
+    monkeypatch.setattr(reports, "analyze", lambda text: (False, {"toxicity": 0.1}))
     _report_skill(api, api.requester_token, api.ids["plumbing_id"])
     _report_skill(api, api.far_token, api.ids["plumbing_id"])
 
-    mine = api.client.get(
-        "/api/reports/mine", headers=auth(api.requester_token)
-    ).json()
+    mine = api.client.get("/api/reports/mine", headers=auth(api.requester_token)).json()
     assert len(mine) == 1
     assert mine[0]["content_id"] == api.ids["plumbing_id"]
 
 
 def test_warnings_visible_to_warned_user(api, monkeypatch):
-    monkeypatch.setattr(
-        reports, "analyze", lambda text: (True, {"toxicity": 0.9})
-    )
+    monkeypatch.setattr(reports, "analyze", lambda text: (True, {"toxicity": 0.9}))
     _report_skill(api, api.requester_token, api.ids["plumbing_id"])
 
     warnings = api.client.get(

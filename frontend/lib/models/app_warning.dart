@@ -1,5 +1,9 @@
 class AppWarning {
-  const AppWarning({required this.id, required this.reason, required this.createdAt});
+  const AppWarning({
+    required this.id,
+    required this.reason,
+    required this.createdAt,
+  });
 
   final int id;
   final String reason;

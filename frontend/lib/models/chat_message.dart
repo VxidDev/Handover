@@ -23,7 +23,9 @@ class ChatMessage {
     senderId: json['sender_id'] as int,
     senderName: json['sender_name'] as String,
     body: json['body'] as String,
-    createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime(2024),
+    createdAt:
+        DateTime.tryParse(json['created_at'] as String? ?? '') ??
+        DateTime(2024),
     imageUrl: json['image_url'] as String?,
   );
 }

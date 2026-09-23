@@ -6,7 +6,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: handover_backend
-    # Порты НЕ публикуются! Доступ только через nginx внутри сети
+    # Ports are NOT published! Access only via nginx inside the network
     volumes:
       - ./backend/data:/app/data
     environment:

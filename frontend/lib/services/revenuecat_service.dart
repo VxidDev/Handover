@@ -71,7 +71,9 @@ class RevenueCatService {
   static Future<bool> purchaseTip(StoreProduct product) async {
     if (!_initialized) return false;
     try {
-      final result = await Purchases.purchase(PurchaseParams.storeProduct(product));
+      final result = await Purchases.purchase(
+        PurchaseParams.storeProduct(product),
+      );
       return result.customerInfo.entitlements.all.isNotEmpty ||
           result.customerInfo.activeSubscriptions.isNotEmpty ||
           true; // for consumables, no entitlement, success = no exception
@@ -83,7 +85,9 @@ class RevenueCatService {
 
   /// Find product matching amount in dollars (e.g. 5.00 -> tip_500 or tip_5)
   static StoreProduct? findProductForAmount(
-      List<StoreProduct> products, double amount) {
+    List<StoreProduct> products,
+    double amount,
+  ) {
     final cents = (amount * 100).round();
     final candidates = [
       'tip_$cents',
@@ -105,11 +109,15 @@ class RevenueCatService {
   /// Decompose [cents] into multiple products (greedy) so any custom amount
   /// works with just a few SKUs, e.g. 750 = 500 + 200 + 50.
   static List<StoreProduct>? decomposeAmount(
-      List<StoreProduct> products, int cents) {
+    List<StoreProduct> products,
+    int cents,
+  ) {
     if (products.isEmpty) return null;
     // Build price -> product map (price in cents)
     final sorted = [...products]
-      ..sort((a, b) => (b.price * 100).round().compareTo((a.price * 100).round()));
+      ..sort(
+        (a, b) => (b.price * 100).round().compareTo((a.price * 100).round()),
+      );
     final result = <StoreProduct>[];
     var remaining = cents;
     for (final p in sorted) {

@@ -25,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _name = TextEditingController();
-  
+
   final _nameFocus = FocusNode();
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
@@ -68,12 +68,14 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _submit() async {
     FocusManager.instance.primaryFocus?.unfocus();
-    
+
     final email = _email.text.trim();
     final password = _password.text;
     final name = _name.text.trim();
 
-    if (email.isEmpty || password.isEmpty || (_mode == AuthMode.signUp && name.isEmpty)) {
+    if (email.isEmpty ||
+        password.isEmpty ||
+        (_mode == AuthMode.signUp && name.isEmpty)) {
       _snack(
         _mode == AuthMode.signUp
             ? 'Name, email, and password are required'
@@ -90,7 +92,9 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
     if (_mode == AuthMode.signUp && !_acceptedConsent) {
-      _snack('Please accept the Terms of Service and Privacy Policy to continue.');
+      _snack(
+        'Please accept the Terms of Service and Privacy Policy to continue.',
+      );
       return;
     }
 
@@ -105,20 +109,21 @@ class _LoginPageState extends State<LoginPage> {
               'accept_privacy': true,
             }
           : {'email': email, 'password': password};
-          
+
       final res = await Api.post(
         _mode == AuthMode.signUp ? '/api/auth/signup' : '/api/auth/login',
         body: body,
       );
-      
-      final user = (res as Map<String, dynamic>)['user'] as Map<String, dynamic>;
+
+      final user =
+          (res as Map<String, dynamic>)['user'] as Map<String, dynamic>;
       await Api.storeSession(
         res['token'] as String,
         user['id'] as int,
         lat: (user['lat'] as num?)?.toDouble(),
         lng: (user['lng'] as num?)?.toDouble(),
       );
-      
+
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -142,7 +147,7 @@ class _LoginPageState extends State<LoginPage> {
       _mode = _mode == AuthMode.signIn ? AuthMode.signUp : AuthMode.signIn;
       _acceptedConsent = false;
     });
-    
+
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0,
@@ -154,9 +159,9 @@ class _LoginPageState extends State<LoginPage> {
 
   void _openLegal(LegalDocument document) {
     HapticFeedback.lightImpact();
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => LegalPage(document: document)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => LegalPage(document: document)));
   }
 
   Widget _crossFade(Widget child) {
@@ -167,7 +172,9 @@ class _LoginPageState extends State<LoginPage> {
       transitionBuilder: (child, animation) {
         return SlideTransition(
           position: Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
-              .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+              .animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
           child: FadeTransition(opacity: animation, child: child),
         );
       },
@@ -185,7 +192,9 @@ class _LoginPageState extends State<LoginPage> {
         ? AppColors.darkSand.withValues(alpha: 0.9)
         : Colors.white.withValues(alpha: 0.7);
 
-    final forgotPasswordColor = isDark ? AppColors.terracotta : AppColors.terracottaDeep;
+    final forgotPasswordColor = isDark
+        ? AppColors.terracotta
+        : AppColors.terracottaDeep;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -204,10 +213,15 @@ class _LoginPageState extends State<LoginPage> {
                     HapticFeedback.selectionClick();
                     Navigator.of(context).maybePop();
                   },
-                  icon: Icon(Icons.arrow_back_rounded, color: theme.colorScheme.onSurface),
+                  icon: Icon(
+                    Icons.arrow_back_rounded,
+                    color: theme.colorScheme.onSurface,
+                  ),
                   style: IconButton.styleFrom(
                     backgroundColor: backButtonBg,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -237,7 +251,9 @@ class _LoginPageState extends State<LoginPage> {
                         : 'Sign in to see who nearby can lend a hand.',
                     key: ValueKey('subtitle-$_mode'),
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.65,
+                      ),
                       fontSize: 14.5,
                       height: 1.4,
                     ),
@@ -291,7 +307,10 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    StaggeredItem(index: 6, child: _FieldLabel(label: 'Password')),
+                    StaggeredItem(
+                      index: 6,
+                      child: _FieldLabel(label: 'Password'),
+                    ),
                     const SizedBox(height: 8),
                     StaggeredItem(
                       index: 7,
@@ -303,28 +322,33 @@ class _LoginPageState extends State<LoginPage> {
                         isPassword: true,
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _submit(),
-                        autofillHints: [isSignup ? AutofillHints.newPassword : AutofillHints.password],
+                        autofillHints: [
+                          isSignup
+                              ? AutofillHints.newPassword
+                              : AutofillHints.password,
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 18),
-              
+
               StaggeredItem(
                 index: 8,
                 child: _AnimatedConsentRow(
                   show: isSignup,
                   accepted: _acceptedConsent,
-                  onChanged: (value) => setState(() => _acceptedConsent = value),
+                  onChanged: (value) =>
+                      setState(() => _acceptedConsent = value),
                   onOpenTerms: () => _openLegal(LegalDocument.terms),
                   onOpenPrivacy: () => _openLegal(LegalDocument.privacy),
                 ),
               ),
-              
+
               const SizedBox(height: 18),
-              
+
               StaggeredItem(
                 index: 9,
                 child: SizedBox(
@@ -335,7 +359,9 @@ class _LoginPageState extends State<LoginPage> {
                       backgroundColor: AppColors.terracotta,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(100),
+                      ),
                       elevation: 0,
                       textStyle: const TextStyle(
                         fontSize: 15,
@@ -347,7 +373,10 @@ class _LoginPageState extends State<LoginPage> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
                           )
                         : _crossFade(
                             Text(
@@ -358,15 +387,17 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Toggle button (Sign in / Create account)
               StaggeredItem(
                 index: 10,
                 child: Semantics(
                   button: true,
-                  label: isSignup ? 'I already have an account, sign in' : 'New here? Create an account',
+                  label: isSignup
+                      ? 'I already have an account, sign in'
+                      : 'New here? Create an account',
                   child: TextButton(
                     onPressed: _loading ? null : _toggleMode,
                     child: _crossFade(
@@ -376,7 +407,9 @@ class _LoginPageState extends State<LoginPage> {
                             : 'New here? Create an account',
                         key: ValueKey('toggle-$_mode'),
                         style: TextStyle(
-                          color: isDark ? AppColors.terracotta : AppColors.terracottaDeep,
+                          color: isDark
+                              ? AppColors.terracotta
+                              : AppColors.terracottaDeep,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -397,11 +430,16 @@ class _LoginPageState extends State<LoginPage> {
                           : () {
                               HapticFeedback.lightImpact();
                               Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordPage(),
+                                ),
                               );
                             },
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         tapTargetSize: MaterialTapTargetSize.padded,
                       ),
                       child: Text(
@@ -411,7 +449,9 @@ class _LoginPageState extends State<LoginPage> {
                           fontWeight: FontWeight.w500,
                           color: forgotPasswordColor,
                           decoration: TextDecoration.underline,
-                          decorationColor: forgotPasswordColor.withValues(alpha: 0.5),
+                          decorationColor: forgotPasswordColor.withValues(
+                            alpha: 0.5,
+                          ),
                         ),
                       ),
                     ),
@@ -591,8 +631,14 @@ class _GlassFieldState extends State<_GlassField> {
             color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
             fontSize: 14.5,
           ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          suffixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 48,
+            minHeight: 48,
+          ),
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 48,
+            minHeight: 48,
+          ),
           prefixIcon: Icon(
             widget.icon,
             color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
@@ -601,7 +647,9 @@ class _GlassFieldState extends State<_GlassField> {
           suffixIcon: widget.isPassword
               ? IconButton(
                   icon: Icon(
-                    _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    _obscureText
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     size: 20,
                   ),
@@ -609,7 +657,10 @@ class _GlassFieldState extends State<_GlassField> {
                 )
               : null,
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
           border: InputBorder.none,
         ),
       ),
@@ -678,7 +729,9 @@ class _AnimatedConsentRowState extends State<_AnimatedConsentRow>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final consentColor = isDark ? AppColors.terracotta : AppColors.terracottaDeep;
+    final consentColor = isDark
+        ? AppColors.terracotta
+        : AppColors.terracottaDeep;
 
     return SizeTransition(
       sizeFactor: _size,
@@ -724,12 +777,18 @@ class _AnimatedConsentRowState extends State<_AnimatedConsentRow>
                             border: Border.all(
                               color: widget.accepted
                                   ? AppColors.sage
-                                  : theme.colorScheme.onSurface.withValues(alpha: 0.25),
+                                  : theme.colorScheme.onSurface.withValues(
+                                      alpha: 0.25,
+                                    ),
                               width: 1.4,
                             ),
                           ),
                           child: widget.accepted
-                              ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                )
                               : null,
                         ),
                       ),
@@ -742,10 +801,14 @@ class _AnimatedConsentRowState extends State<_AnimatedConsentRow>
                         style: TextStyle(
                           fontSize: 12.5,
                           height: 1.5,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.75,
+                          ),
                         ),
                         children: [
-                          const TextSpan(text: 'I\'m at least 16 and I agree to the '),
+                          const TextSpan(
+                            text: 'I\'m at least 16 and I agree to the ',
+                          ),
                           WidgetSpan(
                             alignment: PlaceholderAlignment.baseline,
                             baseline: TextBaseline.alphabetic,
@@ -757,7 +820,9 @@ class _AnimatedConsentRowState extends State<_AnimatedConsentRow>
                                   color: consentColor,
                                   fontWeight: FontWeight.w700,
                                   decoration: TextDecoration.underline,
-                                  decorationColor: consentColor.withValues(alpha: 0.5),
+                                  decorationColor: consentColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                               ),
                             ),
@@ -774,12 +839,17 @@ class _AnimatedConsentRowState extends State<_AnimatedConsentRow>
                                   color: consentColor,
                                   fontWeight: FontWeight.w700,
                                   decoration: TextDecoration.underline,
-                                  decorationColor: consentColor.withValues(alpha: 0.5),
+                                  decorationColor: consentColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                          const TextSpan(text: '. Your data is never sold and stays in the EU.'),
+                          const TextSpan(
+                            text:
+                                '. Your data is never sold and stays in the EU.',
+                          ),
                         ],
                       ),
                     ),

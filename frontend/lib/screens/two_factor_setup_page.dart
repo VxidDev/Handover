@@ -171,8 +171,9 @@ class _TwoFactorSetupPageState extends State<TwoFactorSetupPage> {
                           'Or enter this code manually:',
                           style: TextStyle(
                             fontSize: 13,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.6,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -193,7 +194,9 @@ class _TwoFactorSetupPageState extends State<TwoFactorSetupPage> {
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: isDark
-                                    ? AppColors.darkBorder.withValues(alpha: 0.5)
+                                    ? AppColors.darkBorder.withValues(
+                                        alpha: 0.5,
+                                      )
                                     : AppColors.inkSoft.withValues(alpha: 0.1),
                               ),
                             ),
@@ -246,8 +249,9 @@ class _TwoFactorSetupPageState extends State<TwoFactorSetupPage> {
                       decoration: InputDecoration(
                         hintText: '000000',
                         hintStyle: TextStyle(
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.4),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.4,
+                          ),
                           fontSize: 14.5,
                         ),
                         counterText: '',
@@ -257,8 +261,9 @@ class _TwoFactorSetupPageState extends State<TwoFactorSetupPage> {
                         ),
                         prefixIcon: Icon(
                           Icons.pin_outlined,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.5),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.5,
+                          ),
                           size: 20,
                         ),
                         isDense: true,

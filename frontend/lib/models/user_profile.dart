@@ -38,7 +38,8 @@ class UserProfile {
     grid: json['grid'] as String?,
     phone: json['phone'] as String?,
     profileImage: json['profile_image'] as String?,
-    createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime(0),
+    createdAt:
+        DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime(0),
     tosAcceptedAt: json['tos_accepted_at'] != null
         ? DateTime.tryParse(json['tos_accepted_at'] as String)
         : null,

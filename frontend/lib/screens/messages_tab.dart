@@ -14,8 +14,18 @@ String _formatRelativeTime(DateTime? dateTime) {
   if (diff.inDays < 7) return '${diff.inDays}d';
   if (dateTime.year == DateTime.now().year) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[dateTime.month - 1]} ${dateTime.day}';
   }
@@ -61,15 +71,17 @@ class _MessagesTabState extends State<MessagesTab> {
         Api.get('/api/requests', query: {'status': 'completed'}),
         Api.get('/api/requests', query: {'hidden': 'true'}),
       ]);
-      final requests = [
-        for (final res in results.take(2))
-          ...(res as List<dynamic>)
-              .map((item) => HelpRequest.fromJson(item as Map<String, dynamic>)),
-      ]..sort(
-          (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
-            a.createdAt ?? DateTime(0),
-          ),
-        );
+      final requests =
+          [
+            for (final res in results.take(2))
+              ...(res as List<dynamic>).map(
+                (item) => HelpRequest.fromJson(item as Map<String, dynamic>),
+              ),
+          ]..sort(
+            (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
+              a.createdAt ?? DateTime(0),
+            ),
+          );
       final hiddenRequests = (results[2] as List<dynamic>)
           .map((item) => HelpRequest.fromJson(item as Map<String, dynamic>))
           .toList();
@@ -134,9 +146,9 @@ class _MessagesTabState extends State<MessagesTab> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(describeError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -150,9 +162,9 @@ class _MessagesTabState extends State<MessagesTab> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(describeError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -364,9 +376,7 @@ class _ConversationCard extends StatelessWidget {
     final avatarColor = AppColors.avatarFor(otherUserName, isDark: isDark);
     final unread = request.unreadCount ?? 0;
     final subtitle = request.lastMessage ?? request.skillName;
-    final timeStr = _formatRelativeTime(
-      request.updatedAt ?? request.createdAt,
-    );
+    final timeStr = _formatRelativeTime(request.updatedAt ?? request.createdAt);
 
     return Material(
       color: isDark ? AppColors.darkPaper : AppColors.paper,
@@ -561,7 +571,10 @@ class _HiddenCard extends StatelessWidget {
             GestureDetector(
               onTap: onUnhide,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(100),
                   border: Border.all(

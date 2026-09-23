@@ -7,17 +7,26 @@ import '../services/api.dart';
 import '../services/revenuecat_service.dart';
 import '../theme/colors.dart';
 
-Future<void> showTipSheet(BuildContext context, {required int recipientId, required String recipientName}) {
+Future<void> showTipSheet(
+  BuildContext context, {
+  required int recipientId,
+  required String recipientName,
+}) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => TipSheet(recipientId: recipientId, recipientName: recipientName),
+    builder: (_) =>
+        TipSheet(recipientId: recipientId, recipientName: recipientName),
   );
 }
 
 class TipSheet extends StatefulWidget {
-  const TipSheet({super.key, required this.recipientId, required this.recipientName});
+  const TipSheet({
+    super.key,
+    required this.recipientId,
+    required this.recipientName,
+  });
   final int recipientId;
   final String recipientName;
 
@@ -61,7 +70,9 @@ class _TipSheetState extends State<TipSheet> {
     HapticFeedback.selectionClick();
     setState(() {
       _selectedAmount = amount;
-      _controller.text = amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2);
+      _controller.text = amount.toStringAsFixed(
+        amount.truncateToDouble() == amount ? 0 : 2,
+      );
     });
   }
 
@@ -72,7 +83,9 @@ class _TipSheetState extends State<TipSheet> {
     HapticFeedback.selectionClick();
     setState(() {
       _selectedAmount = null;
-      _controller.text = clamped.toStringAsFixed(clamped.truncateToDouble() == clamped ? 0 : 2);
+      _controller.text = clamped.toStringAsFixed(
+        clamped.truncateToDouble() == clamped ? 0 : 2,
+      );
     });
   }
 
@@ -108,20 +121,31 @@ class _TipSheetState extends State<TipSheet> {
           if (kDebugMode || kProfileMode) {
             debugPrint('[Tip] No products — mock tip allowed in debug');
           } else {
-            _snack('Tipping is temporarily unavailable — purchases not configured. Please try again later.');
+            _snack(
+              'Tipping is temporarily unavailable — purchases not configured. Please try again later.',
+            );
             setState(() => _sending = false);
             return;
           }
         } else {
           // Try exact product first, then decompose into multiple purchases
-          final exact = RevenueCatService.findProductForAmount(_products, amount);
+          final exact = RevenueCatService.findProductForAmount(
+            _products,
+            amount,
+          );
           List<StoreProduct> toPurchase;
           if (exact != null) {
             toPurchase = [exact];
           } else {
-            final decomposed = RevenueCatService.decomposeAmount(_products, cents);
+            final decomposed = RevenueCatService.decomposeAmount(
+              _products,
+              cents,
+            );
             if (decomposed == null) {
-              if (mounted) _snack('Can\'t make \$${amount.toStringAsFixed(2)} with available products — try \$${_presetAmounts.map((a) => a.toStringAsFixed(0)).join(", \$")}');
+              if (mounted)
+                _snack(
+                  'Can\'t make \$${amount.toStringAsFixed(2)} with available products — try \$${_presetAmounts.map((a) => a.toStringAsFixed(0)).join(", \$")}',
+                );
               setState(() => _sending = false);
               return;
             }
@@ -133,7 +157,8 @@ class _TipSheetState extends State<TipSheet> {
               await RevenueCatService.purchaseTip(p);
             }
           } catch (e) {
-            if (e.toString().contains('cancelled') || e.toString().contains('UserCancelled')) {
+            if (e.toString().contains('cancelled') ||
+                e.toString().contains('UserCancelled')) {
               setState(() => _sending = false);
               return;
             }
@@ -153,21 +178,28 @@ class _TipSheetState extends State<TipSheet> {
         }
       }
 
-      await Api.post('/api/tips', body: {
-        'recipient_id': widget.recipientId,
-        'amount_cents': cents,
-        // ignore: use_null_aware_elements
-        if (productId case final pid?) 'product_id': pid,
-      });
+      await Api.post(
+        '/api/tips',
+        body: {
+          'recipient_id': widget.recipientId,
+          'amount_cents': cents,
+          // ignore: use_null_aware_elements
+          if (productId case final pid?) 'product_id': pid,
+        },
+      );
 
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Tipped \$${amount.toStringAsFixed(2)} to ${widget.recipientName} ❤️'),
+          content: Text(
+            'Tipped \$${amount.toStringAsFixed(2)} to ${widget.recipientName} ❤️',
+          ),
           backgroundColor: AppColors.ink,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       HapticFeedback.mediumImpact();
@@ -213,14 +245,43 @@ class _TipSheetState extends State<TipSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: theme.colorScheme.onSurface.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(2)))),
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
-            Text('Send a tip to ${widget.recipientName}', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              'Send a tip to ${widget.recipientName}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text('Custom amount — choose a preset or enter your own', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13)),
+            Text(
+              'Custom amount — choose a preset or enter your own',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                fontSize: 13,
+              ),
+            ),
             const SizedBox(height: 16),
             if (_loadingProducts)
-              const Center(child: Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
             else
               Wrap(
                 spacing: 8,
@@ -228,11 +289,19 @@ class _TipSheetState extends State<TipSheet> {
                 children: _presetAmounts.map((a) {
                   final selected = _customAmount == a;
                   return ChoiceChip(
-                    label: Text('\$${a.toStringAsFixed(a.truncateToDouble() == a ? 0 : 2)}'),
+                    label: Text(
+                      '\$${a.toStringAsFixed(a.truncateToDouble() == a ? 0 : 2)}',
+                    ),
                     selected: selected,
                     onSelected: (_) => _pickPreset(a),
                     selectedColor: AppColors.terracotta.withValues(alpha: 0.15),
-                    labelStyle: TextStyle(color: selected ? AppColors.terracottaDeep : theme.colorScheme.onSurface, fontWeight: FontWeight.w600, fontSize: 13),
+                    labelStyle: TextStyle(
+                      color: selected
+                          ? AppColors.terracottaDeep
+                          : theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   );
                 }).toList(),
               ),
@@ -245,26 +314,54 @@ class _TipSheetState extends State<TipSheet> {
                   style: IconButton.styleFrom(
                     backgroundColor: isDark ? AppColors.darkSand : Colors.white,
                     foregroundColor: theme.colorScheme.onSurface,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1))),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.1,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                    ],
                     onChanged: (_) => setState(() => _selectedAmount = null),
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: theme.colorScheme.onSurface,
+                    ),
                     decoration: InputDecoration(
                       prefixText: '\$ ',
-                      prefixStyle: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7), fontWeight: FontWeight.w600),
+                      prefixStyle: TextStyle(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
+                        fontWeight: FontWeight.w600,
+                      ),
                       hintText: '7.50',
                       filled: true,
-                      fillColor: isDark ? AppColors.darkSand.withValues(alpha: 0.6) : Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      fillColor: isDark
+                          ? AppColors.darkSand.withValues(alpha: 0.6)
+                          : Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -275,7 +372,9 @@ class _TipSheetState extends State<TipSheet> {
                   style: IconButton.styleFrom(
                     backgroundColor: AppColors.terracotta,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ],
@@ -283,7 +382,13 @@ class _TipSheetState extends State<TipSheet> {
             Center(
               child: Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text('Step \$0.50', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.45), fontSize: 11)),
+                child: Text(
+                  'Step \$0.50',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                    fontSize: 11,
+                  ),
+                ),
               ),
             ),
             if (_customAmount != null && _customAmount! >= 0.5)
@@ -291,7 +396,10 @@ class _TipSheetState extends State<TipSheet> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   'Recipient gets 80% (\$${(_customAmount! * 0.8).toStringAsFixed(2)}) · platform 20% (\$${(_customAmount! * 0.2).toStringAsFixed(2)})',
-                  style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11.5),
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontSize: 11.5,
+                  ),
                 ),
               ),
             if (_customAmount != null && _customAmount! >= 0.5)
@@ -299,18 +407,34 @@ class _TipSheetState extends State<TipSheet> {
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   'Charged via Google Play Billing. You will see the Play confirmation and price before paying.',
-                  style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11, fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ),
             if (!RevenueCatService.isConfigured)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Dev mode — no charge. Production requires Google Play Billing (backend will reject mock tips).', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
+                child: Text(
+                  'Dev mode — no charge. Production requires Google Play Billing (backend will reject mock tips).',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontSize: 11,
+                  ),
+                ),
               )
             else if (_products.isEmpty && !_loadingProducts)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Purchases unavailable — please try again later. Tips must use Google Play Billing per Play Payments policy.', style: TextStyle(color: AppColors.error.withValues(alpha: 0.8), fontSize: 11)),
+                child: Text(
+                  'Purchases unavailable — please try again later. Tips must use Google Play Billing per Play Payments policy.',
+                  style: TextStyle(
+                    color: AppColors.error.withValues(alpha: 0.8),
+                    fontSize: 11,
+                  ),
+                ),
               ),
             const SizedBox(height: 20),
             SizedBox(
@@ -321,11 +445,23 @@ class _TipSheetState extends State<TipSheet> {
                   backgroundColor: AppColors.terracotta,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 child: _sending
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text('Send tip'),
               ),
             ),

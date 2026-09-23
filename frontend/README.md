@@ -1,17 +1,46 @@
-# handover
+# Handover App (Flutter)
 
-A new Flutter project.
+Flutter client for Handover: search nearby skills, send requests, chat in
+private rooms, rate neighbors and send tips.
 
-## Getting Started
+## Requirements
 
-This project is a starting point for a Flutter application.
+- Flutter 3.x (`flutter --version`)
+- A running backend (see `../backend/README.md`)
 
-A few resources to get you started if this is your first Flutter project:
+## Setup
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+flutter pub get
+cp .env.example .env   # then set API_BASE_URL to your backend
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Run
+
+```bash
+# Local backend on the same machine
+flutter run --dart-define=API_BASE_URL=http://127.0.0.1:9000
+
+# Android emulator (host loopback)
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:9000
+```
+
+Copying `.env` is optional: `--dart-define=API_BASE_URL=...` always wins
+when provided. `ONESIGNAL_APP_ID` and `REVENUECAT_API_KEY` are optional;
+without them push stays disabled and tipping runs in debug mock mode.
+
+## Tests and checks
+
+```bash
+flutter test
+flutter analyze
+dart format lib test
+```
+
+## Notes
+
+- Location is foreground-only and coarse by design. The app shows a
+  prominent disclosure before requesting permission and works with a
+  manually picked area if permission is denied.
+- Release builds require `https://` API URLs (asserted in `lib/services/api.dart`).
+  Cleartext HTTP is debug-only for LAN development.

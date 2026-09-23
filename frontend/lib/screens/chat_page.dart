@@ -202,7 +202,10 @@ class _ChatPageState extends State<ChatPage> {
 
   void _send({String? body, String? imageUrl}) {
     final text = body ?? _composer.text.trim();
-    if ((text.isEmpty && imageUrl == null) || text.length > 2000 || _channel == null || _sending) {
+    if ((text.isEmpty && imageUrl == null) ||
+        text.length > 2000 ||
+        _channel == null ||
+        _sending) {
       return;
     }
     setState(() => _sending = true);
@@ -236,7 +239,10 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _pickAndSendImage() async {
     if (_channel == null || _sending) return;
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (picked == null || !mounted) return;
     setState(() => _sending = true);
     try {
@@ -342,7 +348,10 @@ class _ChatPageState extends State<ChatPage> {
               // History info card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppColors.darkSand.withValues(alpha: 0.5)
@@ -363,7 +372,9 @@ class _ChatPageState extends State<ChatPage> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.75,
+                          ),
                         ),
                       ),
                     ),
@@ -395,8 +406,9 @@ class _ChatPageState extends State<ChatPage> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.7),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
                         ),
@@ -554,7 +566,10 @@ class _ChatPageState extends State<ChatPage> {
               // Karma impact card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppColors.darkSand.withValues(alpha: 0.5)
@@ -566,7 +581,9 @@ class _ChatPageState extends State<ChatPage> {
                     Icon(
                       Icons.eco_outlined,
                       size: 17,
-                      color: isDark ? AppColors.terracotta : AppColors.terracottaDeep,
+                      color: isDark
+                          ? AppColors.terracotta
+                          : AppColors.terracottaDeep,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -575,7 +592,9 @@ class _ChatPageState extends State<ChatPage> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.75,
+                          ),
                         ),
                       ),
                     ),
@@ -616,8 +635,9 @@ class _ChatPageState extends State<ChatPage> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.7),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
                         ),
@@ -673,9 +693,9 @@ class _ChatPageState extends State<ChatPage> {
       );
       if (mounted) {
         setState(() => _status = 'cancelled');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Handover withdrawn.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Handover withdrawn.')));
       }
     } catch (e) {
       if (mounted) {
@@ -714,9 +734,9 @@ class _ChatPageState extends State<ChatPage> {
     try {
       await Api.post('/api/requests/${widget.request.id}/hide');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Conversation hidden.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Conversation hidden.')));
         Navigator.pop(context);
       }
     } catch (e) {
@@ -742,10 +762,9 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
-  int get _otherUserId =>
-      widget.request.requesterId == Api.currentUserId
-          ? widget.request.providerId
-          : widget.request.requesterId;
+  int get _otherUserId => widget.request.requesterId == Api.currentUserId
+      ? widget.request.providerId
+      : widget.request.requesterId;
 
   void _reportUser() {
     showModalBottomSheet(
@@ -848,8 +867,9 @@ class _ChatPageState extends State<ChatPage> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.7),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
                         ),
@@ -891,16 +911,16 @@ class _ChatPageState extends State<ChatPage> {
     try {
       await Api.post('/api/safety/block', body: {'blocked_id': _otherUserId});
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$firstName has been blocked.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$firstName has been blocked.')));
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(describeError(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(describeError(e))));
       }
     }
   }
@@ -992,9 +1012,7 @@ class _ChatPageState extends State<ChatPage> {
                     const SizedBox(width: 10),
                     Text(
                       'Hide conversation',
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                      ),
+                      style: TextStyle(color: theme.colorScheme.onSurface),
                     ),
                   ],
                 ),
@@ -1021,11 +1039,7 @@ class _ChatPageState extends State<ChatPage> {
                 value: 'block',
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.block,
-                      size: 18,
-                      color: AppColors.error,
-                    ),
+                    const Icon(Icons.block, size: 18, color: AppColors.error),
                     const SizedBox(width: 10),
                     Text(
                       'Block user',
@@ -1116,16 +1130,17 @@ class _ChatPageState extends State<ChatPage> {
     DateTime? prevDate;
     for (var i = 0; i < messages.length; i++) {
       final msg = messages[i];
-      final msgDate = DateTime(msg.createdAt.year, msg.createdAt.month, msg.createdAt.day);
+      final msgDate = DateTime(
+        msg.createdAt.year,
+        msg.createdAt.month,
+        msg.createdAt.day,
+      );
       if (prevDate == null || msgDate != prevDate) {
         items.add(_DateSeparator(date: msg.createdAt));
         prevDate = msgDate;
       }
       items.add(
-        _MessageBubble(
-          message: msg,
-          mine: msg.senderId == Api.currentUserId,
-        ),
+        _MessageBubble(message: msg, mine: msg.senderId == Api.currentUserId),
       );
     }
 
@@ -1335,87 +1350,89 @@ class _MessageBubble extends StatelessWidget {
         onLongPress: mine
             ? null
             : () => showReportDialog(
-                  context,
-                  contentType: 'chat_message',
-                  contentId: message.id,
-                  title: message.body.isNotEmpty ? message.body : 'Image message',
-                ),
+                context,
+                contentType: 'chat_message',
+                contentId: message.id,
+                title: message.body.isNotEmpty ? message.body : 'Image message',
+              ),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 520),
-        margin: const EdgeInsets.only(bottom: 9),
-        padding: const EdgeInsets.fromLTRB(13, 9, 13, 7),
-        decoration: BoxDecoration(
-          color: mine
-              ? AppColors.terracotta
-              : (isDark ? AppColors.darkPaper : AppColors.paper),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(17),
-            topRight: const Radius.circular(17),
-            bottomLeft: Radius.circular(mine ? 17 : 4),
-            bottomRight: Radius.circular(mine ? 4 : 17),
-          ),
-          border: mine
-              ? null
-              : Border.all(
-                  color: isDark ? AppColors.darkBorder : AppColors.border,
-                ),
-        ),
-        child: Column(
-          crossAxisAlignment: mine
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
-          children: [
-            if (!mine)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  message.senderName,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.sage,
+          margin: const EdgeInsets.only(bottom: 9),
+          padding: const EdgeInsets.fromLTRB(13, 9, 13, 7),
+          decoration: BoxDecoration(
+            color: mine
+                ? AppColors.terracotta
+                : (isDark ? AppColors.darkPaper : AppColors.paper),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(17),
+              topRight: const Radius.circular(17),
+              bottomLeft: Radius.circular(mine ? 17 : 4),
+              bottomRight: Radius.circular(mine ? 4 : 17),
+            ),
+            border: mine
+                ? null
+                : Border.all(
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
                   ),
-                ),
-              ),
-            if (message.imageUrl != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  '${Api.baseUrl}${message.imageUrl}',
-                  width: 240,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    padding: const EdgeInsets.all(12),
-                    child: Icon(
-                      Icons.broken_image_rounded,
-                      color: mine
-                          ? Colors.white.withValues(alpha: 0.6)
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+          ),
+          child: Column(
+            crossAxisAlignment: mine
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              if (!mine)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    message.senderName,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.sage,
                     ),
                   ),
                 ),
-              ),
-            if (message.body.isNotEmpty)
+              if (message.imageUrl != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    '${Api.baseUrl}${message.imageUrl}',
+                    width: 240,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      padding: const EdgeInsets.all(12),
+                      child: Icon(
+                        Icons.broken_image_rounded,
+                        color: mine
+                            ? Colors.white.withValues(alpha: 0.6)
+                            : theme.colorScheme.onSurface.withValues(
+                                alpha: 0.4,
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (message.body.isNotEmpty)
+                Text(
+                  message.body,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.35,
+                    color: mine ? Colors.white : theme.colorScheme.onSurface,
+                  ),
+                ),
+              const SizedBox(height: 3),
               Text(
-                message.body,
+                time,
                 style: TextStyle(
-                  fontSize: 14,
-                  height: 1.35,
-                  color: mine ? Colors.white : theme.colorScheme.onSurface,
+                  fontSize: 10,
+                  color: mine
+                      ? Colors.white.withValues(alpha: 0.68)
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.42),
                 ),
               ),
-            const SizedBox(height: 3),
-            Text(
-              time,
-              style: TextStyle(
-                fontSize: 10,
-                color: mine
-                    ? Colors.white.withValues(alpha: 0.68)
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.42),
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );
@@ -1550,10 +1567,7 @@ class _RatingSheetState extends State<_RatingSheet> {
     try {
       await Api.post(
         '/api/requests/${widget.requestId}/rate',
-        body: {
-          'stars': _stars,
-          'review': _review.text.trim(),
-        },
+        body: {'stars': _stars, 'review': _review.text.trim()},
       );
       if (!mounted) return;
       setState(() {
@@ -1590,7 +1604,9 @@ class _RatingSheetState extends State<_RatingSheet> {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-            child: _submitted ? _buildSuccess(theme) : _buildForm(theme, isDark),
+            child: _submitted
+                ? _buildSuccess(theme)
+                : _buildForm(theme, isDark),
           ),
         ),
       ),
@@ -1758,7 +1774,9 @@ class _RatingSheetState extends State<_RatingSheet> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
                       ),
                     ),
                   ),

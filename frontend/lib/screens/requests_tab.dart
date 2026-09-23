@@ -295,8 +295,8 @@ class _RequestsTabState extends State<RequestsTab>
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(dialogContext, false),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor:
-                                theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                            foregroundColor: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.7),
                             side: BorderSide(
                               color: isDark
                                   ? AppColors.darkBorder.withValues(alpha: 0.6)
@@ -929,7 +929,9 @@ class _RequestsTabState extends State<RequestsTab>
           onRespond: (s) => s == 'accepted' ? _accept(r) : _respond(r, s),
           onCancel: isSentTab ? () => _cancel(r) : null,
           onTap: canOpenChat ? () => _openChat(r) : null,
-          onComplete: (!isSentTab || r.status != 'accepted') ? null : () => _complete(r),
+          onComplete: (!isSentTab || r.status != 'accepted')
+              ? null
+              : () => _complete(r),
         );
 
         if (isSentTab) {
@@ -1360,7 +1362,9 @@ class _RequestCard extends StatelessWidget {
               ),
             ),
           ],
-          if (!isReceived && request.status == 'accepted' && onComplete != null) ...[
+          if (!isReceived &&
+              request.status == 'accepted' &&
+              onComplete != null) ...[
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,

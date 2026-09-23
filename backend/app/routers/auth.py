@@ -154,7 +154,9 @@ def reset_password(payload: ResetPasswordIn, db: Session = Depends(get_db)):
             .order_by(PasswordResetCode.created_at.desc())
             .first()
         )
-        if not code_record or not verify_email_code(payload.email_code, code_record.code_hash):
+        if not code_record or not verify_email_code(
+            payload.email_code, code_record.code_hash
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired email code",

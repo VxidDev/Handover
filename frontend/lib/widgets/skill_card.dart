@@ -38,173 +38,174 @@ class SkillCard extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '${neighbor.skill} by ${neighbor.name}${neighbor.available ? ", available" : ""}',
+      label:
+          '${neighbor.skill} by ${neighbor.name}${neighbor.available ? ", available" : ""}',
       child: GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          PageRouteBuilder(
-            transitionDuration: const Duration(milliseconds: 340),
-            reverseTransitionDuration: const Duration(milliseconds: 280),
-            pageBuilder: (_, animation, _) => SlideTransition(
-              position:
-                  Tween<Offset>(
-                    begin: const Offset(0, 0.04),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
+        onTap: () {
+          Navigator.of(context).push(
+            PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 340),
+              reverseTransitionDuration: const Duration(milliseconds: 280),
+              pageBuilder: (_, animation, _) => SlideTransition(
+                position:
+                    Tween<Offset>(
+                      begin: const Offset(0, 0.04),
+                      end: Offset.zero,
+                    ).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutCubic,
+                      ),
                     ),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: SkillDetailPage(
+                    neighbor: neighbor,
+                    onRequest: onRequest,
                   ),
-              child: FadeTransition(
-                opacity: animation,
-                child: SkillDetailPage(
-                  neighbor: neighbor,
-                  onRequest: onRequest,
                 ),
               ),
             ),
+          );
+        },
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: cardBorder, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: cardShadow,
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-        );
-      },
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: cardBorder, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: cardShadow,
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image carousel (preview)
-            if (hasImages) _buildImagePreview(theme, isDark),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image carousel (preview)
+              if (hasImages) _buildImagePreview(theme, isDark),
 
-            // Content
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title + availability
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          neighbor.skill,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.2,
-                            fontSize: 15,
-                            height: 1.25,
+              // Content
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title + availability
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            neighbor.skill,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.2,
+                              fontSize: 15,
+                              height: 1.25,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      AvailabilityBadge(available: neighbor.available),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
+                        const SizedBox(width: 8),
+                        AvailabilityBadge(available: neighbor.available),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
 
-                  // Owner row
-                  Row(
-                    children: [
-                      Container(
-                        width: 22,
-                        height: 22,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: avatarColor.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: neighbor.ownerProfileImage != null
-                            ? ClipOval(
-                                child: Image.network(
-                                  '${Api.baseUrl}${neighbor.ownerProfileImage}',
-                                  width: 22,
-                                  height: 22,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Text(
-                                    neighbor.initial,
-                                    style: TextStyle(
-                                      color: avatarColor,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 10,
+                    // Owner row
+                    Row(
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: avatarColor.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: neighbor.ownerProfileImage != null
+                              ? ClipOval(
+                                  child: Image.network(
+                                    '${Api.baseUrl}${neighbor.ownerProfileImage}',
+                                    width: 22,
+                                    height: 22,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Text(
+                                      neighbor.initial,
+                                      style: TextStyle(
+                                        color: avatarColor,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 10,
+                                      ),
                                     ),
                                   ),
+                                )
+                              : Text(
+                                  neighbor.initial,
+                                  style: TextStyle(
+                                    color: avatarColor,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
                                 ),
-                              )
-                            : Text(
-                                neighbor.initial,
-                                style: TextStyle(
-                                  color: avatarColor,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 10,
-                                ),
-                              ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          neighbor.name,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.7,
-                            ),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      if (metaParts.isNotEmpty) ...[
                         const SizedBox(width: 6),
-                        Text(
-                          metaParts.join(' · '),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.45,
+                        Expanded(
+                          child: Text(
+                            neighbor.name,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (metaParts.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            metaParts.join(' · '),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.45,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-
-                  // Blurb preview
-                  if (neighbor.blurb.trim().isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      neighbor.blurb,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.6,
-                        ),
-                        fontSize: 12.5,
-                        height: 1.4,
-                      ),
                     ),
+
+                    // Blurb preview
+                    if (neighbor.blurb.trim().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        neighbor.blurb,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
+                          fontSize: 12.5,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

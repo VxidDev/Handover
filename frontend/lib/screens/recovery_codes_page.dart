@@ -124,8 +124,9 @@ class RecoveryCodesPage extends StatelessWidget {
                     icon: const Icon(Icons.copy_rounded, size: 17),
                     label: const Text('Copy all codes'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.7),
+                      foregroundColor: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.7,
+                      ),
                       side: BorderSide(
                         color: isDark
                             ? AppColors.darkBorder.withValues(alpha: 0.6)
