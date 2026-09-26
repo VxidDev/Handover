@@ -183,6 +183,8 @@ def moderation_queue(request: __import__("fastapi").Request):
             actions = ""
             if owner_id:
                 actions = f"""<form method="post" action="/admin/moderation/ban?key={key}" style="display:inline"><input type="hidden" name="user_id" value="{owner_id}"><input type="hidden" name="report_id" value="{r.id}"><button style="background:#c53030;color:#fff;border:0;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px">Ban 7d</button></form> <form method="post" action="/admin/moderation/dismiss?key={key}" style="display:inline"><input type="hidden" name="report_id" value="{r.id}"><button style="background:#718096;color:#fff;border:0;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px">Dismiss</button></form>"""
+            if r.content_type == "skill":
+                actions += f""" <form method="post" action="/admin/moderation/delete-skill?key={key}" style="display:inline" onsubmit="return confirm('Permanently delete this skill post?')"><input type="hidden" name="report_id" value="{r.id}"><button style="background:#742a2a;color:#fff;border:0;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px">Delete post</button></form>"""
             rows_html += f"<tr><td>{r.id}</td><td>{r.content_type or 'user'}</td><td>{r.content_id or r.reported_id or '—'}</td><td style='max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' title='{preview}'>{preview}</td><td>{reporter_label}</td><td>{r.reason[:30]}</td><td><span style='background:{color};color:#fff;padding:2px 8px;border-radius:999px;font-size:12px'>{r.status}</span></td><td>{round(r.toxicity_score, 3) if r.toxicity_score is not None else '—'}</td><td>{r.created_at.strftime('%m-%d %H:%M') if r.created_at else ''}</td><td>{actions}</td></tr>"
         if not rows_html:
             rows_html = "<tr><td colspan=10 style='text-align:center;color:#777;padding:24px'>No reports yet — queue is empty.</td></tr>"
@@ -271,6 +273,40 @@ def moderation_dismiss(
     finally:
         db.close()
     key = request.query_params.get("key") or ""
+    return _RR(url=f"/admin/moderation?key={key}", status_code=303)
+
+
+@app.post("/admin/moderation/delete-skill", include_in_schema=False)
+def moderation_delete_skill(
+    request: __import__("fastapi").Request,
+    report_id: int = __import__("fastapi").Form(...),
+):
+    from fastapi import HTTPException as _HE
+    from fastapi.responses import RedirectResponse as _RR
+
+    from .config import settings as _settings
+
+    key = request.query_params.get("key") or ""
+    if key != _settings.SECRET_KEY:
+        raise _HE(status_code=403, detail="Forbidden")
+
+    from .cache import SKILLS_CATALOG_KEY, cache
+    from .database import SessionLocal
+    from .models import Report as _Report
+    from .models import Skill as _Skill
+
+    db = SessionLocal()
+    try:
+        report = db.get(_Report, report_id)
+        if report is None or report.content_type != "skill":
+            raise _HE(status_code=404, detail="Skill report not found")
+        skill = db.get(_Skill, report.content_id)
+        if skill is not None:
+            db.delete(skill)
+            db.commit()
+            cache.delete(SKILLS_CATALOG_KEY)
+    finally:
+        db.close()
     return _RR(url=f"/admin/moderation?key={key}", status_code=303)
 
 

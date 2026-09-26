@@ -2,7 +2,9 @@ from datetime import UTC, datetime, timedelta
 
 from conftest import auth
 
-from app.models import Report, User, Warning
+from app import database
+from app.config import settings
+from app.models import Report, Skill, User, Warning
 from app.routers import reports
 
 
@@ -192,3 +194,38 @@ def test_ban_cleared_after_expiry(api):
     with api.session() as db:
         provider = db.get(User, api.ids["provider_id"])
         assert provider.banned_until is None
+
+
+def test_moderator_can_delete_reported_skill(api, monkeypatch):
+    monkeypatch.setattr(settings, "SECRET_KEY", "test-moderation-key")
+    monkeypatch.setattr(database, "SessionLocal", api.session)
+    with api.session() as db:
+        report = Report(
+            reporter_id=api.ids["requester_id"],
+            content_type="skill",
+            content_id=api.ids["plumbing_id"],
+            reason="Inappropriate",
+            status="pending_review",
+        )
+        db.add(report)
+        db.commit()
+        report_id = report.id
+
+    response = api.client.post(
+        "/admin/moderation/delete-skill?key=test-moderation-key",
+        data={"report_id": report_id},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    with api.session() as db:
+        assert db.get(Skill, api.ids["plumbing_id"]) is None
+
+
+def test_moderator_cannot_delete_skill_without_secret(api, monkeypatch):
+    monkeypatch.setattr(settings, "SECRET_KEY", "test-moderation-key")
+    response = api.client.post(
+        "/admin/moderation/delete-skill?key=wrong",
+        data={"report_id": 1},
+    )
+    assert response.status_code == 403

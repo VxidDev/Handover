@@ -6,6 +6,7 @@ import '../services/api.dart';
 import '../theme/colors.dart';
 import '../widgets/availability_badge.dart';
 import '../widgets/image_viewer.dart';
+import '../widgets/report_dialog.dart';
 import '../widgets/report_user_sheet.dart';
 import '../widgets/tip_sheet.dart';
 
@@ -60,6 +61,17 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ReportUserSheet(userId: widget.neighbor.ownerId),
+    );
+  }
+
+  void _reportSkill() {
+    final skillId = widget.neighbor.skillId;
+    if (skillId == null) return;
+    showReportDialog(
+      context,
+      contentType: 'skill',
+      contentId: skillId,
+      title: widget.neighbor.skill,
     );
   }
 
@@ -286,6 +298,7 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                       child: PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'report') _reportUser();
+                          if (value == 'report_skill') _reportSkill();
                           if (value == 'block') _blockUser();
                         },
                         icon: Container(
@@ -319,6 +332,24 @@ class _SkillDetailPageState extends State<SkillDetailPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         itemBuilder: (_) => [
+                          if (widget.neighbor.skillId != null)
+                            PopupMenuItem(
+                              value: 'report_skill',
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.flag_outlined,
+                                    size: 18,
+                                    color: AppColors.error,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Report skill',
+                                    style: TextStyle(color: AppColors.error),
+                                  ),
+                                ],
+                              ),
+                            ),
                           PopupMenuItem(
                             value: 'report',
                             child: Row(
